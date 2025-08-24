@@ -218,19 +218,46 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
     this.render();
 
 const host = this.hostRef.nativeElement;
-    const onScroll = () => {
-      // Если идёт ресайз и пользователь прокручивает вправо/влево,
-      // продолжаем пересчитывать ширину так, чтобы разделитель «шёл» за курсором
-      if (this.isResizingCol && this.resizeTarget) {
-        const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-        const contentX = this.lastClientX - rect.left + host.scrollLeft;
-        this.applyLiveResizeAtContentX(contentX);
-      } else {
-        this.render();
-      }
-    };
+
+    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК
+  const onScroll = () => {
+    const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+    // ИСПРАВЛЕННАЯ ЛОГИКА КООРДИНАТ
+    const contentX = this.lastClientX - rect.left;
+
+    // Как мы обсуждали ранее, этот блок лучше удалить,
+    // чтобы избежать "прыжков" при прокрутке скроллбаром.
+    /*
+    if (this.isResizingCol && this.resizeTarget) {
+      this.applyLiveResizeAtContentX(contentX);
+      return;
+    }
+    */
+
+    this.updateHoverFromContentX(contentX);
+    this.render();
+  };
     host.addEventListener('scroll', onScroll);
     this.destroyRef.onDestroy(() => host.removeEventListener('scroll', onScroll));
+
+    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК
+  const onWheel = () => {
+    const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+    // ИСПРАВЛЕННАЯ ЛОГИКА КООРДИНАТ
+    const contentX = this.lastClientX - rect.left;
+    
+    // Этот блок также лучше удалить или закомментировать
+    /*
+    if (this.isResizingCol && this.resizeTarget) {
+      this.applyLiveResizeAtContentX(contentX);
+      return;
+    }
+    */
+    this.updateHoverFromContentX(contentX);
+    this.render();
+  };
+    host.addEventListener('wheel', onWheel, { passive: true });
+    this.destroyRef.onDestroy(() => host.removeEventListener('wheel', onWheel));
 
     this._initialized = true;
   }
@@ -442,6 +469,7 @@ private autoScrollIfNearEdge(contentX: number) {
     // Hover: show col-resize near resizable dividers; grab over grip; grabbing when dragging
 // Hover: exact hit OR magnet to nearest divider; highlight it
 this.d3Canvas.on('mousemove', (event: MouseEvent) => {
+  this.lastClientX = event.clientX;
   const { x } = this.toContentCoords(event);
 
   if (this.isResizingCol) {
@@ -493,11 +521,12 @@ this.d3Canvas.on('mousemove', (event: MouseEvent) => {
   private onMouseUpBound = (e: MouseEvent) => this.onMouseUp(e);
 
   private toContentCoords(event: MouseEvent) {
-    const host = this.hostRef.nativeElement;
-    const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-    const x = event.clientX - rect.left + host.scrollLeft;
-    const y = event.clientY - rect.top + host.scrollTop;
-    return { x, y };
+  const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+  // Просто вычисляем позицию относительно левого верхнего угла холста.
+  // getBoundingClientRect() уже учитывает смещение из-за прокрутки.
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  return { x, y };
   }
 
   // ---- Column resize helpers ----
@@ -570,6 +599,33 @@ this.d3Canvas.on('mousemove', (event: MouseEvent) => {
     this.setWidthByKey(this.resizeTarget, next);
     this.resizeCanvasToContainer();
     this.render();
+  }
+
+  // --- Reusable hover/cursor updater ---
+  private updateHoverFromContentX(contentX: number) {
+    if (this.isDragging) return;
+    const hit = this.hitResizableDivider(contentX);
+    if (hit.target) {
+      this.hoverTarget = hit.target;
+      const d = this.getDividerPositions();
+      this.hoverDividerX =
+        hit.target === 'wbs' ? d.afterWbs :
+        hit.target === 'name' ? d.afterName :
+        hit.target === 'start' ? d.afterStart :
+        d.afterFinish;
+      this.canvasRef.nativeElement.style.cursor = 'col-resize';
+    } else {
+      const near = this.nearestDivider(contentX);
+      if (near && near.dist <= this.snapTol) {
+        this.hoverTarget = near.target;
+        this.hoverDividerX = near.x;
+        this.canvasRef.nativeElement.style.cursor = 'col-resize';
+      } else {
+        this.hoverTarget = null;
+        this.hoverDividerX = null;
+        this.canvasRef.nativeElement.style.cursor = 'default';
+      }
+    }
   }
 
   // === Grip detection ===
@@ -903,6 +959,19 @@ this.applyLiveResizeAtContentX(x);
     ctx.lineTo((this.colGrip + this.colToggle + this.colWbs + this.colName + this.colStart) + 0.5, height);
     ctx.strokeStyle = this.gridColor;
     ctx.stroke();
+
+    // Подсветка наведённого разделителя (вертикальная линия на всю высоту)
+    if (!this.isResizingCol && !this.isDragging && this.hoverDividerX != null) {
+      const host = this.hostRef.nativeElement;
+      ctx.save();
+      ctx.strokeStyle = '#3d7bfd';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(this.hoverDividerX + 0.5, 0);
+      ctx.lineTo(this.hoverDividerX + 0.5, height);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // DnD визуализация
     if (this.isDragging && this.dragRowIndex >= 0) {
