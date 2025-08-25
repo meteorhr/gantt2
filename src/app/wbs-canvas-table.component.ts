@@ -96,14 +96,26 @@ type DropMode =
               <canvas #ganttCanvas></canvas>
             </div>
             <div class="gantt-toolbar">
-              <select [value]="ganttScale" (change)="onScaleChange($event)">
-                <option value="week-day">week | day</option>
-                <option value="month-week">month | week</option>
-                <option value="quarter-month">quarter | month</option>
-                <option value="year-month">year | month</option>
-                <option value="year-quarter">year | quarter</option>
-              </select>
-            </div>
+  <div class="zoom">
+    <button type="button" (click)="bumpScale(-1)">−</button>
+    <input
+      type="range"
+      min="4" max="60" step="1"
+      [value]="ganttPxPerDay"
+      (input)="onTimescaleInput($event)"
+    />
+    <button type="button" (click)="bumpScale(1)">+</button>
+    <span class="zoom-label">Timescale</span>
+  </div>
+
+  <select [value]="ganttScale" (change)="onScaleChange($event)">
+    <option value="week-day">week | day</option>
+    <option value="month-week">month | week</option>
+    <option value="quarter-month">quarter | month</option>
+    <option value="year-month">year | month</option>
+    <option value="year-quarter">year | quarter</option>
+  </select>
+</div>
           </div>
         </div>
       </div>
@@ -173,13 +185,29 @@ type DropMode =
       transition: background-color 0.2s;
     }
     .gantt-toolbar{
-      position: sticky;
-      top: 0;
-      z-index: 6;
-      background: #fff;
-      border-bottom: 1px solid #eee;
-      padding: 6px 8px;
-    }
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  padding: 6px 8px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.zoom{ display:flex; align-items:center; gap:6px; }
+.zoom input[type="range"]{ width: 180px; }
+.zoom button{
+  border: 1px solid #cfd6e4;
+  background: #fff;
+  padding: 0 6px;
+  height: 22px;
+  border-radius: 4px;
+  line-height: 1;
+  cursor: pointer;
+}
+.zoom-label{ font-size:12px; color:#666; }
     .gantt-toolbar select{
       font: inherit;
       padding: 2px 6px;
@@ -341,7 +369,7 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
 
   // ===== Гантт: диапазон времени =====
   private readonly MS_PER_DAY = 24 * 60 * 60 * 1000;
-  private ganttPxPerDay = 14;        // масштаб (px/день)
+  public ganttPxPerDay = 14;        // масштаб (px/день)
   private ganttStartMs = 0;
   private ganttEndMs = 0;
 
@@ -472,6 +500,54 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   onScaleChange(e: Event) {
     this.ganttScale = (e.target as HTMLSelectElement).value as GanttScale;
     this.resizeGanttCanvases();
+    this.renderGanttHeader();
+    this.renderGanttBody();
+  }
+
+  onTimescaleInput(e: Event) {
+    const v = Number((e.target as HTMLInputElement).value || 14);
+    this.setTimescale(v, 'center');
+  }
+  
+  bumpScale(step: number) {
+    this.setTimescale(this.ganttPxPerDay + step, 'center');
+  }
+  
+  /** Устанавливает px/день и сохраняет якорь (центр/лево/право) на том же времени */
+  private setTimescale(pxPerDay: number, anchor: 'center'|'left'|'right') {
+    const wrapper = this.ganttWrapperRef.nativeElement;
+  
+    // 1) вычисляем "якорную" дату (по текущему скроллу и старому масштабу)
+    const anchorPx =
+      anchor === 'left'  ? wrapper.scrollLeft :
+      anchor === 'right' ? wrapper.scrollLeft + wrapper.clientWidth :
+                           wrapper.scrollLeft + wrapper.clientWidth / 2;
+  
+    const anchorDateMs =
+      this.ganttStartMs + (anchorPx / this.ganttPxPerDay) * this.MS_PER_DAY;
+  
+    // 2) применяем новый масштаб в допустимых пределах
+    this.ganttPxPerDay = Math.max(2, Math.min(96, Math.round(pxPerDay)));
+  
+    // 3) пересчёт размеров канвасов
+    this.resizeGanttCanvases();
+  
+    // 4) восстанавливаем скролл так, чтобы та же дата осталась на якоре
+    const newAnchorPx =
+      ((anchorDateMs - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay;
+  
+    const desiredScrollLeft =
+      anchor === 'left'  ? newAnchorPx
+      : anchor === 'right' ? newAnchorPx - wrapper.clientWidth
+      : newAnchorPx - wrapper.clientWidth / 2;
+  
+    wrapper.scrollLeft = Math.max(
+      0,
+      Math.min(wrapper.scrollWidth - wrapper.clientWidth, desiredScrollLeft)
+    );
+  
+    // 5) дорисовка
+    this.syncGanttHeaderToScroll();
     this.renderGanttHeader();
     this.renderGanttBody();
   }
