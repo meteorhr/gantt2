@@ -134,7 +134,6 @@ type DropMode =
       max-width: 100vw;
       position: relative;
       border: 1px solid #e0e0e0;
-      border-radius: 8px;
       background: #fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
     }
@@ -291,6 +290,7 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   private isResizingSplit = false;
   private splitStartX = 0;
   private splitStartLeftPct = 55;
+  private ganttDragAnchorX = 0;
 
   private splitRafId: number | null = null;   // rAF для сплит-перерисовки
   private renderRafId: number | null = null;  // rAF для общего рендера
@@ -382,6 +382,18 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
 
   private _initialized = false;
 
+  // ===== DnD (гантт) =====
+  private ganttDragMode: 'none' | 'move' | 'resize-start' | 'resize-finish' = 'none';
+  private ganttDragRowIndex = -1;
+  private ganttDragStartMs = 0;
+  private ganttDragFinishMs = 0;
+  private ganttDragAnchorDays = 0;      // смещение курсора от левого края бара (для move)
+  private ganttDragStartMouseX = 0;     // контент-X в момент mousedown
+  private ganttResizeHandlePx = 6;      // ширина "ручки" ресайза
+  // последняя позиция мыши над ганттом в экранных координатах (для корректного hover при скролле)
+  private lastGanttClientX = 0;
+  private lastGanttClientY = 0;
+
   // -------------------- Lifecycle --------------------
   ngAfterViewInit(): void {
     this.workingData = this.cloneTree(this._externalData && this._externalData.length ? this._externalData : this.demoData);
@@ -419,10 +431,27 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
       // синхронизируем вертикаль с таблицей
       bodyWrapper.scrollTop = ganttWrapper.scrollTop;
       this.syncingScroll = false;
-      this.scheduleRender();
+      // обновляем курсор/hover с учётом нового scrollLeft/scrollTop
+
+      // Во время DnD обновляем позиционирование бара с учётом нового scrollLeft
+      if (this.ganttDragMode !== 'none') {
+        this.updateGanttDragFromScroll();
+      } else {
+        // Без DnD — просто пересчитать hover/курсор
+        this.updateGanttCursorFromLast();
+        this.scheduleRender();
+      }
+
+      
     };
     ganttWrapper.addEventListener('scroll', onScrollGantt);
-    this.destroyRef.onDestroy(() => ganttWrapper.removeEventListener('scroll', onScrollGantt));
+    // пассивный wheel-listener для синхронизации hover при прокрутке колёсиком
+    const onWheelGantt = () => this.updateGanttCursorFromLast();
+    ganttWrapper.addEventListener('wheel', onWheelGantt, { passive: true });
+    this.destroyRef.onDestroy(() => {
+      ganttWrapper.removeEventListener('scroll', onScrollGantt);
+      ganttWrapper.removeEventListener('wheel', onWheelGantt);
+    });
 
     // Hover/колонки/и т.п. при колесе мыши внутри таблицы
     const onWheel = () => {
@@ -466,6 +495,38 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
       window.removeEventListener('mousemove', onSplitMove);
       window.removeEventListener('mouseup', onSplitUp);
     });
+
+    // --- Gantt DnD ---
+const ganttCanvas = this.ganttCanvasRef.nativeElement;
+
+const onGanttDown = (ev: MouseEvent) => this.onGanttMouseDown(ev);
+const onGanttMove = (ev: MouseEvent) => this.onGanttMouseMove(ev);
+const onGanttUp   = (ev: MouseEvent) => this.onGanttMouseUp(ev);
+
+ganttCanvas.addEventListener('mousedown', onGanttDown);
+const onGanttHover = (ev: MouseEvent) => {
+  // сохраняем последние client-координаты для корректного hover при скролле
+  this.lastGanttClientX = ev.clientX;
+  this.lastGanttClientY = ev.clientY;
+  this.updateGanttCursor(ev);
+};
+const onGanttLeave = () => this.resetGanttCursor();
+
+ganttCanvas.addEventListener('mousemove', onGanttHover, { passive: true });
+ganttCanvas.addEventListener('mouseleave', onGanttLeave);
+
+this.destroyRef.onDestroy(() => {
+  ganttCanvas.removeEventListener('mousemove', onGanttHover);
+  ganttCanvas.removeEventListener('mouseleave', onGanttLeave);
+});
+window.addEventListener('mousemove', onGanttMove, { passive: true });
+window.addEventListener('mouseup',   onGanttUp,   { passive: true });
+
+this.destroyRef.onDestroy(() => {
+  ganttCanvas.removeEventListener('mousedown', onGanttDown);
+  window.removeEventListener('mousemove', onGanttMove);
+  window.removeEventListener('mouseup',   onGanttUp);
+});
 
     this._initialized = true;
   }
@@ -512,6 +573,198 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   bumpScale(step: number) {
     this.setTimescale(this.ganttPxPerDay + step, 'center');
   }
+
+private toGanttContentCoords(e: MouseEvent) {
+  const wrap = this.ganttWrapperRef.nativeElement;
+  const wrect = wrap.getBoundingClientRect();
+  // измеряем относительно viewport-рамки скроллера, затем добавляем scroll* для координаты контента
+  const x = (e.clientX - wrect.left) + wrap.scrollLeft;
+  const y = (e.clientY - wrect.top)  + wrap.scrollTop;
+  return { x, y };
+}
+
+private xToMs(x: number): number {
+  return this.ganttStartMs + (x / this.ganttPxPerDay) * this.MS_PER_DAY;
+}
+private snapMsToDay(ms: number): number {
+  const d = new Date(ms); d.setHours(0,0,0,0); return d.getTime();
+}
+private msToIso(ms: number): IsoDate {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0); // snap to local midnight
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}` as IsoDate; // local date, no UTC shift
+}
+
+  private updateGanttCursor(ev: MouseEvent) {
+    if (this.ganttDragMode !== 'none') return; // во время DnD не трогаем
+    const { x, y } = this.toGanttContentCoords(ev);
+    const hit = this.hitGanttBarAt(x, y);
+    const el = this.ganttCanvasRef.nativeElement;
+
+    if (!hit) { el.style.cursor = 'default'; return; }
+    el.style.cursor = hit.mode === 'move' ? 'grab' : 'ew-resize';
+  }
+
+  private resetGanttCursor() {
+    if (this.ganttDragMode !== 'none') return;
+    this.ganttCanvasRef.nativeElement.style.cursor = 'default';
+  }
+
+private updateGanttCursorFromLast() {
+  if (!this.ganttCanvasRef) return;
+  if (this.ganttDragMode !== 'none') return;
+
+
+  const wrap = this.ganttWrapperRef.nativeElement;
+
+  const wrect = wrap.getBoundingClientRect();
+  const x = (this.lastGanttClientX - wrect.left) + wrap.scrollLeft;
+  const y = (this.lastGanttClientY - wrect.top)  + wrap.scrollTop;
+
+  const hit = this.hitGanttBarAt(x, y);
+  const el = this.ganttCanvasRef.nativeElement;
+
+  if (!hit) { el.style.cursor = 'default'; return; }
+  el.style.cursor = hit.mode === 'move' ? 'grab' : 'ew-resize';
+}
+
+private hitGanttBarAt(x: number, y: number): { rowIndex: number, mode: 'move'|'resize-start'|'resize-finish' } | null {
+  const rowIndex = Math.floor(y / this.rowHeight);
+  if (rowIndex < 0 || rowIndex >= this.flatRows.length) return null;
+
+  const row = this.flatRows[rowIndex];
+  // Берём актуальные даты из nodeIndex (чтобы видеть live-изменения)
+  const node = this.nodeIndex.get(row.id);
+  const startStr  = node?.start  ?? row.start;
+  const finishStr = node?.finish ?? row.finish;
+
+  const s = new Date(startStr  + 'T00:00:00').getTime();
+  const f = new Date(finishStr + 'T00:00:00').getTime();
+  const x0 = Math.round(((s - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
+  const x1 = Math.round(((f - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
+
+  // верт. зону считаем по всей высоте строки — проще попадать
+  const yTop = rowIndex * this.rowHeight;
+  const yBot = yTop + this.rowHeight;
+
+  if (y < yTop || y > yBot) return null;
+
+  const h = this.ganttResizeHandlePx;
+  if (Math.abs(x - x0) <= h) return { rowIndex, mode: 'resize-start' };
+  if (Math.abs(x - x1) <= h) return { rowIndex, mode: 'resize-finish' };
+  if (x >= Math.min(x0, x1) && x <= Math.max(x0, x1)) return { rowIndex, mode: 'move' };
+
+  return null;
+}
+
+private onGanttMouseDown(ev: MouseEvent) {
+  const { x, y } = this.toGanttContentCoords(ev);
+  this.lastGanttClientX = ev.clientX;
+  this.lastGanttClientY = ev.clientY;
+  const hit = this.hitGanttBarAt(x, y);
+  if (!hit) return;
+
+  const row = this.flatRows[hit.rowIndex];
+  const node = this.nodeIndex.get(row.id);
+  const startStr  = node?.start  ?? row.start;
+  const finishStr = node?.finish ?? row.finish;
+
+  this.ganttDragMode = hit.mode;
+  this.ganttDragRowIndex = hit.rowIndex;
+  this.ganttDragStartMs  = new Date(startStr  + 'T00:00:00').getTime();
+  this.ganttDragFinishMs = new Date(finishStr + 'T00:00:00').getTime();
+  this.ganttDragStartMouseX = x;
+
+  // для move: запоминаем, насколько курсор смещён от левой границы
+const barLeftX = Math.round(((this.ganttDragStartMs - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
+this.ganttDragAnchorX = x - barLeftX;
+  this.ganttCanvasRef.nativeElement.style.cursor =
+  this.ganttDragMode === 'move' ? 'grabbing' : 'ew-resize';
+  this.scheduleRender();
+}
+
+// ПРОВЕРЬТЕ, ЧТО ВАШ МЕТОД ВЫГЛЯДИТ ИМЕННО ТАК
+private onGanttMouseMove(ev: MouseEvent) {
+  // Эти строки ОБЯЗАТЕЛЬНЫ для синхронизации со скроллом
+  this.lastGanttClientX = ev.clientX;
+  this.lastGanttClientY = ev.clientY;
+
+  if (this.ganttDragMode === 'none') return;
+  
+  const { x } = this.toGanttContentCoords(ev);
+
+  let newStartMs = 0;
+  let newFinishMs = 0;
+  const durationMs = this.ganttDragFinishMs - this.ganttDragStartMs;
+
+  if (this.ganttDragMode === 'move') {
+  const newBarLeftX = x - this.ganttDragAnchorX;
+  // 3. Конвертируем пиксели в миллисекунды
+  newStartMs = this.xToMs(newBarLeftX);
+  newFinishMs = newStartMs + durationMs;
+
+  } else if (this.ganttDragMode === 'resize-start') {
+    newStartMs = this.xToMs(x);
+    newFinishMs = this.ganttDragFinishMs;
+    if (newStartMs > newFinishMs - this.MS_PER_DAY) {
+      newStartMs = newFinishMs - this.MS_PER_DAY;
+    }
+  } else if (this.ganttDragMode === 'resize-finish') {
+    newStartMs = this.ganttDragStartMs;
+    newFinishMs = this.xToMs(x);
+    if (newFinishMs < newStartMs + this.MS_PER_DAY) {
+      newFinishMs = newStartMs + this.MS_PER_DAY;
+    }
+  }
+
+  const rowId = this.flatRows[this.ganttDragRowIndex].id;
+  this.commitGanttDates(rowId, newStartMs, newFinishMs);
+
+  this.renderBody();
+  
+  this.ganttCanvasRef.nativeElement.style.cursor =
+    this.ganttDragMode === 'move' ? 'grabbing' : 'ew-resize';
+
+  this.renderGanttBody();
+  this.renderGanttHeader();
+}
+
+private onGanttMouseUp(_ev: MouseEvent) {
+  if (this.ganttDragMode === 'none') return;
+
+  this.ganttDragMode = 'none';
+  this.ganttDragRowIndex = -1;
+this.ganttCanvasRef.nativeElement.style.cursor = 'default';
+  // Финал: если бар ушёл за пределы — обновим диапазон, размеры и перерисуем всё
+  this.computeGanttRange();
+  this.resizeGanttCanvases();
+  this.syncGanttHeaderToScroll();
+  this.renderGanttHeader();
+  this.renderGanttBody();
+
+  this.renderBody();
+}
+
+// Обновить даты узла + отражать их в flatRows (чтобы таблица сразу видела изменения)
+private commitGanttDates(rowId: string, startMs: number, finishMs: number) {
+  startMs  = this.snapMsToDay(startMs);
+  finishMs = this.snapMsToDay(finishMs);
+  if (finishMs < startMs + this.MS_PER_DAY) finishMs = startMs + this.MS_PER_DAY;
+
+  const node = this.nodeIndex.get(rowId);
+  if (node) {
+    node.start  = this.msToIso(startMs);
+    node.finish = this.msToIso(finishMs);
+  }
+  const fr = this.flatRows.find(r => r.id === rowId);
+  if (fr) {
+    fr.start  = this.msToIso(startMs);
+    fr.finish = this.msToIso(finishMs);
+  }
+}
   
   /** Устанавливает px/день и сохраняет якорь (центр/лево/право) на том же времени */
   private setTimescale(pxPerDay: number, anchor: 'center'|'left'|'right') {
@@ -545,6 +798,10 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
       0,
       Math.min(wrapper.scrollWidth - wrapper.clientWidth, desiredScrollLeft)
     );
+
+    if (this.ganttDragMode !== 'none') {
+  this.updateGanttDragFromScroll();
+}
   
     // 5) дорисовка
     this.syncGanttHeaderToScroll();
@@ -1630,8 +1887,11 @@ private renderGanttBody() {
   // бары задач (без изменений)
   for (let i = 0; i < this.flatRows.length; i++) {
     const row = this.flatRows[i];
-    const s = new Date(row.start + 'T00:00:00').getTime();
-    const f = new Date(row.finish + 'T00:00:00').getTime();
+    const node = this.nodeIndex.get(row.id);
+    const startStr  = node?.start  ?? row.start;
+    const finishStr = node?.finish ?? row.finish;
+    const s = new Date(startStr  + 'T00:00:00').getTime();
+    const f = new Date(finishStr + 'T00:00:00').getTime();
     const x0 = Math.round(((s - this.ganttStartMs) / this.MS_PER_DAY) * pxPerDay);
     const x1 = Math.round(((f - this.ganttStartMs) / this.MS_PER_DAY) * pxPerDay);
     const w  = Math.max(3, x1 - x0);
@@ -1896,7 +2156,12 @@ private renderGanttBody() {
     const finishDate = new Date(startDate);
     finishDate.setDate(finishDate.getDate() + durationDays);
 
-    const formatDate = (d: Date): IsoDate => d.toISOString().split('T')[0] as IsoDate;
+    const formatDate = (d: Date): IsoDate => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}` as IsoDate;
+    };
 
     return {
       id: randomId,
@@ -1917,4 +2182,54 @@ private renderGanttBody() {
     const headerCanvas = this.ganttHeaderCanvasRef.nativeElement;
     headerCanvas.style.transform = `translateX(${-wrapper.scrollLeft}px)`;
   }
-}
+
+    /**
+   * Обновляет позицию бара при горизонтальном скролле гантта во время DnD.
+   * Пересчитывает dxDays по последним координатам указателя и scrollLeft.
+   */
+
+    // ЗАМЕНИТЕ ВАШ ТЕКУЩИЙ МЕТОД ЭТИМ КОДОМ
+// ЗАМЕНИТЕ ВАШ ТЕКУЩИЙ МЕТОД ЭТИМ КОДОМ
+// ЗАМЕНИТЕ ВЕСЬ МЕТОД ЦЕЛИКОМ НА ЭТОТ КОД
+// ЗАМЕНИТЕ ВЕСЬ МЕТОД ЦЕЛИКОМ НА ЭТОТ КОД
+private updateGanttDragFromScroll() {
+  if (this.ganttDragMode === 'none' || this.ganttDragRowIndex < 0) return;
+
+  const wrap = this.ganttWrapperRef.nativeElement;
+
+  // Рассчитываем, где СЕЙЧАС находится курсор в системе координат контента.
+  const wrect = wrap.getBoundingClientRect();
+  const currentContentX = (this.lastGanttClientX - wrect.left) + wrap.scrollLeft;
+  
+  let newStartMs = 0;
+  let newFinishMs = 0;
+  const durationMs = this.ganttDragFinishMs - this.ganttDragStartMs;
+
+  // --- ИСПОЛЬЗУЕМ ТУ ЖЕ АБСОЛЮТНУЮ ЛОГИКУ, ЧТО И В onGanttMouseMove ---
+  if (this.ganttDragMode === 'move') {
+    // ИСПРАВЛЕНО: Используем точный пиксельный якорь ganttDragAnchorX
+    const newBarLeftX = currentContentX - this.ganttDragAnchorX; 
+    newStartMs = this.xToMs(newBarLeftX);
+    newFinishMs = newStartMs + durationMs;
+  } else if (this.ganttDragMode === 'resize-start') {
+    newStartMs = this.xToMs(currentContentX);
+    newFinishMs = this.ganttDragFinishMs;
+    if (newStartMs > newFinishMs - this.MS_PER_DAY) {
+      newStartMs = newFinishMs - this.MS_PER_DAY;
+    }
+  } else if (this.ganttDragMode === 'resize-finish') {
+    newStartMs = this.ganttDragStartMs;
+    newFinishMs = this.xToMs(currentContentX);
+    if (newFinishMs < newStartMs + this.MS_PER_DAY) {
+      newFinishMs = newStartMs + this.MS_PER_DAY;
+    }
+  }
+
+  const rowId = this.flatRows[this.ganttDragRowIndex].id;
+  this.commitGanttDates(rowId, newStartMs, newFinishMs);
+  this.renderBody();
+
+  // Немедленная перерисовка
+  this.renderGanttBody();
+  this.renderGanttHeader();
+}}
