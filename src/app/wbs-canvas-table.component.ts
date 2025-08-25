@@ -38,12 +38,14 @@ interface RefLine {
   dash?: number[];       // опционально: штрих [6,4] и т.п.
 }
 
-export interface WbsNode {
+
+export interface Node {
   id: string;
   name: string;
   start: IsoDate;
   finish: IsoDate;
-  children?: WbsNode[];
+  dependency?: string[];
+  children?: Node[];
 }
 
 interface FlatRow {
@@ -263,7 +265,7 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   @Input() refLines: RefLine[] = [];
 
   // ===== Вводные данные =====
-  @Input() set data(value: WbsNode[] | null) {
+  @Input() set data(value: Node[] | null) {
     this._externalData = value;
     if (this._initialized) {
       this.workingData = this.cloneTree(value && value.length ? value : this.demoData);
@@ -276,8 +278,8 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
       this.renderAll();
     }
   }
-  get data(): WbsNode[] | null { return this._externalData; }
-  private _externalData: WbsNode[] | null = null;
+  get data(): Node[] | null { return this._externalData; }
+  private _externalData: Node[] | null = null;
 
   @Input() toggleOnRowClick = true;
   @Input() collapsedByDefault = false;
@@ -324,7 +326,7 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   private colToggle = 28;
 
   // ===== Динамические столбцы (после Grip+Toggle) =====
-  private nodeIndex = new Map<string, WbsNode>();
+  private nodeIndex = new Map<string, Node>();
   private columns: ColumnDef[] = [
     { key: 'wbs',    title: 'WBS',    width: 120, minWidth: 60 },
     { key: 'name',   title: 'Name',   width: 420, minWidth: 120 },
@@ -339,9 +341,12 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   private zoomTransform: ZoomTransform = { x: 0, y: 0, k: 1 } as ZoomTransform;
 
   // ===== Данные =====
-  private workingData: WbsNode[] = [];
+  private workingData: Node[] = [];
   private flatRows: FlatRow[] = [];
   private collapsed = new Set<string>();
+  // row lookups
+  private rowIndexById = new Map<string, number>();
+  private rowIndexByWbs = new Map<string, number>();
 
   // ===== DnD (таблица) =====
   private isDragging = false;
@@ -377,7 +382,7 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   private syncingScroll = false;
 
   // ===== Демоданные =====
-  private demoData: WbsNode[] = [
+  private demoData: Node[] = [
   ];
 
   private _initialized = false;
@@ -926,13 +931,13 @@ private scheduleRender() {
     }
   }
 
-  private cloneTree(src: WbsNode[]): WbsNode[] {
-    return JSON.parse(JSON.stringify(src)) as WbsNode[];
+  private cloneTree(src: Node[]): Node[] {
+    return JSON.parse(JSON.stringify(src)) as Node[];
   }
 
   private collapseAllWithChildren() {
     this.collapsed.clear();
-    const walk = (nodes: WbsNode[]) => {
+    const walk = (nodes: Node[]) => {
       for (const n of nodes) {
         if (n.children && n.children.length) {
           this.collapsed.add(n.id);
@@ -950,13 +955,22 @@ private scheduleRender() {
 
     // индекс узлов по id
     this.nodeIndex.clear();
-    const walkIndex = (nodes: WbsNode[]) => {
+    const walkIndex = (nodes: Node[]) => {
       for (const n of nodes) {
         this.nodeIndex.set(n.id, n);
         if (n.children?.length) walkIndex(n.children);
       }
     };
     walkIndex(this.workingData);
+
+    // row lookups by id / wbs for connectors
+    this.rowIndexById.clear();
+    this.rowIndexByWbs.clear();
+    for (let i = 0; i < this.flatRows.length; i++) {
+      const fr = this.flatRows[i];
+      this.rowIndexById.set(fr.id, i);
+      this.rowIndexByWbs.set(fr.wbs, i);
+    }
   }
 
   private getCellValue(row: FlatRow, key: string): string {
@@ -1015,9 +1029,9 @@ private scheduleRender() {
     return best;
   }
 
-  private flattenWbs(nodes: WbsNode[]): FlatRow[] {
+  private flattenWbs(nodes: Node[]): FlatRow[] {
     const out: FlatRow[] = [];
-    const walk = (list: WbsNode[], prefixNums: number[] = [], level = 0, parentId: string | null = null, parentPath: string[] = []) => {
+    const walk = (list: Node[], prefixNums: number[] = [], level = 0, parentId: string | null = null, parentPath: string[] = []) => {
       list.forEach((node, idx) => {
         const numberSeq = [...prefixNums, idx + 1];
         const wbs = numberSeq.join('.');
@@ -1045,8 +1059,8 @@ private scheduleRender() {
     return out;
   }
 
-  private findParentListAndIndex(rootList: WbsNode[], id: string) {
-    const walk = (list: WbsNode[], _parent: WbsNode[] | null): { parentList: WbsNode[]; index: number } | null => {
+  private findParentListAndIndex(rootList: Node[], id: string) {
+    const walk = (list: Node[], _parent: Node[] | null): { parentList: Node[]; index: number } | null => {
       for (let i = 0; i < list.length; i++) {
         const n = list[i];
         if (n.id === id) return { parentList: list, index: i };
@@ -1060,8 +1074,8 @@ private scheduleRender() {
     return walk(rootList, null);
   }
 
-  private findNode(rootList: WbsNode[], id: string): WbsNode | null {
-    const walk = (list: WbsNode[]): WbsNode | null => {
+  private findNode(rootList: Node[], id: string): Node | null {
+    const walk = (list: Node[]): Node | null => {
       for (const n of list) {
         if (n.id === id) return n;
         if (n.children) {
@@ -1089,7 +1103,7 @@ private scheduleRender() {
     const { parentList, index } = found;
     const [node] = parentList.splice(index, 1);
 
-    let newParentChildren: WbsNode[];
+    let newParentChildren: Node[];
     if (!newParentId) {
       newParentChildren = this.workingData;
     } else {
@@ -1654,7 +1668,7 @@ private scheduleRender() {
     let min = Number.POSITIVE_INFINITY;
     let max = Number.NEGATIVE_INFINITY;
 
-    const walk = (nodes: WbsNode[]) => {
+    const walk = (nodes: Node[]) => {
       for (const n of nodes) {
         const s = new Date(n.start + 'T00:00:00').getTime();
         const f = new Date(n.finish + 'T00:00:00').getTime();
@@ -1840,7 +1854,6 @@ private renderGanttHeader() {
   }
 }
 
- // CHANGE (replace whole method body)
 private renderGanttBody() {
   const canvas = this.ganttCanvasRef.nativeElement;
   const ctx = canvas.getContext('2d');
@@ -1985,7 +1998,157 @@ private renderGanttBody() {
       ctx.restore();
     }
   }
+
+  // dependency connectors on top of everything
+  this.drawDependencies(ctx);
 }
+
+
+  /** Returns bar pixel coordinates for a given row index (x0/x1 and y top/mid/bot). */
+  private barPixelsForRowIndex(i: number): { x0: number; x1: number; yTop: number; yMid: number; yBot: number } {
+    const row = this.flatRows[i];
+    const node = this.nodeIndex.get(row.id);
+    const startStr = node?.start ?? row.start;
+    const finishStr = node?.finish ?? row.finish;
+    const s = new Date(startStr + 'T00:00:00').getTime();
+    const f = new Date(finishStr + 'T00:00:00').getTime();
+    const x0 = Math.round(((s - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
+    const x1 = Math.round(((f - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
+    const yMid = i * this.rowHeight + this.rowHeight / 2;
+
+    // Geometry must match how bars are drawn in renderGanttBody()
+    let yTop: number;
+    let yBot: number;
+    if (row.hasChildren) {
+      // summary-like bar thickness = 6px centered on row
+      const thick = 6;
+      yTop = Math.round(yMid - thick / 2) + 0.5;
+      yBot = Math.round(yMid + thick / 2) + 0.5;
+    } else {
+      // task bar from y = rowTop + 6 with height rowHeight - 12
+      yTop = i * this.rowHeight + 6;
+      yBot = i * this.rowHeight + (this.rowHeight - 6);
+    }
+
+    return { x0, x1, yTop, yMid, yBot };
+  }
+
+  /** Small filled triangle arrowhead at (x,y) pointing given direction */
+  private drawArrowhead(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    dir: 'left' | 'right' | 'up' | 'down',
+    color: string
+  ) {
+    const sz = 5;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    switch (dir) {
+      case 'right':
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - sz, y - sz * 0.75);
+        ctx.lineTo(x - sz, y + sz * 0.75);
+        break;
+      case 'left':
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + sz, y - sz * 0.75);
+        ctx.lineTo(x + sz, y + sz * 0.75);
+        break;
+      case 'down':
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - sz * 0.75, y - sz);
+        ctx.lineTo(x + sz * 0.75, y - sz);
+        break;
+      case 'up':
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - sz * 0.75, y + sz);
+        ctx.lineTo(x + sz * 0.75, y + sz);
+        break;
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Draws connectors using each node's `dependency` array.
+   * Маршрут: из центра источника → вправо → (вниз/вверх к уровню около цели)
+   * → влево над (или под) целевым баром → вертикально к центру цели
+   * → коротко вправо и вход в центр бара со стрелкой.
+   * Поддерживает dependency по id и по WBS.
+   */
+  private drawDependencies(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+
+    const padH = 10;   // горизонтальные отступы при разводке
+    const padV = 8;    // вертикальный клиренс над/под целевым баром
+    const color = '#4a5568';
+
+    for (let toIdx = 0; toIdx < this.flatRows.length; toIdx++) {
+      const targetRow = this.flatRows[toIdx];
+      const targetNode = this.nodeIndex.get(targetRow.id);
+      const deps = targetNode?.dependency || [];
+      if (!deps.length) continue;
+
+      // Геометрия целевого бара
+      const t = this.barPixelsForRowIndex(toIdx);
+      const tx0 = t.x0, tx1 = t.x1;
+      const tyTop = t.yTop, tyMid = t.yMid, tyBot = t.yBot;
+      // вход в левый край цели (центр по высоте)
+
+      for (const dep of deps) {
+        // resolve source index: сначала id, затем WBS
+        let fromIdx = this.rowIndexById.get(dep);
+        if (fromIdx === undefined) fromIdx = this.rowIndexByWbs.get(dep);
+        if (fromIdx === undefined) continue;
+
+        const s = this.barPixelsForRowIndex(fromIdx);
+        const sx0 = s.x0, sx1 = s.x1;
+        const syMid = s.yMid;
+        // выход из правого края источника (центр по высоте)
+
+        const targetBelow = toIdx > fromIdx; // цель ниже источника?
+        const yClear = targetBelow ? (tyTop - padV) : (tyBot + padV);
+
+        // Точка вправо от обоих баров (этап развода)
+        const xR = Math.max(sx1, tx1) + padH;
+        // Точка слева от целевого бара
+        const xL = tx0 - padH;
+
+        ctx.strokeStyle = color;
+
+        // 1) из правого края источника — вправо к xR
+        ctx.beginPath();
+        ctx.moveTo(sx1 + 0.5, syMid + 0.5);
+        ctx.lineTo(xR + 0.5, syMid + 0.5);
+        // 2) вертикально к уровню около цели (над/под целевым баром)
+        ctx.lineTo(xR + 0.5, yClear + 0.5);
+        // 3) горизонтально влево до точки над/под целевым баром
+        ctx.lineTo(xL + 0.5, yClear + 0.5);
+        ctx.stroke();
+
+        // 4) вертикально в центр целевого бара
+        ctx.beginPath();
+        ctx.moveTo(xL + 0.5, yClear + 0.5);
+        ctx.lineTo(xL + 0.5, tyMid + 0.5);
+        ctx.stroke();
+
+        // 5) короткий ход вправо и вход в левый край целевого бара
+        ctx.beginPath();
+        ctx.moveTo(xL + 0.5, tyMid + 0.5);
+        ctx.lineTo(tx0 + 0.5, tyMid + 0.5);
+        ctx.stroke();
+
+        // Стрелка, указывающая вправо, входит в левый край
+        this.drawArrowhead(ctx, tx0 + 0.5, tyMid + 0.5, 'right', color);
+      }
+    }
+
+    ctx.restore();
+  }
 
 
   // ==================== Drawing helpers ====================
@@ -2110,7 +2273,7 @@ private renderGanttBody() {
   // -------------------- Data Generation --------------------
   public addRandomNode() {
     const allNodes = this.getAllNodes(this.workingData);
-    const potentialParents: (WbsNode | null)[] = [null, ...allNodes];
+    const potentialParents: (Node | null)[] = [null, ...allNodes];
 
     const parentNode = potentialParents[Math.floor(Math.random() * potentialParents.length)];
 
@@ -2134,8 +2297,8 @@ private renderGanttBody() {
     this.renderAll();
   }
 
-  private getAllNodes(nodes: WbsNode[]): WbsNode[] {
-    let flatList: WbsNode[] = [];
+  private getAllNodes(nodes: Node[]): Node[] {
+    let flatList: Node[] = [];
     for (const node of nodes) {
       flatList.push(node);
       if (node.children && node.children.length > 0) {
@@ -2145,7 +2308,7 @@ private renderGanttBody() {
     return flatList;
   }
 
-  private generateRandomWbsNode(): WbsNode {
+  private generateRandomWbsNode(): Node {
     const randomId = `gen-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const taskNames = ['Анализ требований', 'Проектирование архитектуры', 'Разработка модуля', 'Тестирование', 'Написание документации', 'Развертывание'];
     const randomName = `${taskNames[Math.floor(Math.random() * taskNames.length)]} #${Math.floor(Math.random() * 100)}`;

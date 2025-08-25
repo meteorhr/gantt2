@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { WbsCanvasTableComponent, WbsNode } from './wbs-canvas-table.component';
+import { WbsCanvasTableComponent, Node } from './wbs-canvas-table.component';
 
 interface RefLine {
   name: string;
@@ -7,6 +7,7 @@ interface RefLine {
   color: string;         // 'red' | '#f00' | 'rgb(...)'
   dash?: number[];       // опционально: штрих [6,4] и т.п.
 }
+
 
 
 @Component({
@@ -23,7 +24,7 @@ export class App {
     { name: 'Gate 2',         date: new Date('2026-03-15'), color: 'teal' }
   ];
 
-  activityData: WbsNode[] = [
+  activityData: Node[] = [
     {
       id: 'n1',
       name: 'Проект',
@@ -37,7 +38,7 @@ export class App {
           finish: '2025-10-15',
           children: [
             { id: 'n1.1.1', name: 'Формирование WBS', start: '2025-09-01', finish: '2025-09-07' },
-            { id: 'n1.1.2', name: 'ФЭМ и CAR',        start: '2025-09-05', finish: '2025-10-10' },
+            { id: 'n1.1.2', name: 'ФЭМ и CAR',        start: '2025-09-05', finish: '2025-10-10', dependency: ['n1.1.1'], },
           ]
         },
         {
