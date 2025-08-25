@@ -2086,6 +2086,7 @@ private renderGanttBody() {
     const padH = 10;   // горизонтальные отступы при разводке
     const padV = 8;    // вертикальный клиренс над/под целевым баром
     const color = '#4a5568';
+    const stubExit = 4; // минимальный короткий «штырёк» на выходе справа из источника (в пикселях)
 
     for (let toIdx = 0; toIdx < this.flatRows.length; toIdx++) {
       const targetRow = this.flatRows[toIdx];
@@ -2120,13 +2121,15 @@ private renderGanttBody() {
 
         ctx.strokeStyle = color;
 
-        // 1) из правого края источника — вправо к xR
+        // 1) короткий выход из правого края источника (минимальный «штырёк»)
+        const exitX = sx1 + stubExit;
         ctx.beginPath();
         ctx.moveTo(sx1 + 0.5, syMid + 0.5);
-        ctx.lineTo(xR + 0.5, syMid + 0.5);
+        ctx.lineTo(exitX + 0.5, syMid + 0.5);
         // 2) вертикально к уровню около цели (над/под целевым баром)
+        ctx.lineTo(exitX + 0.5, yClear + 0.5);
+        // 3) дальше маршрут оставляем прежним: вправо до xR, затем влево до xL
         ctx.lineTo(xR + 0.5, yClear + 0.5);
-        // 3) горизонтально влево до точки над/под целевым баром
         ctx.lineTo(xL + 0.5, yClear + 0.5);
         ctx.stroke();
 
