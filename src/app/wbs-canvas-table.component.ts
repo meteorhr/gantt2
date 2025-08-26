@@ -2082,74 +2082,108 @@ private renderGanttBody() {
     ctx.save();
     ctx.lineWidth = 1;
     ctx.setLineDash([]);
-
-    const padH = 10;   // горизонтальные отступы при разводке
-    const padV = 8;    // вертикальный клиренс над/под целевым баром
+  
+    const padH = 10;         // горизонтальные отступы
+    const padV = 8;          // вертикальный клиренс над/под целевым баром
+    const stubExit = 4;      // длина короткого выхода из правого края источника
     const color = '#4a5568';
-    const stubExit = 4; // минимальный короткий «штырёк» на выходе справа из источника (в пикселях)
-
+  
     for (let toIdx = 0; toIdx < this.flatRows.length; toIdx++) {
       const targetRow = this.flatRows[toIdx];
       const targetNode = this.nodeIndex.get(targetRow.id);
       const deps = targetNode?.dependency || [];
       if (!deps.length) continue;
-
+  
       // Геометрия целевого бара
       const t = this.barPixelsForRowIndex(toIdx);
       const tx0 = t.x0, tx1 = t.x1;
       const tyTop = t.yTop, tyMid = t.yMid, tyBot = t.yBot;
-      // вход в левый край цели (центр по высоте)
-
+  
       for (const dep of deps) {
         // resolve source index: сначала id, затем WBS
         let fromIdx = this.rowIndexById.get(dep);
         if (fromIdx === undefined) fromIdx = this.rowIndexByWbs.get(dep);
         if (fromIdx === undefined) continue;
-
+  
         const s = this.barPixelsForRowIndex(fromIdx);
-        const sx0 = s.x0, sx1 = s.x1;
+        const sx1 = s.x1;
         const syMid = s.yMid;
-        // выход из правого края источника (центр по высоте)
-
+  
+        // Берём реальные даты (ms) для сравнения
+        const fromRow = this.flatRows[fromIdx];
+        const fromNode = this.nodeIndex.get(fromRow.id);
+        const fromFinishMs = new Date((fromNode?.finish ?? fromRow.finish) + 'T00:00:00').getTime();
+        const targetStartMs = new Date((targetNode?.start ?? targetRow.start) + 'T00:00:00').getTime();
+  
         const targetBelow = toIdx > fromIdx; // цель ниже источника?
         const yClear = targetBelow ? (tyTop - padV) : (tyBot + padV);
-
-        // Точка вправо от обоих баров (этап развода)
-        const xR = Math.max(sx1, tx1) + padH;
-        // Точка слева от целевого бара
         const xL = tx0 - padH;
+  
 
         ctx.strokeStyle = color;
+  
+        if (fromFinishMs >= targetStartMs) {
+          // КОРОТКИЙ маршрут: маленький «штырёк» → вертикально → влево к xL
+          const exitX = sx1 + stubExit;
+          ctx.beginPath();
+          ctx.moveTo(sx1 + 0.5, syMid + 0.5);
+          ctx.lineTo(exitX + 0.5, syMid + 0.5);
+          ctx.lineTo(exitX + 0.5, yClear + 0.5);
+          ctx.lineTo(xL + 0.5, yClear + 0.5);
+          ctx.stroke();
+        } else {
+          // КЛАССИЧЕСКИЙ маршрут: вправо за оба бара → вниз/вверх → влево к xL
+          // расстояние между правым краем источника и левым краем цели
+          const gap = tx0 - sx1;          // px
+          const entryLen = tx0 - xL;      // = padH
+          // длина горизонтального выхода из источника (не меньше 0 и не больше gap)
+          const exitLen = Math.max(0, Math.min(gap - entryLen, gap));
+          const xExit = sx1 + exitLen;
 
-        // 1) короткий выход из правого края источника (минимальный «штырёк»)
-        const exitX = sx1 + stubExit;
-        ctx.beginPath();
-        ctx.moveTo(sx1 + 0.5, syMid + 0.5);
-        ctx.lineTo(exitX + 0.5, syMid + 0.5);
-        // 2) вертикально к уровню около цели (над/под целевым баром)
-        ctx.lineTo(exitX + 0.5, yClear + 0.5);
-        // 3) дальше маршрут оставляем прежним: вправо до xR, затем влево до xL
-        ctx.lineTo(xR + 0.5, yClear + 0.5);
-        ctx.lineTo(xL + 0.5, yClear + 0.5);
-        ctx.stroke();
+          ctx.strokeStyle = color;
 
-        // 4) вертикально в центр целевого бара
+          // 1) короткий горизонтальный выход вправо из правого ребра источника
+          // 2) сразу вертикально к "эстакаде" над/под целью
+          // 3) горизонтально до точки слева от цели (xL)
+          ctx.beginPath();
+          ctx.moveTo(sx1 + 0.5, syMid + 0.5);
+          ctx.lineTo(xExit + 0.5, syMid + 0.5);
+          ctx.lineTo(xExit + 0.5, yClear + 0.5);
+          ctx.lineTo(xL + 0.5,  yClear + 0.5);
+          ctx.stroke();
+
+          // 4) вертикально в центр целевого бара
+          ctx.beginPath();
+          ctx.moveTo(xL + 0.5, yClear + 0.5);
+          ctx.lineTo(xL + 0.5, tyMid  + 0.5);
+          ctx.stroke();
+
+          // 5) короткий ход вправо и вход в левую грань цели
+          ctx.beginPath();
+          ctx.moveTo(xL + 0.5, tyMid + 0.5);
+          ctx.lineTo(tx0 + 0.5, tyMid + 0.5);
+          ctx.stroke();
+
+          this.drawArrowhead(ctx, tx0 + 0.5, tyMid + 0.5, 'right', color);
+        }
+  
+        // Вертикально к центру цели
         ctx.beginPath();
         ctx.moveTo(xL + 0.5, yClear + 0.5);
         ctx.lineTo(xL + 0.5, tyMid + 0.5);
         ctx.stroke();
-
-        // 5) короткий ход вправо и вход в левый край целевого бара
+  
+        // Коротко вправо и вход в левый край целевого бара
         ctx.beginPath();
         ctx.moveTo(xL + 0.5, tyMid + 0.5);
         ctx.lineTo(tx0 + 0.5, tyMid + 0.5);
         ctx.stroke();
-
-        // Стрелка, указывающая вправо, входит в левый край
+  
+        // Стрелка вправо — в центр левого ребра цели
         this.drawArrowhead(ctx, tx0 + 0.5, tyMid + 0.5, 'right', color);
       }
     }
-
+  
     ctx.restore();
   }
 
