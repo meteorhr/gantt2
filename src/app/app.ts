@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
-import { WbsCanvasTableComponent, Node } from './wbs-canvas-table.component';
+import { Node } from './gantt/models/gantt.model';
 import { generateActivityData } from './ generate-activity-data';
+import { GanttCanvasComponent } from './gantt/gantt-canvas.component';
 
 interface RefLine {
   name: string;
@@ -13,7 +14,7 @@ interface RefLine {
 
 @Component({
   selector: 'app-root',
-  imports: [WbsCanvasTableComponent],
+  imports: [GanttCanvasComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -28,7 +29,7 @@ export class App {
   ];
 
   constructor(){
-    const g =  generateActivityData(10000, { seed: 20250826, rootsCount: 5, criticalProbability: true  });
+    const g =  generateActivityData(100, { seed: 20250826, rootsCount: 5, criticalProbability: true  });
     console.log(g)
     this.activityData = g 
   }

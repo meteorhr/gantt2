@@ -12,288 +12,46 @@ import {
   SimpleChanges,
   ViewChild,
   inject,
-  ChangeDetectorRef 
+  ChangeDetectorRef,
+  NgZone
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { select, Selection } from 'd3-selection';
 import { zoom, ZoomBehavior, ZoomTransform } from 'd3-zoom';
+import { BarColor, ColumnDef, FlatRow, RefLine, Node } from './models/gantt.model';
+import { BarColorName, DropMode, GanttScale, IsoDate, TimeUnit } from './models/gantt.types';
 
+import {
+  startOfUnit,
+  nextUnitStart,
+  formatLabel,
+  formatTopLabel,
+  startOfISOWeek,
+  getISOWeek,
+  msToIso,
+  toMs,
+  snapMsToDay,
+  MS_PER_DAY
+} from './utils/date-utils';
+import { hexToRgba } from './utils/color-utils';
+import {
+  deepClone,
+  flattenWbs,
+  findParentListAndIndex,
+  findNode as findNodeUtil,
+  isDescendant as isDescendantUtil
+} from './utils/tree-utils';
 
-type TimeUnit   = 'day' | 'week' | 'month' | 'quarter' | 'year';
-type GanttScale = 'week-day' | 'month-week' | 'quarter-month' | 'year-month' | 'year-quarter';
-type IsoDate = `${number}-${number}-${number}`; // YYYY-MM-DD
-type ColumnKey = 'wbs' | 'name' | 'start' | 'finish' | string;
-type BarColorName = 'actual' | 'baseline' | 'criticalpatch' | 'group';
-
-
-interface BarColor { name: BarColorName; color: string; }
-interface ColumnDef {
-  key: ColumnKey;         // ключ поля
-  title: string;          // заголовок в шапке
-  width: number;          // текущая ширина
-  minWidth: number;       // минимальная ширина при ресайзе
-  align?: 'left' | 'center' | 'right';
-}
-
-interface RefLine {
-  name: string;
-  date: Date | string;   // можно '2025-12-01' или new Date(...)
-  color: string;         // 'red' | '#f00' | 'rgb(...)'
-  dash?: number[];       // опционально: штрих [6,4] и т.п.
-}
-
-
-export interface Node {
-  id: string;
-  name: string;
-  start: IsoDate;
-  finish: IsoDate;
-  baselineStart?: IsoDate;
-  baselineFinish?: IsoDate;
-  complete?: number;
-  dependency?: string[];
-  children?: Node[];
-  critical?: boolean;
-}
-
-interface FlatRow {
-  id: string;
-  parentId: string | null;
-  path: string[];
-  wbs: string;
-  name: string;
-  start: string;
-  finish: string;
-  level: number;
-  complete?: number;
-  hasChildren: boolean;
-  baselineStart?: string;
-  baselineFinish?: string;
-}
-
-type DropMode =
-  | { kind: 'none' }
-  | { kind: 'insert'; beforeRowIndex: number }
-  | { kind: 'child'; targetRowIndex: number };
 
 @Component({
-  selector: 'wbs-canvas-table',
+  selector: 'gantt-canvas',
   standalone: true,
   imports: [CommonModule],
-  template:  `
-  <!-- ВЕРХНИЙ TOOLBAR -->
-  <div class="page-toolbar">
-    <div class="proj-ops">
-      <button type="button" (click)="addRandomNode()">+ Add Random Node</button>
-      <button type="button" (click)="expandAll()" title="Expand all">Expand all</button>
-      <button type="button" (click)="collapseAll()" title="Collapse all">Collapse all</button>
-    </div>
-
-    <div class="gantt-toolbar">
-      <!-- Группы управления Гантом показываем только если showGantt -->
-      <div class="zoom" *ngIf="showGantt">
-        <button type="button" (click)="bumpScale(-1)" title="Zoom out">−</button>
-        <input
-          type="range"
-          min="4" max="60" step="1"
-          [value]="ganttPxPerDay"
-          (input)="onTimescaleInput($event)"
-        />
-        <button type="button" (click)="bumpScale(1)" title="Zoom in">+</button>
-        <button type="button" (click)="zoomToFit()" title="Zoom to fit all tasks">Fit</button>
-        <span class="zoom-label">Timescale</span>
-      </div>
-
-      <select *ngIf="showGantt" [value]="ganttScale" (change)="onScaleChange($event)">
-        <option value="week-day">week | day</option>
-        <option value="month-week">month | week</option>
-        <option value="quarter-month">quarter | month</option>
-        <option value="year-month">year | month</option>
-        <option value="year-quarter">year | quarter</option>
-      </select>
-
-      <button type="button" (click)="toggleGantt()">
-        {{ showGantt ? 'Скрыть Gantt' : 'Показать Gantt' }}
-      </button>
-    </div>
-  </div>
-
-  <!-- ОСНОВНОЕ СОДЕРЖИМОЕ -->
-  <div class="center">
-    <div #splitRoot class="split-root">
-      <!-- Левая панель: Таблица -->
-      <div class="pane pane-left" [style.flex-basis.%]="showGantt ? leftPct : 100">
-        <div #host class="wbs-host">
-          <canvas #headerCanvas class="wbs-header-canvas"></canvas>
-          <div #bodyWrapper class="wbs-body-wrapper">
-            <canvas #canvas></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- Разделитель -->
-      <div class="splitter"
-           (mousedown)="onSplitMouseDown($event)"
-           [style.display]="showGantt ? '' : 'none'"></div>
-
-      <!-- Правая панель: Гантт -->
-      <div class="pane pane-right"
-           [style.flex-basis.%]="100 - leftPct"
-           [style.display]="showGantt ? '' : 'none'">
-        <div #ganttHost class="gantt-host">
-          <canvas #ganttHeaderCanvas class="wbs-header-canvas"></canvas>
-          <div #ganttWrapper class="wbs-body-wrapper">
-            <canvas #ganttCanvas></canvas>
-          </div>
-          <!-- ВНУТРЕННЯЯ ГАНТТ-ПАНЕЛЬ УДАЛЕНА -->
-        </div>
-      </div>
-    </div>
-  </div>
-`,
-  styles: [`
-    .center {
-      width: 100%;
-      max-width: 100vw; /* не шире окна */
-      margin: 0 auto;
-    }
-    .split-root {
-      display: flex;
-      align-items: stretch;
-      width: 100%;
-      max-width: 100vw;
-      position: relative;
-      border: 1px solid #e0e0e0;
-      background: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
-    }
-    .pane { position: relative; overflow: hidden; }
-    .pane-left, .pane-right { min-width: 0; } /* чтобы flex не выталкивал контент */
-    .splitter {
-      flex: 0 0 6px;
-      cursor: col-resize;
-      background: repeating-linear-gradient(
-        90deg, #e9ecef, #e9ecef 2px, #f8f9fa 2px, #f8f9fa 4px
-      );
-
-  transition: background-color .12s ease, box-shadow .12s ease;
-  will-change: background-color;
-}
-.splitter:hover {
-  box-shadow: inset 0 0 0 1px #c8d0da;
-  background: repeating-linear-gradient(
-    90deg, #e2e6ec, #e2e6ec 2px, #f3f6fb 2px, #f3f6fb 4px
-  );
-}
-
-/* Когда тянем сплит — чуть темнее, курсор и отключаем выделение текста */
-.split-root.splitting .splitter {
-  background: repeating-linear-gradient(
-    90deg, #d8dee8, #d8dee8 2px, #eef2f7 2px, #eef2f7 4px
-  );
-  cursor: col-resize;
-}
-.split-root.splitting, .split-root.splitting * {
-  user-select: none !important;
-}
-
-/* (необязательно, но помогает браузеру) — заранее подсказать, что меняется ширина панелей */
-.pane-left, .pane-right {
-  will-change: flex-basis;
-}
-
-    .wbs-host, .gantt-host {
-      position: relative;
-      width: 100%;
-      overflow: hidden;
-      background: #fff;
-    }
-    .wbs-header-canvas {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      display: block;
-      background: #f5f7fb;
-      border-bottom: 1px solid #dcdfe6;
-    }
-    .wbs-body-wrapper {
-      position: relative;
-      overflow: auto;
-      max-height: 520px;
-    }
-    canvas { display: block; }
-
-
-.zoom{ display:flex; align-items:center; gap:6px; }
-.zoom input[type="range"]{ width: 180px; }
-.zoom button{
-  border: 1px solid #cfd6e4;
-  background: #fff;
-  padding: 0 6px;
-  height: 22px;
-  border-radius: 4px;
-  line-height: 1;
-  cursor: pointer;
-}
-.zoom-label{ font-size:12px; color:#666; }
-    .gantt-toolbar select{
-      font: inherit;
-      padding: 2px 6px;
-    }
-    .add-random-btn:hover { background-color: #2c67e8; }
-
-
-.page-toolbar{
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #fff;
-  border-bottom: 1px solid #eee;
-  padding: 6px 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.page-toolbar .proj-ops,
-.page-toolbar .gantt-toolbar{
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.page-toolbar button,
-.page-toolbar select{
-  border: 1px solid #cfd6e4;
-  background: #fff;
-  padding: 0 8px;
-  height: 26px;
-  border-radius: 4px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.page-toolbar button:hover{
-  background: #f8fafc;
-  border-color: #b8c2d1;
-}
-
-.page-toolbar .zoom{
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.page-toolbar .zoom input[type="range"]{ width: 180px; }
-.page-toolbar .zoom-label{ font-size: 12px; color: #666; }
-
-
-  `],
+  templateUrl: './gantt-canvas.component.html',
+  styleUrls: ['./gantt-canvas.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDestroy {
+export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   // ===== Ссылки на DOM (таблица) =====
   @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
@@ -316,7 +74,7 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   @Input() set data(value: Node[] | null) {
     this._externalData = value;
     if (this._initialized) {
-      this.workingData = this.cloneTree(value && value.length ? value : this.demoData);
+      this.workingData = deepClone(value && value.length ? value : this.demoData);
       if (this.collapsedByDefault) this.collapseAllWithChildren();
       this.prepareData();
       this.computeGanttRange();
@@ -339,21 +97,21 @@ export class WbsCanvasTableComponent implements AfterViewInit, OnChanges, OnDest
   ];
 
   // внутренняя карта для быстрого доступа
-private colorMap: Record<BarColorName, string> = {
-  actual: '#3498DB',
-  baseline: '#F1C40F',
-  criticalpatch: '#E74C3C',
-  group: '#7A8288',
-};
+  private colorMap: Record<BarColorName, string> = {
+    actual: '#3498DB',
+    baseline: '#F1C40F',
+    criticalpatch: '#E74C3C',
+    group: '#7A8288',
+  };
 
   private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
+  private ngZone = inject(NgZone);
 
   private rebuildColorMap() {
     const next = { ...this.colorMap };
     for (const c of this.barcolor || []) {
       if (!c?.name || !c?.color) continue;
-      // ограничим только допустимыми именами
       if (['actual','baseline','criticalpatch','group'].includes(c.name)) {
         next[c.name as BarColorName] = c.color;
       }
@@ -362,12 +120,10 @@ private colorMap: Record<BarColorName, string> = {
   }
 
   // ===== Сплит-панель =====
-  leftPct = 55;                // ширина левой панели в %
+  leftPct = 55;
   private isResizingSplit = false;
   private splitStartX = 0;
   private splitStartLeftPct = 55;
-  private ganttDragAnchorX = 0;
-
 
   private splitRafId: number | null = null;   // rAF для сплит-перерисовки
   private renderRafId: number | null = null;  // rAF для общего рендера
@@ -400,8 +156,8 @@ private colorMap: Record<BarColorName, string> = {
   private colGrip = 28;
   private colToggle = 28;
 
-  public showGantt = true;     // видимость правой панели (Гантт)
-  private prevLeftPct = this.leftPct; // чтобы восстановить ширину после показа
+  public showGantt = true;
+  private prevLeftPct = this.leftPct;
 
   // ===== Динамические столбцы (после Grip+Toggle) =====
   private nodeIndex = new Map<string, Node>();
@@ -453,7 +209,6 @@ private colorMap: Record<BarColorName, string> = {
   private gripDotBox = 12;
 
   // ===== Гантт: диапазон времени =====
-  private readonly MS_PER_DAY = 24 * 60 * 60 * 1000;
   public ganttPxPerDay = 14;        // масштаб (px/день)
   private ganttStartMs = 0;
   private ganttEndMs = 0;
@@ -462,8 +217,7 @@ private colorMap: Record<BarColorName, string> = {
   private syncingScroll = false;
 
   // ===== Демоданные =====
-  private demoData: Node[] = [
-  ];
+  private demoData: Node[] = [];
 
   private _initialized = false;
 
@@ -472,10 +226,9 @@ private colorMap: Record<BarColorName, string> = {
   private ganttDragRowIndex = -1;
   private ganttDragStartMs = 0;
   private ganttDragFinishMs = 0;
-  private ganttDragAnchorDays = 0;      // смещение курсора от левого края бара (для move)
-  private ganttDragStartMouseX = 0;     // контент-X в момент mousedown
-  private ganttResizeHandlePx = 6;      // ширина "ручки" ресайза
-  // последняя позиция мыши над ганттом в экранных координатах (для корректного hover при скролле)
+  private ganttDragAnchorX = 0;      // пиксельный якорь для move
+  private ganttDragStartMouseX = 0;
+  private ganttResizeHandlePx = 6;
   private lastGanttClientX = 0;
   private lastGanttClientY = 0;
 
@@ -490,15 +243,17 @@ private colorMap: Record<BarColorName, string> = {
   private linkHandleGap = 4;     // зазор между баром и кружком (px)
   private linkHitTol = 6;        // допуск попадания в кружок
   private hoverGanttHitMode: 'move'|'resize-start'|'resize-finish'|null = null;
-  private hoverBarRow: number | null = null; // какой бар подсвечиваем кружком справа
+  private hoverBarRow: number | null = null;
   private leftHandleDownRow: number | null = null;
 
-  // -------------------- Lifecycle --------------------
+  // ────────────────── Lifecycle ──────────────────
   ngAfterViewInit(): void {
-    this.workingData = this.cloneTree(this._externalData && this._externalData.length ? this._externalData : this.demoData);
+    this.workingData = deepClone(this._externalData && this._externalData.length ? this._externalData : this.demoData);
     if (this.collapsedByDefault) this.collapseAllWithChildren();
 
-    this.initD3();
+    this.ngZone.runOutsideAngular(() => {
+      this.initD3();
+    });
     this.prepareData();
     this.computeGanttRange();
     this.resizeAllCanvases();
@@ -506,129 +261,111 @@ private colorMap: Record<BarColorName, string> = {
     this.syncHeaderToBodyScroll();
     this.syncGanttHeaderToScroll();
 
-    const bodyWrapper = this.bodyWrapperRef.nativeElement;
-    const ganttWrapper = this.ganttWrapperRef.nativeElement;
+    this.ngZone.runOutsideAngular(() => {
+      const bodyWrapper = this.bodyWrapperRef.nativeElement;
+      const ganttWrapper = this.ganttWrapperRef.nativeElement;
 
-    // Прокрутка таблицы
-    const onScrollTable = () => {
-      if (this.syncingScroll) return;
-      this.syncingScroll = true;
-      this.syncHeaderToBodyScroll();
-      // синхронизируем вертикаль с ганттом
-      ganttWrapper.scrollTop = bodyWrapper.scrollTop;
-      this.syncingScroll = false;
-      this.scheduleRender();
-    };
-    bodyWrapper.addEventListener('scroll', onScrollTable);
-    this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('scroll', onScrollTable));
-
-    // Прокрутка гантта
-    const onScrollGantt = () => {
-      if (this.syncingScroll) return;
-      this.syncingScroll = true;
-      this.syncGanttHeaderToScroll();
-      // синхронизируем вертикаль с таблицей
-      bodyWrapper.scrollTop = ganttWrapper.scrollTop;
-      this.syncingScroll = false;
-      // обновляем курсор/hover с учётом нового scrollLeft/scrollTop
-
-      // Во время DnD обновляем позиционирование бара с учётом нового scrollLeft
-      if (this.ganttDragMode !== 'none') {
-        this.updateGanttDragFromScroll();
-      } else {
-        // Без DnD — просто пересчитать hover/курсор
-        this.updateGanttCursorFromLast();
+      // Прокрутка таблицы
+      const onScrollTable = () => {
+        if (this.syncingScroll) return;
+        this.syncingScroll = true;
+        this.syncHeaderToBodyScroll();
+        ganttWrapper.scrollTop = bodyWrapper.scrollTop;
+        this.syncingScroll = false;
         this.scheduleRender();
-      }
+      };
+      bodyWrapper.addEventListener('scroll', onScrollTable);
+      this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('scroll', onScrollTable));
 
-      
-    };
-    ganttWrapper.addEventListener('scroll', onScrollGantt);
-    // пассивный wheel-listener для синхронизации hover при прокрутке колёсиком
-    const onWheelGantt = () => this.updateGanttCursorFromLast();
-    ganttWrapper.addEventListener('wheel', onWheelGantt, { passive: true });
-    this.destroyRef.onDestroy(() => {
-      ganttWrapper.removeEventListener('scroll', onScrollGantt);
-      ganttWrapper.removeEventListener('wheel', onWheelGantt);
+      // Прокрутка гантта
+      const onScrollGantt = () => {
+        if (this.syncingScroll) return;
+        this.syncingScroll = true;
+        this.syncGanttHeaderToScroll();
+        bodyWrapper.scrollTop = ganttWrapper.scrollTop;
+        this.syncingScroll = false;
+
+        if (this.ganttDragMode !== 'none') {
+          this.updateGanttDragFromScroll();
+        } else {
+          this.updateGanttCursorFromLast();
+          this.scheduleRender();
+        }
+      };
+      ganttWrapper.addEventListener('scroll', onScrollGantt);
+      const onWheelGantt = () => this.updateGanttCursorFromLast();
+      ganttWrapper.addEventListener('wheel', onWheelGantt, { passive: true });
+      this.destroyRef.onDestroy(() => {
+        ganttWrapper.removeEventListener('scroll', onScrollGantt);
+        ganttWrapper.removeEventListener('wheel', onWheelGantt);
+      });
+
+      // Hover при колесе мыши внутри таблицы
+      const onWheel = () => {
+        const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+        const contentX = this.lastClientX - rect.left;
+        this.updateHoverFromContentX(contentX);
+        this.syncHeaderToBodyScroll();
+        this.renderAll();
+      };
+      bodyWrapper.addEventListener('wheel', onWheel, { passive: true });
+      this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('wheel', onWheel));
+
+      // Слушатели для сплита
+      const onSplitMove = (e: MouseEvent) => {
+        if (!this.isResizingSplit) return;
+        const rootRect = this.splitRootRef.nativeElement.getBoundingClientRect();
+        const dx = e.clientX - this.splitStartX;
+        const dxPct = (dx / rootRect.width) * 100;
+        this.leftPct = Math.min(85, Math.max(15, this.splitStartLeftPct + dxPct));
+        this.queueSplitReflow();
+      };
+
+      const onSplitUp = () => {
+        if (!this.isResizingSplit) return;
+        this.isResizingSplit = false;
+        this.queueSplitReflow();
+        this.splitRootRef.nativeElement.classList.remove('splitting');
+        document.body.style.cursor = '';
+      };
+
+      window.addEventListener('mousemove', onSplitMove, { passive: true });
+      window.addEventListener('mouseup', onSplitUp, { passive: true });
+      this.destroyRef.onDestroy(() => {
+        window.removeEventListener('mousemove', onSplitMove);
+        window.removeEventListener('mouseup', onSplitUp);
+      });
+
+      // --- Gantt DnD ---
+      const ganttCanvas = this.ganttCanvasRef.nativeElement;
+      const onGanttDown = (ev: MouseEvent) => this.onGanttMouseDown(ev);
+      const onGanttMove = (ev: MouseEvent) => this.onGanttMouseMove(ev);
+      const onGanttUp   = (ev: MouseEvent) => this.onGanttMouseUp(ev);
+
+      ganttCanvas.addEventListener('mousedown', onGanttDown);
+      const onGanttHover = (ev: MouseEvent) => {
+        this.lastGanttClientX = ev.clientX;
+        this.lastGanttClientY = ev.clientY;
+        this.updateGanttCursor(ev);
+        this.renderGanttBody();
+      };
+      const onGanttLeave = () => this.resetGanttCursor();
+
+      ganttCanvas.addEventListener('mousemove', onGanttHover, { passive: true });
+      ganttCanvas.addEventListener('mouseleave', onGanttLeave);
+
+      this.destroyRef.onDestroy(() => {
+        ganttCanvas.removeEventListener('mousedown', onGanttDown);
+        ganttCanvas.removeEventListener('mousemove', onGanttHover);
+        ganttCanvas.removeEventListener('mouseleave', onGanttLeave);
+      });
+      window.addEventListener('mousemove', onGanttMove, { passive: true });
+      window.addEventListener('mouseup',   onGanttUp,   { passive: true });
+      this.destroyRef.onDestroy(() => {
+        window.removeEventListener('mousemove', onGanttMove);
+        window.removeEventListener('mouseup',   onGanttUp);
+      });
     });
-
-    // Hover/колонки/и т.п. при колесе мыши внутри таблицы
-    const onWheel = () => {
-      const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-      const contentX = this.lastClientX - rect.left;
-      this.updateHoverFromContentX(contentX);
-      this.syncHeaderToBodyScroll();
-      this.renderAll();
-    };
-    bodyWrapper.addEventListener('wheel', onWheel, { passive: true });
-    this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('wheel', onWheel));
-
-    // Слушатели для сплита (добавляем на window)
-    const onSplitMove = (e: MouseEvent) => {
-      if (!this.isResizingSplit) return;
-      const rootRect = this.splitRootRef.nativeElement.getBoundingClientRect();
-      const dx = e.clientX - this.splitStartX;
-      const dxPct = (dx / rootRect.width) * 100;
-      // клампим от 15% до 85%, чтобы не схлопывать панели
-      this.leftPct = Math.min(85, Math.max(15, this.splitStartLeftPct + dxPct));
-
-      // вместо мгновенной тяжёлой перерисовки — rAF
-      this.queueSplitReflow();
-    };
-
-    const onSplitUp = () => {
-      if (!this.isResizingSplit) return;
-      this.isResizingSplit = false;
-
-      // финальный проход (чтобы зафиксировать размеры)
-      this.queueSplitReflow();
-
-      // снять визуальный статус + вернуть курсор
-      this.splitRootRef.nativeElement.classList.remove('splitting');
-      document.body.style.cursor = '';
-    };
-
-    window.addEventListener('mousemove', onSplitMove, { passive: true });
-    window.addEventListener('mouseup', onSplitUp, { passive: true });
-    this.destroyRef.onDestroy(() => {
-      window.removeEventListener('mousemove', onSplitMove);
-      window.removeEventListener('mouseup', onSplitUp);
-    });
-
-    
-
-    // --- Gantt DnD ---
-const ganttCanvas = this.ganttCanvasRef.nativeElement;
-
-const onGanttDown = (ev: MouseEvent) => this.onGanttMouseDown(ev);
-const onGanttMove = (ev: MouseEvent) => this.onGanttMouseMove(ev);
-const onGanttUp   = (ev: MouseEvent) => this.onGanttMouseUp(ev);
-
-ganttCanvas.addEventListener('mousedown', onGanttDown);
-const onGanttHover = (ev: MouseEvent) => {
-  // сохраняем последние client-координаты для корректного hover при скролле
-  this.lastGanttClientX = ev.clientX;
-  this.lastGanttClientY = ev.clientY;
-  this.updateGanttCursor(ev);
-  this.renderGanttBody();
-};
-const onGanttLeave = () => this.resetGanttCursor();
-
-ganttCanvas.addEventListener('mousemove', onGanttHover, { passive: true });
-ganttCanvas.addEventListener('mouseleave', onGanttLeave);
-
-this.destroyRef.onDestroy(() => {
-  ganttCanvas.removeEventListener('mousemove', onGanttHover);
-  ganttCanvas.removeEventListener('mouseleave', onGanttLeave);
-});
-window.addEventListener('mousemove', onGanttMove, { passive: true });
-window.addEventListener('mouseup',   onGanttUp,   { passive: true });
-
-this.destroyRef.onDestroy(() => {
-  ganttCanvas.removeEventListener('mousedown', onGanttDown);
-  window.removeEventListener('mousemove', onGanttMove);
-  window.removeEventListener('mouseup',   onGanttUp);
-});
 
     this._initialized = true;
   }
@@ -651,14 +388,32 @@ this.destroyRef.onDestroy(() => {
         this.renderGanttBody();
       }
     }
-    
+
     if ('refLines' in changes && this._initialized) {
       this.renderGanttHeader();
       this.renderGanttBody();
     }
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void {
+    // Remove D3 handlers (including zoom namespace)
+    if (this.d3Canvas) {
+      this.d3Canvas.on('click', null);
+      this.d3Canvas.on('mousedown', null);
+      this.d3Canvas.on('mousemove', null);
+      this.d3Canvas.on('.zoom', null as any);
+    }
+
+    // Cancel scheduled animation frames
+    if (this.splitRafId != null) {
+      cancelAnimationFrame(this.splitRafId);
+      this.splitRafId = null;
+    }
+    if (this.renderRafId != null) {
+      cancelAnimationFrame(this.renderRafId);
+      this.renderRafId = null;
+    }
+  }
 
   @HostListener('window:resize')
   onResize() {
@@ -679,16 +434,13 @@ this.destroyRef.onDestroy(() => {
     const v = Number((e.target as HTMLInputElement).value || 14);
     this.setTimescale(v, 'center');
   }
-  
+
   bumpScale(step: number) {
     this.setTimescale(this.ganttPxPerDay + step, 'center');
   }
 
   public expandAll(): void {
-    // показать всё: очистить набор свёрнутых узлов
     this.collapsed.clear();
-  
-    // перестроить плоские строки и всё перерисовать
     this.prepareData();
     this.computeGanttRange();
     this.resizeAllCanvases();
@@ -696,12 +448,9 @@ this.destroyRef.onDestroy(() => {
     this.syncGanttHeaderToScroll();
     this.renderAll();
   }
-  
+
   public collapseAll(): void {
-    // сворачиваем все узлы, у которых есть дети (готовый хелпер уже есть)
     this.collapseAllWithChildren();
-  
-    // перестроить плоские строки и всё перерисовать
     this.prepareData();
     this.computeGanttRange();
     this.resizeAllCanvases();
@@ -711,148 +460,123 @@ this.destroyRef.onDestroy(() => {
   }
 
   public toggleGantt(): void {
-      if (this.showGantt) {
-        // Скрываем Гантт: запомним ширину и развернём таблицу на 100%
-        this.prevLeftPct = this.leftPct;
-        this.showGantt = false;
-        this.leftPct = 100;
-      } else {
-        // Показываем Гантт: восстановим прежнюю ширину левой панели
-        this.showGantt = true;
-        this.leftPct = this.prevLeftPct ?? 55;
-      }
+    if (this.showGantt) {
+      this.prevLeftPct = this.leftPct;
+      this.showGantt = false;
+      this.leftPct = 100;
+    } else {
+      this.showGantt = true;
+      this.leftPct = this.prevLeftPct ?? 55;
+    }
 
-      this.cdr.detectChanges();
-      // Применим изменения размеров и перерисуем
-      requestAnimationFrame(() => {
-        this.bodyWrapperRef.nativeElement.scrollLeft = 0;
+    this.cdr.detectChanges();
+    requestAnimationFrame(() => {
+      this.bodyWrapperRef.nativeElement.scrollLeft = 0;
       this.resizeAllCanvases();
       this.syncHeaderToBodyScroll();
       this.syncGanttHeaderToScroll();
       this.renderAll();
     });
-    }
-
-    private colorOf(n: BarColorName): string { return this.colorMap[n]; }
-    private rgba(hex: string, a: number): string {
-      // #RRGGBB → rgba(r,g,b,a); если не распарсили — вернём исходную строку
-      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      if (!m) return hex;
-      const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
-      return `rgba(${r},${g},${b},${a})`;
-    }
-
-private toGanttContentCoords(e: MouseEvent) {
-  const wrap = this.ganttWrapperRef.nativeElement;
-  const wrect = wrap.getBoundingClientRect();
-  // измеряем относительно viewport-рамки скроллера, затем добавляем scroll* для координаты контента
-  const x = (e.clientX - wrect.left) + wrap.scrollLeft;
-  const y = (e.clientY - wrect.top)  + wrap.scrollTop;
-  return { x, y };
-}
-
-private xToMs(x: number): number {
-  return this.ganttStartMs + (x / this.ganttPxPerDay) * this.MS_PER_DAY;
-}
-private snapMsToDay(ms: number): number {
-  const d = new Date(ms); d.setHours(0,0,0,0); return d.getTime();
-}
-private msToIso(ms: number): IsoDate {
-  const d = new Date(ms);
-  d.setHours(0, 0, 0, 0); // snap to local midnight
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}` as IsoDate; // local date, no UTC shift
-}
-
-private recalcParentDatesFromChildren(parentId: string): void {
-  const parent = this.nodeIndex.get(parentId);
-  if (!parent || !parent.children || parent.children.length === 0) return;
-
-  let minStart = Number.POSITIVE_INFINITY;
-  let maxFinish = Number.NEGATIVE_INFINITY;
-
-  for (const ch of parent.children) {
-    const s = new Date(ch.start  + 'T00:00:00').getTime();
-    const f = new Date(ch.finish + 'T00:00:00').getTime();
-    if (!isNaN(s)) minStart = Math.min(minStart, s);
-    if (!isNaN(f)) maxFinish = Math.max(maxFinish, f);
   }
 
-  if (isFinite(minStart) && isFinite(maxFinish)) {
-    parent.start  = this.msToIso(minStart);
-    parent.finish = this.msToIso(maxFinish);
+  // ────────────────── Утилиты компонента ──────────────────
+  private colorOf(n: BarColorName): string { return this.colorMap[n]; }
+  private rgba(hex: string, a: number): string { return hexToRgba(hex, a); }
 
-    // Обновим видимые строки таблицы
-    const idx = this.rowIndexById.get(parentId);
-    if (idx !== undefined) {
-      this.flatRows[idx].start  = parent.start;
-      this.flatRows[idx].finish = parent.finish;
+  private toGanttContentCoords(e: MouseEvent) {
+    const wrap = this.ganttWrapperRef.nativeElement;
+    const wrect = wrap.getBoundingClientRect();
+    const x = (e.clientX - wrect.left) + wrap.scrollLeft;
+    const y = (e.clientY - wrect.top)  + wrap.scrollTop;
+    return { x, y };
+  }
+
+  private xToMs(x: number): number {
+    return this.ganttStartMs + (x / this.ganttPxPerDay) * MS_PER_DAY;
+  }
+
+  // ────────────────── Пересчёт дат суммарных задач ──────────────────
+  private recalcParentDatesFromChildren(parentId: string): void {
+    const parent = this.nodeIndex.get(parentId);
+    if (!parent || !parent.children || parent.children.length === 0) return;
+
+    let minStart = Number.POSITIVE_INFINITY;
+    let maxFinish = Number.NEGATIVE_INFINITY;
+
+    for (const ch of parent.children) {
+      const s = new Date(ch.start  + 'T00:00:00').getTime();
+      const f = new Date(ch.finish + 'T00:00:00').getTime();
+      if (!isNaN(s)) minStart = Math.min(minStart, s);
+      if (!isNaN(f)) maxFinish = Math.max(maxFinish, f);
     }
-  }
-}
 
-/** Пересчитать все предки узла (вверх по path), от ближайшего к корню. */
-private recalcAncestorsFrom(rowId: string): void {
-  const fr = this.flatRows.find(r => r.id === rowId);
-  if (!fr) return;
-  // path = [...предки..., self], берём только предков
-  const ancestors = fr.path.slice(0, -1);
-  // Идём снизу вверх, чтобы сначала были актуальны непосредственные родители
-  for (let i = ancestors.length - 1; i >= 0; i--) {
-    this.recalcParentDatesFromChildren(ancestors[i]);
-  }
-}
+    if (isFinite(minStart) && isFinite(maxFinish)) {
+      parent.start  = msToIso(minStart);
+      parent.finish = msToIso(maxFinish);
 
-/** Полный пересчёт для всего дерева (удобно после изменения структуры DnD). */
-private recalcAllSummaryDates(): void {
-  const walk = (n: Node): { startMs: number, finishMs: number } => {
-    let s = new Date(n.start  + 'T00:00:00').getTime();
-    let f = new Date(n.finish + 'T00:00:00').getTime();
-
-    if (n.children && n.children.length) {
-      let minS = Number.POSITIVE_INFINITY;
-      let maxF = Number.NEGATIVE_INFINITY;
-      for (const ch of n.children) {
-        const r = walk(ch);
-        if (r.startMs  < minS) minS = r.startMs;
-        if (r.finishMs > maxF) maxF = r.finishMs;
-      }
-      if (isFinite(minS) && isFinite(maxF)) {
-        s = minS; f = maxF;
-        n.start  = this.msToIso(s);
-        n.finish = this.msToIso(f);
+      const idx = this.rowIndexById.get(parentId);
+      if (idx !== undefined) {
+        this.flatRows[idx].start  = parent.start;
+        this.flatRows[idx].finish = parent.finish;
       }
     }
-    return { startMs: s, finishMs: f };
-  };
+  }
 
-  for (const root of this.workingData) walk(root);
-
-  // Синхронизируем видимые строки
-  for (let i = 0; i < this.flatRows.length; i++) {
-    const id = this.flatRows[i].id;
-    const node = this.nodeIndex.get(id);
-    if (node) {
-      this.flatRows[i].start  = node.start;
-      this.flatRows[i].finish = node.finish;
+  private recalcAncestorsFrom(rowId: string): void {
+    const fr = this.flatRows.find(r => r.id === rowId);
+    if (!fr) return;
+    const ancestors = fr.path.slice(0, -1);
+    for (let i = ancestors.length - 1; i >= 0; i--) {
+      this.recalcParentDatesFromChildren(ancestors[i]);
     }
   }
-}
 
-private revealExtend() { return this.linkHandleR + this.linkHandleGap; }
+  private recalcAllSummaryDates(): void {
+    const walk = (n: Node): { startMs: number, finishMs: number } => {
+      let s = new Date(n.start  + 'T00:00:00').getTime();
+      let f = new Date(n.finish + 'T00:00:00').getTime();
 
-private barRevealRowAt(x: number, y: number): number | null {
-  const i = Math.floor(y / this.rowHeight);
-  if (i < 0 || i >= this.flatRows.length) return null;
-  const p = this.barPixelsForRowIndex(i);
-  const ext = this.revealExtend();
-  const yTop = i * this.rowHeight;
-  const yBot = yTop + this.rowHeight;
-  if (y < yTop || y > yBot) return null;
-  return (x >= p.x0 - ext && x <= p.x1 + ext) ? i : null;
-}
+      if (n.children && n.children.length) {
+        let minS = Number.POSITIVE_INFINITY;
+        let maxF = Number.NEGATIVE_INFINITY;
+        for (const ch of n.children) {
+          const r = walk(ch);
+          if (r.startMs  < minS) minS = r.startMs;
+          if (r.finishMs > maxF) maxF = r.finishMs;
+        }
+        if (isFinite(minS) && isFinite(maxF)) {
+          s = minS; f = maxF;
+          n.start  = msToIso(s);
+          n.finish = msToIso(f);
+        }
+      }
+      return { startMs: s, finishMs: f };
+    };
+
+    for (const root of this.workingData) walk(root);
+
+    for (let i = 0; i < this.flatRows.length; i++) {
+      const id = this.flatRows[i].id;
+      const node = this.nodeIndex.get(id);
+      if (node) {
+        this.flatRows[i].start  = node.start;
+        this.flatRows[i].finish = node.finish;
+      }
+    }
+  }
+
+  private revealExtend() { return this.linkHandleR + this.linkHandleGap; }
+
+  private barRevealRowAt(x: number, y: number): number | null {
+    const i = Math.floor(y / this.rowHeight);
+    if (i < 0 || i >= this.flatRows.length) return null;
+    const p = this.barPixelsForRowIndex(i);
+    const ext = this.revealExtend();
+    const yTop = i * this.rowHeight;
+    const yBot = yTop + this.rowHeight;
+    if (y < yTop || y > yBot) return null;
+    return (x >= p.x0 - ext && x <= p.x1 + ext) ? i : null;
+  }
 
 private rightHandleCenter(i: number) {
   const p = this.barPixelsForRowIndex(i);
@@ -983,8 +707,8 @@ private hitGanttBarAt(x: number, y: number): { rowIndex: number, mode: 'move'|'r
 
   const s = new Date(startStr  + 'T00:00:00').getTime();
   const f = new Date(finishStr + 'T00:00:00').getTime();
-  const x0 = Math.round(((s - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
-  const x1 = Math.round(((f - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
+  const x0 = Math.round(((s - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
+  const x1 = Math.round(((f - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
 
   // верт. зону считаем по всей высоте строки — проще попадать
   const yTop = rowIndex * this.rowHeight;
@@ -1008,7 +732,7 @@ public zoomToFit(): void {
   const viewport = Math.max(0, wrap.clientWidth - 16); // небольшой отступ по краям
   const totalDays = Math.max(
     1,
-    Math.ceil((this.ganttEndMs - this.ganttStartMs) / this.MS_PER_DAY)
+    Math.ceil((this.ganttEndMs - this.ganttStartMs) / MS_PER_DAY)
   );
 
   // Желаемое px/день: чтобы totalDays * pxPerDay <= viewport
@@ -1071,7 +795,7 @@ private onGanttMouseDown(ev: MouseEvent) {
   this.ganttDragStartMouseX = x;
 
   // для move: запоминаем, насколько курсор смещён от левой границы
-const barLeftX = Math.round(((this.ganttDragStartMs - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
+const barLeftX = Math.round(((this.ganttDragStartMs - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
 this.ganttDragAnchorX = x - barLeftX;
   this.ganttCanvasRef.nativeElement.style.cursor =
   this.ganttDragMode === 'move' ? 'grabbing' : 'ew-resize';
@@ -1121,14 +845,14 @@ private onGanttMouseMove(ev: MouseEvent) {
   } else if (this.ganttDragMode === 'resize-start') {
     newStartMs = this.xToMs(x);
     newFinishMs = this.ganttDragFinishMs;
-    if (newStartMs > newFinishMs - this.MS_PER_DAY) {
-      newStartMs = newFinishMs - this.MS_PER_DAY;
+    if (newStartMs > newFinishMs - MS_PER_DAY) {
+      newStartMs = newFinishMs - MS_PER_DAY;
     }
   } else if (this.ganttDragMode === 'resize-finish') {
     newStartMs = this.ganttDragStartMs;
     newFinishMs = this.xToMs(x);
-    if (newFinishMs < newStartMs + this.MS_PER_DAY) {
-      newFinishMs = newStartMs + this.MS_PER_DAY;
+    if (newFinishMs < newStartMs + MS_PER_DAY) {
+      newFinishMs = newStartMs + MS_PER_DAY;
     }
   }
 
@@ -1189,19 +913,19 @@ this.ganttCanvasRef.nativeElement.style.cursor = 'default';
 
 // Обновить даты узла + отражать их в flatRows (чтобы таблица сразу видела изменения)
 private commitGanttDates(rowId: string, startMs: number, finishMs: number) {
-  startMs  = this.snapMsToDay(startMs);
-  finishMs = this.snapMsToDay(finishMs);
-  if (finishMs < startMs + this.MS_PER_DAY) finishMs = startMs + this.MS_PER_DAY;
+  startMs  = snapMsToDay(startMs);
+  finishMs = snapMsToDay(finishMs);
+  if (finishMs < startMs + MS_PER_DAY) finishMs = startMs + MS_PER_DAY;
 
   const node = this.nodeIndex.get(rowId);
   if (node) {
-    node.start  = this.msToIso(startMs);
-    node.finish = this.msToIso(finishMs);
+    node.start  = msToIso(startMs);
+    node.finish = msToIso(finishMs);
   }
   const fr = this.flatRows.find(r => r.id === rowId);
   if (fr) {
-    fr.start  = this.msToIso(startMs);
-    fr.finish = this.msToIso(finishMs);
+    fr.start  = msToIso(startMs);
+    fr.finish = msToIso(finishMs);
   }
 
   this.recalcAncestorsFrom(rowId);
@@ -1218,7 +942,7 @@ private commitGanttDates(rowId: string, startMs: number, finishMs: number) {
                            wrapper.scrollLeft + wrapper.clientWidth / 2;
   
     const anchorDateMs =
-      this.ganttStartMs + (anchorPx / this.ganttPxPerDay) * this.MS_PER_DAY;
+      this.ganttStartMs + (anchorPx / this.ganttPxPerDay) * MS_PER_DAY;
   
     // 2) применяем новый масштаб в допустимых пределах
     this.ganttPxPerDay = Math.max(2, Math.min(96, Math.round(pxPerDay)));
@@ -1228,7 +952,7 @@ private commitGanttDates(rowId: string, startMs: number, finishMs: number) {
   
     // 4) восстанавливаем скролл так, чтобы та же дата осталась на якоре
     const newAnchorPx =
-      ((anchorDateMs - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay;
+      ((anchorDateMs - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay;
   
     const desiredScrollLeft =
       anchor === 'left'  ? newAnchorPx
@@ -1277,57 +1001,17 @@ private scheduleRender() {
 
   // ============ Хелперы для сегментов времени ===============
 
-  private startOfUnit(d: Date, unit: TimeUnit): Date {
-    const x = new Date(d.getTime());
-    x.setHours(0,0,0,0);
-    switch (unit) {
-      case 'day':     return x;
-      case 'week':    return this.startOfISOWeek(x);
-      case 'month':   x.setDate(1); return x;
-      case 'quarter': x.setMonth(Math.floor(x.getMonth()/3)*3, 1); return x;
-      case 'year':    x.setMonth(0, 1); return x;
-    }
-  }
+
+
   
-  private nextUnitStart(d: Date, unit: TimeUnit): Date {
-    const x = this.startOfUnit(d, unit);
-    switch (unit) {
-      case 'day':     x.setDate(x.getDate()+1);     break;
-      case 'week':    x.setDate(x.getDate()+7);     break;
-      case 'month':   x.setMonth(x.getMonth()+1);   break;
-      case 'quarter': x.setMonth(x.getMonth()+3);   break;
-      case 'year':    x.setFullYear(x.getFullYear()+1); break;
-    }
-    return x;
-  }
+
   
-  private formatLabel(d: Date, unit: TimeUnit): string {
-    switch (unit) {
-      case 'day':     return new Intl.DateTimeFormat('ru-RU', { day: '2-digit' }).format(d);
-      case 'week':    return 'W' + this.getISOWeek(d).toString();
-      case 'month':   return new Intl.DateTimeFormat('ru-RU', { month: 'short' }).format(d);
-      case 'quarter': return 'Q' + (Math.floor(d.getMonth()/3)+1);
-      case 'year':    return String(d.getFullYear());
-    }
-  }
-  
-  private formatTopLabel(d: Date, unit: TimeUnit): string {
-    switch (unit) {
-      case 'day':     return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short' }).format(d);
-      case 'week':    return `Неделя ${this.getISOWeek(d)} ${d.getFullYear()}`;
-      case 'month':   return new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }).format(d);
-      case 'quarter': return `Q${Math.floor(d.getMonth()/3)+1} ${d.getFullYear()}`;
-      case 'year':    return String(d.getFullYear());
-    }
-  }
+
 
   // Line Gentt
   private dateToX(ms: number): number {
     // переводим миллисекунды в пиксели с шагом pxPerDay
-    return Math.round(((ms - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay) + 0.5;
-  }
-  private toMs(d: Date | string): number {
-    return (d instanceof Date ? d : new Date(d)).getTime();
+    return Math.round(((ms - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay) + 0.5;
   }
 
 
@@ -1386,7 +1070,7 @@ private scheduleRender() {
   }
 
   private prepareData() {
-    this.flatRows = this.flattenWbs(this.workingData);
+    this.flatRows = flattenWbs(this.workingData, this.collapsed);
     const maxLevel = this.flatRows.reduce((m, r) => Math.max(m, r.level), 0);
     this.colToggle = this.baseToggleWidth + maxLevel * this.toggleIndentPerLevel;
 
@@ -1466,79 +1150,11 @@ private scheduleRender() {
     return best;
   }
 
-  private flattenWbs(nodes: Node[]): FlatRow[] {
-    const out: FlatRow[] = [];
-    const walk = (list: Node[], prefixNums: number[] = [], level = 0, parentId: string | null = null, parentPath: string[] = []) => {
-      list.forEach((node, idx) => {
-        const numberSeq = [...prefixNums, idx + 1];
-        const wbs = numberSeq.join('.');
-        const hasChildren = !!(node.children && node.children.length);
-        const path = [...parentPath, node.id];
-
-        out.push({
-          id: node.id,
-          parentId,
-          path,
-          wbs,
-          name: node.name,
-          start: node.start,
-          finish: node.finish,
-          level,
-          hasChildren,
-          complete: Math.max(0, Math.min(100, Number(node.complete ?? 0))),
-          baselineStart: node.baselineStart,
-          baselineFinish: node.baselineFinish
-        });
-
-        if (hasChildren && !this.collapsed.has(node.id)) {
-          walk(node.children!, numberSeq, level + 1, node.id, path);
-        }
-      });
-    };
-    walk(nodes, [], 0, null, []);
-    return out;
-  }
-
-  private findParentListAndIndex(rootList: Node[], id: string) {
-    const walk = (list: Node[], _parent: Node[] | null): { parentList: Node[]; index: number } | null => {
-      for (let i = 0; i < list.length; i++) {
-        const n = list[i];
-        if (n.id === id) return { parentList: list, index: i };
-        if (n.children && n.children.length) {
-          const res = walk(n.children, list);
-          if (res) return res;
-        }
-      }
-      return null;
-    };
-    return walk(rootList, null);
-  }
-
-  private findNode(rootList: Node[], id: string): Node | null {
-    const walk = (list: Node[]): Node | null => {
-      for (const n of list) {
-        if (n.id === id) return n;
-        if (n.children) {
-          const r = walk(n.children);
-          if (r) return r;
-        }
-      }
-      return null;
-    };
-    return walk(rootList);
-  }
-
-  private isDescendant(candidateId: string, ancestorId: string): boolean {
-    const candRow = this.flatRows.find(r => r.id === candidateId);
-    if (!candRow) return false;
-    return candRow.path.includes(ancestorId) && candidateId !== ancestorId;
-  }
-
   private moveNode(nodeId: string, newParentId: string | null, indexInParent: number) {
     if (newParentId === nodeId) return;
-    if (newParentId && this.isDescendant(newParentId, nodeId)) return;
+    if (newParentId && isDescendantUtil(this.flatRows, newParentId, nodeId)) return;
 
-    const found = this.findParentListAndIndex(this.workingData, nodeId);
+    const found = findParentListAndIndex(this.workingData, nodeId);
     if (!found) return;
     const { parentList, index } = found;
     const [node] = parentList.splice(index, 1);
@@ -1547,7 +1163,7 @@ private scheduleRender() {
     if (!newParentId) {
       newParentChildren = this.workingData;
     } else {
-      const newParentNode = this.findNode(this.workingData, newParentId);
+      const newParentNode = findNodeUtil(this.workingData, newParentId);
       if (!newParentNode) return;
       if (!newParentNode.children) newParentNode.children = [];
       newParentChildren = newParentNode.children;
@@ -1761,8 +1377,8 @@ private scheduleRender() {
     } else if (this.dropMode.kind === 'child') {
       const targetIdx = this.dropMode.targetRowIndex;
       const targetRow = this.flatRows[targetIdx];
-      if (targetRow.id !== srcId && !this.isDescendant(targetRow.id, srcId)) {
-        const targetNode = this.findNode(this.workingData, targetRow.id);
+      if (targetRow.id !== srcId && !isDescendantUtil(this.flatRows, targetRow.id, srcId)) {
+        const targetNode = findNodeUtil(this.workingData, targetRow.id);
         const newIndex = (targetNode?.children?.length ?? 0);
         this.moveNode(srcId, targetRow.id, newIndex);
       }
@@ -1817,7 +1433,7 @@ private scheduleRender() {
 
     const parentList = (newParentId === null)
       ? this.workingData
-      : (this.findNode(this.workingData, newParentId)?.children ?? []);
+      : (findNodeUtil(this.workingData, newParentId)?.children ?? []);
 
     let insertIndex = 0;
     for (let i = 0; i < parentList.length; i++) {
@@ -1827,7 +1443,7 @@ private scheduleRender() {
       }
     }
 
-    const movingLoc = this.findParentListAndIndex(this.workingData, movingId);
+    const movingLoc = findParentListAndIndex(this.workingData, movingId);
     if (movingLoc && movingLoc.parentList === parentList && movingLoc.index < insertIndex) {
       insertIndex = Math.max(0, insertIndex - 1);
     }
@@ -1881,7 +1497,7 @@ private scheduleRender() {
     const bodyCanvas = this.ganttCanvasRef.nativeElement;
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
-    const totalDays = Math.max(1, Math.ceil((this.ganttEndMs - this.ganttStartMs) / this.MS_PER_DAY));
+    const totalDays = Math.max(1, Math.ceil((this.ganttEndMs - this.ganttStartMs) / MS_PER_DAY));
     const contentWidth = totalDays * this.ganttPxPerDay;
     const contentHeight = this.headerHeight + this.flatRows.length * this.rowHeight;
 
@@ -2104,7 +1720,7 @@ private scheduleRender() {
     if (!this.workingData.length) {
       const now = Date.now();
       this.ganttStartMs = now;
-      this.ganttEndMs = now + 30 * this.MS_PER_DAY;
+      this.ganttEndMs = now + 30 * MS_PER_DAY;
       return;
     }
     let min = Number.POSITIVE_INFINITY;
@@ -2131,31 +1747,15 @@ private scheduleRender() {
 
     if (!isFinite(min) || !isFinite(max)) {
       const now = Date.now();
-      min = now; max = now + 30 * this.MS_PER_DAY;
+      min = now; max = now + 30 * MS_PER_DAY;
     }
 
     // небольшой запас по 7 дней с каждой стороны
-    this.ganttStartMs = min - 7 * this.MS_PER_DAY;
-    this.ganttEndMs   = max + 7 * this.MS_PER_DAY;
+    this.ganttStartMs = min - 7 * MS_PER_DAY;
+    this.ganttEndMs   = max + 7 * MS_PER_DAY;
   }
 
-  /** Понедельник той ISO-недели, где лежит дата d (в 00:00) */
-  private startOfISOWeek(d: Date): Date {
-    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const day = x.getDay() || 7; // 1..7 (пн..вс)
-    if (day !== 1) x.setDate(x.getDate() - (day - 1));
-    x.setHours(0, 0, 0, 0);
-    return x;
-  }
 
-  /** Номер ISO-недели (1..53) для даты d */
-  private getISOWeek(d: Date): number {
-    const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const day = x.getUTCDay() || 7;
-    x.setUTCDate(x.getUTCDate() + 4 - day);
-    const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
-    return Math.ceil((((x.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  }
 
 
 private renderGanttHeader() {
@@ -2202,18 +1802,18 @@ private renderGanttHeader() {
 
   // ===== Верхняя строка =====
   {
-    let cur = this.startOfUnit(new Date(startMs), top);
+    let cur = startOfUnit(new Date(startMs), top);
     while (cur.getTime() < endMs) {
-      const next = this.nextUnitStart(cur, top);
+      const next = nextUnitStart(cur, top);
       const segStart = Math.max(startMs, cur.getTime());
       const segEnd   = Math.min(endMs, next.getTime());
 
-      const x0 = Math.round(((segStart - startMs) / this.MS_PER_DAY) * pxPerDay);
-      const x1 = Math.round(((segEnd   - startMs) / this.MS_PER_DAY) * pxPerDay);
+      const x0 = Math.round(((segStart - startMs) / MS_PER_DAY) * pxPerDay);
+      const x1 = Math.round(((segEnd   - startMs) / MS_PER_DAY) * pxPerDay);
       const cx = x0 + (x1 - x0) / 2;
 
       // подпись в верхней половине
-      ctx.fillText(this.formatTopLabel(cur, top), cx, Math.floor(half / 2));
+      ctx.fillText(formatTopLabel(cur, top), cx, Math.floor(half / 2));
 
       // вертикальная граница сегмента верхней строки (только до половины)
       ctx.strokeStyle = this.headerBorder;
@@ -2228,16 +1828,16 @@ private renderGanttHeader() {
 
   // ===== Нижняя строка =====
   {
-    let cur = this.startOfUnit(new Date(startMs), bottom);
+    let cur = startOfUnit(new Date(startMs), bottom);
     const midY = half + Math.floor(half / 2);
 
     while (cur.getTime() < endMs) {
-      const next = this.nextUnitStart(cur, bottom);
+      const next = nextUnitStart(cur, bottom);
       const segStart = Math.max(startMs, cur.getTime());
       const segEnd   = Math.min(endMs, next.getTime());
 
-      const x0 = Math.round(((segStart - startMs) / this.MS_PER_DAY) * pxPerDay);
-      const x1 = Math.round(((segEnd   - startMs) / this.MS_PER_DAY) * pxPerDay);
+      const x0 = Math.round(((segStart - startMs) / MS_PER_DAY) * pxPerDay);
+      const x1 = Math.round(((segEnd   - startMs) / MS_PER_DAY) * pxPerDay);
       const cx = x0 + (x1 - x0) / 2;
 
       // вертикальная линия нижнего сегмента (только нижняя половина)
@@ -2249,7 +1849,7 @@ private renderGanttHeader() {
 
       // подпись в нижней половине (сокращённая)
       ctx.fillStyle = this.textColor;
-      ctx.fillText(this.formatLabel(cur, bottom), cx, midY);
+      ctx.fillText(formatLabel(cur, bottom), cx, midY);
 
       cur = next;
     }
@@ -2270,7 +1870,7 @@ private renderGanttHeader() {
 
   if (this.refLines?.length) {
     for (const rl of this.refLines) {
-      const ms = this.toMs(rl.date);
+      const ms = toMs(rl.date);
       if (ms < this.ganttStartMs || ms > this.ganttEndMs) continue;
       const x = this.dateToX(ms);
   
@@ -2329,14 +1929,14 @@ private renderGanttBody() {
 
   // вертикальные линии сетки по выбранной единице
   ctx.strokeStyle = '#ececec';
-  let cur = this.startOfUnit(new Date(this.ganttStartMs), grid);
+  let cur = startOfUnit(new Date(this.ganttStartMs), grid);
   while (cur.getTime() <= this.ganttEndMs) {
-    const x = Math.round(((cur.getTime() - this.ganttStartMs) / this.MS_PER_DAY) * pxPerDay) + 0.5;
+    const x = Math.round(((cur.getTime() - this.ganttStartMs) / MS_PER_DAY) * pxPerDay) + 0.5;
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, height);
     ctx.stroke();
-    cur = this.nextUnitStart(cur, grid);
+    cur = nextUnitStart(cur, grid);
   }
 
   // горизонтальные разделители строк
@@ -2374,8 +1974,8 @@ private renderGanttBody() {
     const finishStr = node?.finish ?? row.finish;
     const s = new Date(startStr  + 'T00:00:00').getTime();
     const f = new Date(finishStr + 'T00:00:00').getTime();
-    const x0 = Math.round(((s - this.ganttStartMs) / this.MS_PER_DAY) * pxPerDay);
-    const x1 = Math.round(((f - this.ganttStartMs) / this.MS_PER_DAY) * pxPerDay);
+    const x0 = Math.round(((s - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
+    const x1 = Math.round(((f - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
     const w  = Math.max(3, x1 - x0);
 
     // baseline (если есть)
@@ -2387,8 +1987,8 @@ private renderGanttBody() {
     if (hasBaseline) {
       const bs = new Date(bStartStr! + 'T00:00:00').getTime();
       const bf = new Date(bFinishStr! + 'T00:00:00').getTime();
-      const _bx0 = Math.round(((bs - this.ganttStartMs) / this.MS_PER_DAY) * pxPerDay);
-      const _bx1 = Math.round(((bf - this.ganttStartMs) / this.MS_PER_DAY) * pxPerDay);
+      const _bx0 = Math.round(((bs - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
+      const _bx1 = Math.round(((bf - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
       bx0 = Math.min(_bx0, _bx1);
       bx1 = Math.max(_bx0, _bx1);
       bw  = Math.max(3, bx1 - bx0);
@@ -2552,7 +2152,7 @@ private renderGanttBody() {
   }
   if (this.refLines?.length) {
     for (const rl of this.refLines) {
-      const ms = this.toMs(rl.date);
+      const ms = toMs(rl.date);
       if (ms < this.ganttStartMs || ms > this.ganttEndMs) continue;
       const x = this.dateToX(ms);
   
@@ -2683,8 +2283,8 @@ private get taskTrackH(): number {
     const finishStr = node?.finish ?? row.finish;
     const s  = new Date(startStr  + 'T00:00:00').getTime();
     const f  = new Date(finishStr + 'T00:00:00').getTime();
-    const x0 = Math.round(((s - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
-    const x1 = Math.round(((f - this.ganttStartMs) / this.MS_PER_DAY) * this.ganttPxPerDay);
+    const x0 = Math.round(((s - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
+    const x1 = Math.round(((f - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
   
     const rowTop = i * this.rowHeight;
   
@@ -3113,14 +2713,14 @@ private updateGanttDragFromScroll() {
   } else if (this.ganttDragMode === 'resize-start') {
     newStartMs = this.xToMs(currentContentX);
     newFinishMs = this.ganttDragFinishMs;
-    if (newStartMs > newFinishMs - this.MS_PER_DAY) {
-      newStartMs = newFinishMs - this.MS_PER_DAY;
+    if (newStartMs > newFinishMs - MS_PER_DAY) {
+      newStartMs = newFinishMs - MS_PER_DAY;
     }
   } else if (this.ganttDragMode === 'resize-finish') {
     newStartMs = this.ganttDragStartMs;
     newFinishMs = this.xToMs(currentContentX);
-    if (newFinishMs < newStartMs + this.MS_PER_DAY) {
-      newFinishMs = newStartMs + this.MS_PER_DAY;
+    if (newFinishMs < newStartMs + MS_PER_DAY) {
+      newFinishMs = newStartMs + MS_PER_DAY;
     }
   }
 

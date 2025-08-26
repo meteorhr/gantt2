@@ -1,6 +1,6 @@
 // generate-activity-data.ts 
 // Самодостаточный генератор случайной иерархии задач под интерфейс Node.
-import { Node } from './wbs-canvas-table.component';
+import { Node } from './gantt/models/gantt.model';
 export type IsoDate = `${number}-${number}-${number}`;
 
 export interface GenerateOptions {
