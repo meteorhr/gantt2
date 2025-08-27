@@ -19,17 +19,9 @@ import { CommonModule } from '@angular/common';
 import { select, Selection } from 'd3-selection';
 import { zoom, ZoomBehavior, ZoomTransform } from 'd3-zoom';
 import { BarColor, ColumnDef, FlatRow, RefLine, Node } from './models/gantt.model';
-import { BarColorName, DropMode, GanttScale, IsoDate, TimeUnit } from './models/gantt.types';
-
+import { BarColorName, DropMode, GanttScale } from './models/gantt.types';
 import {
-  startOfUnit,
-  nextUnitStart,
-  formatLabel,
-  formatTopLabel,
-  startOfISOWeek,
-  getISOWeek,
   msToIso,
-  toMs,
   snapMsToDay,
   MS_PER_DAY
 } from './utils/date-utils';
@@ -41,7 +33,20 @@ import {
   findNode as findNodeUtil,
   isDescendant as isDescendantUtil
 } from './utils/tree-utils';
-
+import { renderTableBody, renderTableHeader, TablePaintState } from './table-painter';
+import { GanttPaintState, renderGanttHeader as paintGanttHeader, renderGanttBody as paintGanttBody } from './gantt-painter';
+import {
+  GanttGeometryState,
+  msToX, 
+  barPixelsForRowIndex,
+  hitGanttBarAt,
+  barRevealRowAt,
+  rightHandleCenter,
+  leftHandleCenter,
+  barRightHandleHit,
+  barLeftHandleHit,
+  xToMs
+} from './gantt-geometry';
 
 @Component({
   selector: 'gantt-canvas',
@@ -246,7 +251,154 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   private hoverBarRow: number | null = null;
   private leftHandleDownRow: number | null = null;
 
+  private buildTableState(): TablePaintState {
+    const { startIndex, endIndex } = this.visibleRowRange(this.bodyWrapperRef.nativeElement);
   
+    return {
+      // Данные
+      columns: this.columns,
+      flatRows: this.flatRows,
+      collapsedIds: this.collapsed,
+  
+      // Геометрия
+      headerHeight: this.headerHeight,
+      rowHeight: this.rowHeight,
+      colGrip: this.colGrip,
+      colToggle: this.colToggle,
+      toggleIndentPerLevel: this.toggleIndentPerLevel,
+  
+      // Палитра уровней — ВАЖНО!
+      levelColors: this.levelColors,
+  
+      // Стили
+      font: this.font,
+      headerFont: this.headerFont,
+      zebraColor: this.zebraColor,
+      gridColor: this.gridColor,
+      textColor: this.textColor,
+      headerBg: this.headerBg,
+      headerBorder: this.headerBorder,
+  
+      // Состояния
+      hoverDividerX: this.hoverDividerX,
+      isDragging: this.isDragging,
+      dragRowIndex: this.dragRowIndex,
+      lastMouseY: this.lastMouseY,
+      dragMouseDy: this.dragMouseDy,
+      dropMode: this.dropMode,
+  
+      // Виртуализация
+      visibleStartIndex: startIndex,
+      visibleEndIndex: endIndex,
+  
+      // Ячейки
+      getCellValue: (row, key) => this.getCellValue(row, key),
+    };
+  }
+
+  private buildGanttState(): GanttPaintState {
+    const { startIndex, endIndex } = this.visibleRowRange(this.ganttWrapperRef.nativeElement);
+  
+    return {
+      // Данные
+      flatRows: this.flatRows,
+      nodeIndex: this.nodeIndex,
+      rowIndexById: this.rowIndexById,
+      rowIndexByWbs: this.rowIndexByWbs,
+      refLines: this.refLines ?? [],
+  
+      // Геометрия/виртуализация
+      headerHeight: this.headerHeight,
+      rowHeight: this.rowHeight,
+      visibleStartIndex: startIndex,
+      visibleEndIndex: endIndex,
+  
+      // Временная шкала
+      ganttPxPerDay: this.ganttPxPerDay,
+      ganttStartMs: this.ganttStartMs,
+      ganttEndMs: this.ganttEndMs,
+      ganttScale: this.ganttScale,
+  
+      // Внешний вид
+      font: this.font,
+      headerFont: this.headerFont,
+      gridColor: this.gridColor,
+      textColor: this.textColor,
+      headerBg: this.headerBg,
+      headerBorder: this.headerBorder,
+  
+      // Цвета
+      colorOf: (n) => this.colorOf(n),
+      rgba: (hex, a) => this.rgba(hex, a),
+  
+      // Параметры задач
+      summaryThick: this.summaryThick,
+      taskPad: this.taskPad,
+      taskGap: this.taskGap,
+  
+      // Hover/линкование (только для визуализации)
+      hoverBarRow: this.hoverBarRow,
+      hoverGanttHitMode: this.hoverGanttHitMode,
+      linkMode: this.linkMode,
+      linkSourceRow: this.linkSourceRow,
+      linkStartX: this.linkStartX,
+      linkStartY: this.linkStartY,
+      linkMouseX: this.linkMouseX,
+      linkMouseY: this.linkMouseY,
+      linkHoverTargetRow: this.linkHoverTargetRow,
+      linkHandleR: this.linkHandleR,
+      linkHandleGap: this.linkHandleGap,
+  
+      // Прогресс (0..1)
+      rowProgress01: (i: number) => this.rowProgress01(i),
+    };
+  }
+
+  private buildGeomState(): GanttGeometryState {
+    return {
+      // Данные
+      flatRows: this.flatRows,
+      nodeIndex: this.nodeIndex,
+  
+      // Геометрия строк/шкалы
+      rowHeight: this.rowHeight,
+      ganttStartMs: this.ganttStartMs,
+      ganttPxPerDay: this.ganttPxPerDay,
+  
+      // Параметры форм-фактора
+      summaryThick: this.summaryThick,
+      taskPad: this.taskPad,
+      taskGap: this.taskGap,
+  
+      // Параметры кружков (линковка)
+      linkHandleR: this.linkHandleR,
+      linkHandleGap: this.linkHandleGap,
+    };
+  }
+
+
+
+  private hitGanttBarAt(x: number, y: number) {
+    return hitGanttBarAt(this.buildGeomState(), x, y, this.ganttResizeHandlePx);
+  }
+  private barRevealRowAt(x: number, y: number) {
+    return barRevealRowAt(this.buildGeomState(), x, y);
+  }
+  private rightHandleCenter(rowIndex: number) {
+    return rightHandleCenter(this.buildGeomState(), rowIndex);
+  }
+  private leftHandleCenter(rowIndex: number) {
+    return leftHandleCenter(this.buildGeomState(), rowIndex);
+  }
+  private barRightHandleHit(x: number, y: number) {
+    return barRightHandleHit(this.buildGeomState(), x, y);
+  }
+  private barLeftHandleHit(x: number, y: number) {
+    return barLeftHandleHit(this.buildGeomState(), x, y);
+  }
+  private xToMs(px: number) {
+    return xToMs(this.buildGeomState(), px);
+  }
 
   // ────────────────── Lifecycle ──────────────────
   ngAfterViewInit(): void {
@@ -493,9 +645,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     return { x, y };
   }
 
-  private xToMs(x: number): number {
-    return this.ganttStartMs + (x / this.ganttPxPerDay) * MS_PER_DAY;
-  }
+
 
   // ────────────────── Пересчёт дат суммарных задач ──────────────────
   private recalcParentDatesFromChildren(parentId: string): void {
@@ -569,27 +719,8 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private revealExtend() { return this.linkHandleR + this.linkHandleGap; }
 
-  private barRevealRowAt(x: number, y: number): number | null {
-    const i = Math.floor(y / this.rowHeight);
-    if (i < 0 || i >= this.flatRows.length) return null;
-    const p = this.barPixelsForRowIndex(i);
-    const ext = this.revealExtend();
-    const yTop = i * this.rowHeight;
-    const yBot = yTop + this.rowHeight;
-    if (y < yTop || y > yBot) return null;
-    return (x >= p.x0 - ext && x <= p.x1 + ext) ? i : null;
-  }
 
-private rightHandleCenter(i: number) {
-  const p = this.barPixelsForRowIndex(i);
-  const offset = this.linkHandleR + this.linkHandleGap;
-  return { x: p.x1 + offset, y: p.yMid };
-}
-private leftHandleCenter(i: number) {
-  const p = this.barPixelsForRowIndex(i);
-  const offset = this.linkHandleR + this.linkHandleGap;
-  return { x: p.x0 - offset, y: p.yMid }; 
-}
+  
 
 private drawHandleWithStem(
   ctx: CanvasRenderingContext2D,
@@ -611,24 +742,8 @@ private isInCircle(px: number, py: number, cx: number, cy: number, r: number) {
   const dx = px - cx, dy = py - cy;
   return (dx*dx + dy*dy) <= r*r;
 }
-private barRightHandleHit(x: number, y: number): number | null {
-  const i = Math.floor(y / this.rowHeight);
-  if (i < 0 || i >= this.flatRows.length) return null;
-  const p = this.barPixelsForRowIndex(i);
-  const { x: cx, y: cy } = this.rightHandleCenter(i);
-  // требуем, чтобы курсор был правее края бара
-  if (x <= p.x1 + this.linkHandleGap * 0.5) return null;
-  return this.isInCircle(x, y, cx, cy, this.linkHandleR + this.linkHitTol) ? i : null;
-}
-private barLeftHandleHit(x: number, y: number): number | null {
-  const i = Math.floor(y / this.rowHeight);
-  if (i < 0 || i >= this.flatRows.length) return null;
-  const p = this.barPixelsForRowIndex(i);
-  const { x: cx, y: cy } = this.leftHandleCenter(i);
-  // требуем, чтобы курсор был левее края бара
-  if (x >= p.x0 - this.linkHandleGap * 0.5) return null;
-  return this.isInCircle(x, y, cx, cy, this.linkHandleR + this.linkHitTol) ? i : null;
-}
+
+
 private drawHandle(ctx: CanvasRenderingContext2D, x: number, y: number, side: 'left'|'right', active = false) {
   ctx.save();
   ctx.lineWidth = 2;
@@ -697,34 +812,7 @@ private updateGanttCursor(ev: MouseEvent) {
   }
 
 
-private hitGanttBarAt(x: number, y: number): { rowIndex: number, mode: 'move'|'resize-start'|'resize-finish' } | null {
-  const rowIndex = Math.floor(y / this.rowHeight);
-  if (rowIndex < 0 || rowIndex >= this.flatRows.length) return null;
 
-  const row = this.flatRows[rowIndex];
-  // Берём актуальные даты из nodeIndex (чтобы видеть live-изменения)
-  const node = this.nodeIndex.get(row.id);
-  const startStr  = node?.start  ?? row.start;
-  const finishStr = node?.finish ?? row.finish;
-
-  const s = new Date(startStr  + 'T00:00:00').getTime();
-  const f = new Date(finishStr + 'T00:00:00').getTime();
-  const x0 = Math.round(((s - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
-  const x1 = Math.round(((f - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
-
-  // верт. зону считаем по всей высоте строки — проще попадать
-  const yTop = rowIndex * this.rowHeight;
-  const yBot = yTop + this.rowHeight;
-
-  if (y < yTop || y > yBot) return null;
-
-  const h = this.ganttResizeHandlePx;
-  if (Math.abs(x - x0) <= h) return { rowIndex, mode: 'resize-start' };
-  if (Math.abs(x - x1) <= h) return { rowIndex, mode: 'resize-finish' };
-  if (x >= Math.min(x0, x1) && x <= Math.max(x0, x1)) return { rowIndex, mode: 'move' };
-
-  return null;
-}
 
 public zoomToFit(): void {
   // Обновим диапазон по текущим данным (метод уже добавляет недельный запас)
@@ -1178,38 +1266,59 @@ private scheduleRender() {
   }
 
   // -------------------- D3 / Events (таблица) --------------------
+  private toggleRectForRow(rowIndex: number): { x: number; y: number; w: number; h: number } | null {
+    if (rowIndex < 0 || rowIndex >= this.flatRows.length) return null;
+    const row = this.flatRows[rowIndex];
+    if (!row.hasChildren) return null;
+  
+    const triSize = 12;
+    const hitPad = 4;
+    const xGrip = 0;
+    const xToggle = xGrip + this.colGrip;
+  
+    const triX = xToggle + 8 + this.toggleIndentPerLevel * row.level;
+    const triY = rowIndex * this.rowHeight + (this.rowHeight - triSize) / 2;
+  
+    return { x: triX - hitPad, y: triY - hitPad, w: triSize + hitPad * 2, h: triSize + hitPad * 2 };
+  }
+  
+  private isInsideToggle(x: number, y: number, rowIndex: number): boolean {
+    const r = this.toggleRectForRow(rowIndex);
+    if (!r) return false;
+    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  }
   private initD3() {
     const canvas = this.canvasRef.nativeElement;
     this.d3Canvas = select(canvas);
-
+  
     this.zoomBehavior = zoom<HTMLCanvasElement, unknown>()
       .filter((ev: any) => ev.type === 'wheel')
       .scaleExtent([1, 1])
       .on('zoom', (ev) => {
         this.zoomTransform = ev.transform;
       });
-
+  
     this.d3Canvas.call(this.zoomBehavior as any);
-
+  
     // Click (toggle collapse) по телу
     this.d3Canvas.on('click', (event: MouseEvent) => {
       if (this.isDragging) return;
       const { x, y } = this.toContentCoords(event);
-
+  
       const rowIndex = Math.floor(y / this.rowHeight);
       if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
       const row = this.flatRows[rowIndex];
-
+  
       const xToggle = this.colGrip;
       const triSize = 12;
       const triX = xToggle + 8 + this.toggleIndentPerLevel * row.level;
       const triY = rowIndex * this.rowHeight + (this.rowHeight - triSize) / 2;
       const hitPad = 4;
-
+  
       const inTriangle =
         x >= (triX - hitPad) && x <= (triX + triSize + hitPad) &&
         y >= (triY - hitPad) && y <= (triY + triSize + hitPad);
-
+  
       if (row.hasChildren && inTriangle) {
         if (this.collapsed.has(row.id)) this.collapsed.delete(row.id);
         else this.collapsed.add(row.id);
@@ -1220,34 +1329,63 @@ private scheduleRender() {
       }
     });
 
+    
+  
     // DnD
     this.d3Canvas.on('mousedown', (event: MouseEvent) => this.onMouseDown(event));
     window.addEventListener('mousemove', this.onMouseMoveBound, { passive: true });
     window.addEventListener('mouseup', this.onMouseUpBound, { passive: true });
-
-    // Hover/resize/grab в теле
+  
+    // Hover/resize/grab в теле — ОБНОВЛЕНО
     this.d3Canvas.on('mousemove', (event: MouseEvent) => {
       this.lastClientX = event.clientX;
-      const { x } = this.toContentCoords(event);
-
+      const { x, y } = this.toContentCoords(event);
+  
+      // 1) активный резайз колонок
       if (this.isResizingCol) {
         this.canvasRef.nativeElement.style.cursor = 'col-resize';
         return;
       }
+  
+      // 2) активный DnD строк
       if (this.isDragging) {
         this.canvasRef.nativeElement.style.cursor = 'grabbing';
         return;
       }
-
+  
+      // 3) хит-тест текущей строки
+      const rowIndex = Math.floor(y / this.rowHeight);
+      if (rowIndex >= 0 && rowIndex < this.flatRows.length) {
+        // 3.1) 6 точек (ручка)
+        if (this.isInsideGrip(x, y, rowIndex)) {
+          this.canvasRef.nativeElement.style.cursor = 'grab';
+          return;
+        }
+        // 3.2) треугольник сворачивания/разворачивания
+        if (this.isInsideToggle(x, y, rowIndex)) {
+          this.canvasRef.nativeElement.style.cursor = 'pointer';
+          return;
+        }
+      }
+  
+      // 4) иначе — логика наведения на разделители колонок
       this.updateHoverFromContentX(x);
       this.scheduleRender();
     });
-
+  
+    // Сброс курсора при уходе мыши — ДОБАВЛЕНО
+    this.d3Canvas.on('mouseleave', () => {
+      if (!this.isDragging && !this.isResizingCol) {
+        this.canvasRef.nativeElement.style.cursor = 'default';
+      }
+    });
+  
     this.destroyRef.onDestroy(() => {
       window.removeEventListener('mousemove', this.onMouseMoveBound);
       window.removeEventListener('mouseup', this.onMouseUpBound);
     });
   }
+  
 
   private onMouseMoveBound = (e: MouseEvent) => this.onMouseMove(e);
   private onMouseUpBound = (_e: MouseEvent) => this.onMouseUp(_e);
@@ -1548,196 +1686,16 @@ private scheduleRender() {
     this.renderGanttBody();
   }
 
-  // ---------- ТАБЛИЦА: отрисовка ----------
   private renderHeader() {
-    const canvas = this.headerCanvasRef.nativeElement;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width  = parseInt(canvas.style.width, 10);
-    const height = this.headerHeight;
-
-    ctx.clearRect(0, 0, width, height);
-
-    ctx.fillStyle = this.headerBg;
-    ctx.fillRect(0, 0, width, height);
-
-    const xGrip = 0;
-    const xToggle = xGrip + this.colGrip;
-    const xDataStart = xToggle + this.colToggle;
-
-    // Вертикали: после Grip, после Toggle и после каждого data-столбца
-    ctx.beginPath();
-    ctx.moveTo(this.colGrip + 0.5, 0);                        // после Grip
-    ctx.lineTo(this.colGrip + 0.5, height);
-    ctx.moveTo((this.colGrip + this.colToggle) + 0.5, 0);     // после Toggle
-    ctx.lineTo((this.colGrip + this.colToggle) + 0.5, height);
-
-    let cursor = xDataStart;
-    for (const col of this.columns) {
-      const right = cursor + col.width;
-      ctx.moveTo(right + 0.5, 0);
-      ctx.lineTo(right + 0.5, height);
-      cursor = right;
-    }
-    ctx.strokeStyle = this.headerBorder;
-    ctx.stroke();
-
-    // Тексты заголовков
-    ctx.font = this.headerFont;
-    ctx.fillStyle = this.textColor;
-    ctx.textBaseline = 'middle';
-
-    cursor = xDataStart;
-    for (const col of this.columns) {
-      this.drawClippedText(ctx, col.title, cursor, height / 2, col.width, 10);
-      cursor += col.width;
-    }
-
-    // Нижняя граница хедера
-    ctx.strokeStyle = this.headerBorder;
-    ctx.beginPath();
-    ctx.moveTo(0, height + 0.5);
-    ctx.lineTo(width, height + 0.5);
-    ctx.stroke();
-
-    // Подсветка наведённого делителя
-    if (this.hoverDividerX != null) {
-      ctx.save();
-      ctx.strokeStyle = '#4c8dff';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      ctx.moveTo(this.hoverDividerX + 0.5, 0);
-      ctx.lineTo(this.hoverDividerX + 0.5, height);
-      ctx.stroke();
-      ctx.restore();
-    }
+    const headerCanvas = this.headerCanvasRef.nativeElement;
+    const state = this.buildTableState();
+    renderTableHeader(headerCanvas, state);
   }
-
+  
   private renderBody() {
-    const canvas = this.canvasRef.nativeElement;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width  = parseInt(canvas.style.width, 10);
-    const height = parseInt(canvas.style.height, 10);
-
-    // Compute visible range
-    const { startIndex, endIndex } = this.visibleRowRange(this.bodyWrapperRef.nativeElement);
-
-    ctx.clearRect(0, 0, width, height);
-
-    const xGrip = 0;
-    const xToggle = xGrip + this.colGrip;
-    const xDataStart = xToggle + this.colToggle;
-
-    ctx.font = this.font;
-
-    for (let i = startIndex; i <= endIndex; i++) {
-      const y = i * this.rowHeight;
-
-      // зебра
-      if (i % 2 === 1) {
-        ctx.fillStyle = this.zebraColor;
-        ctx.fillRect(0, y, width, this.rowHeight);
-      }
-
-      const row = this.flatRows[i];
-
-      // фон уровня для родителя (как у вас было)
-      if (row.hasChildren) {
-        ctx.fillStyle = this.getLevelColor(row.level);
-        ctx.fillRect(this.colGrip, y, width - this.colGrip, this.rowHeight);
-      }
-
-      // нижняя линия строки
-      ctx.beginPath();
-      ctx.moveTo(0, y + this.rowHeight + 0.5);
-      ctx.lineTo(width, y + this.rowHeight + 0.5);
-      ctx.strokeStyle = this.gridColor;
-      ctx.stroke();
-
-      // текст
-      ctx.fillStyle = this.textColor;
-      ctx.textBaseline = 'middle';
-
-      // grip + уровни + треугольник — без изменений
-      this.drawGrip(ctx, xGrip + 10, y + (this.rowHeight - this.gripDotBox) / 2, this.gripDotBox, this.gripDotBox);
-      this.drawLevelIndicators(ctx, row.level, y, xToggle);
-
-      if (row.hasChildren) {
-        const triSize = 12;
-        const triX = xToggle + 8 + this.toggleIndentPerLevel * row.level;
-        const triY = y + (this.rowHeight - triSize) / 2;
-        ctx.save();
-        ctx.beginPath();
-        if (this.collapsed.has(row.id)) {
-          ctx.moveTo(triX + 2,  triY + 2);
-          ctx.lineTo(triX + 10, triY + 6);
-          ctx.lineTo(triX + 2,  triY + 10);
-        } else {
-          ctx.moveTo(triX + 2,  triY + 3);
-          ctx.lineTo(triX + 10, triY + 3);
-          ctx.lineTo(triX + 6,  triY + 11);
-        }
-        ctx.closePath();
-        ctx.fillStyle = '#666';
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // значения ячеек по columns
-      const midY = y + this.rowHeight / 2;
-      let cursor = xDataStart;
-      for (const col of this.columns) {
-        const val = this.getCellValue(row, col.key);
-        this.drawClippedText(ctx, val, cursor, midY, col.width, 10);
-        cursor += col.width;
-      }
-    }
-
-    // вертикальные линии сетки (после Grip, после Toggle, после каждого столбца)
-    ctx.beginPath();
-    ctx.moveTo(this.colGrip + 0.5, 0);
-    ctx.lineTo(this.colGrip + 0.5, height);
-    ctx.moveTo((this.colGrip + this.colToggle) + 0.5, 0);
-    ctx.lineTo((this.colGrip + this.colToggle) + 0.5, height);
-
-    let edge = xDataStart;
-    for (const col of this.columns) {
-      edge += col.width;
-      ctx.moveTo(edge + 0.5, 0);
-      ctx.lineTo(edge + 0.5, height);
-    }
-    ctx.strokeStyle = this.gridColor;
-    ctx.stroke();
-
-    // подсветка наведённого делителя
-    if (this.hoverDividerX != null) {
-      ctx.save();
-      ctx.strokeStyle = '#4c8dff';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      ctx.moveTo(this.hoverDividerX + 0.5, 0);
-      ctx.lineTo(this.hoverDividerX + 0.5, height);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (this.isDragging && this.dragRowIndex >= 0) {
-      const ghostY = this.lastMouseY - this.dragMouseDy;
-      this.drawDragGhost(ctx, this.dragRowIndex, ghostY, width);
-
-      if (this.dropMode.kind === 'insert') {
-        const insY = this.dropMode.beforeRowIndex * this.rowHeight;
-        this.drawInsertLine(ctx, insY, width);
-      } else if (this.dropMode.kind === 'child') {
-        const rectY = this.dropMode.targetRowIndex * this.rowHeight;
-        this.drawDashedRect(ctx, 0, rectY, width, this.rowHeight);
-      }
-    }
+    const bodyCanvas = this.canvasRef.nativeElement;
+    const state = this.buildTableState();
+    renderTableBody(bodyCanvas, state);
   }
 
   // ---------- ГАНТТ: диапазон и отрисовка ----------
@@ -1786,431 +1744,20 @@ private scheduleRender() {
 private renderGanttHeader() {
   if (!this.showGantt) return;
   const canvas = this.ganttHeaderCanvasRef.nativeElement;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const width  = parseInt(canvas.style.width, 10);
-  const height = this.headerHeight;
-  const half   = Math.floor(height / 2);
-
-  ctx.clearRect(0, 0, width, height);
-
-  // фон
-  ctx.fillStyle = this.headerBg;
-  ctx.fillRect(0, 0, width, height);
-
-  const pxPerDay = this.ganttPxPerDay;
-  const startMs  = this.ganttStartMs;
-  const endMs    = this.ganttEndMs;
-
-  // Разделительная горизонтальная линия между строками заголовка
-  ctx.strokeStyle = this.headerBorder;
-  ctx.beginPath();
-  ctx.moveTo(0, half + 0.5);
-  ctx.lineTo(width, half + 0.5);
-  ctx.stroke();
-
-  // выбрать пары единиц и сетку из текущего масштаба
-  let top: TimeUnit, bottom: TimeUnit, grid: TimeUnit;
-  switch (this.ganttScale) {
-    case 'week-day':       top = 'week';    bottom = 'day';     grid = 'day';     break;
-    case 'month-week':     top = 'month';   bottom = 'week';    grid = 'week';    break;
-    case 'quarter-month':  top = 'quarter'; bottom = 'month';   grid = 'month';   break;
-    case 'year-month':     top = 'year';    bottom = 'month';   grid = 'month';   break;
-    case 'year-quarter':   top = 'year';    bottom = 'quarter'; grid = 'quarter'; break;
-  }
-
-  ctx.font = this.headerFont;
-  ctx.fillStyle = this.textColor;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'center';
-
-  // ===== Верхняя строка =====
-  {
-    let cur = startOfUnit(new Date(startMs), top);
-    while (cur.getTime() < endMs) {
-      const next = nextUnitStart(cur, top);
-      const segStart = Math.max(startMs, cur.getTime());
-      const segEnd   = Math.min(endMs, next.getTime());
-
-      const x0 = Math.round(((segStart - startMs) / MS_PER_DAY) * pxPerDay);
-      const x1 = Math.round(((segEnd   - startMs) / MS_PER_DAY) * pxPerDay);
-      const cx = x0 + (x1 - x0) / 2;
-
-      // подпись в верхней половине
-      ctx.fillText(formatTopLabel(cur, top), cx, Math.floor(half / 2));
-
-      // вертикальная граница сегмента верхней строки (только до половины)
-      ctx.strokeStyle = this.headerBorder;
-      ctx.beginPath();
-      ctx.moveTo(x1 + 0.5, 0);
-      ctx.lineTo(x1 + 0.5, half);
-      ctx.stroke();
-
-      cur = next;
-    }
-  }
-
-  // ===== Нижняя строка =====
-  {
-    let cur = startOfUnit(new Date(startMs), bottom);
-    const midY = half + Math.floor(half / 2);
-
-    while (cur.getTime() < endMs) {
-      const next = nextUnitStart(cur, bottom);
-      const segStart = Math.max(startMs, cur.getTime());
-      const segEnd   = Math.min(endMs, next.getTime());
-
-      const x0 = Math.round(((segStart - startMs) / MS_PER_DAY) * pxPerDay);
-      const x1 = Math.round(((segEnd   - startMs) / MS_PER_DAY) * pxPerDay);
-      const cx = x0 + (x1 - x0) / 2;
-
-      // вертикальная линия нижнего сегмента (только нижняя половина)
-      ctx.strokeStyle = this.headerBorder;
-      ctx.beginPath();
-      ctx.moveTo(x0 + 0.5, half);
-      ctx.lineTo(x0 + 0.5, height);
-      ctx.stroke();
-
-      // подпись в нижней половине (сокращённая)
-      ctx.fillStyle = this.textColor;
-      ctx.fillText(formatLabel(cur, bottom), cx, midY);
-
-      cur = next;
-    }
-  }
-
-  // нижняя граница заголовка
-  ctx.strokeStyle = this.headerBorder;
-  ctx.beginPath();
-  ctx.moveTo(0, height + 0.5);
-  ctx.lineTo(width, height + 0.5);
-  ctx.stroke();
-
-  // стартовая вертикаль для нижней половины
-  ctx.beginPath();
-  ctx.moveTo(0.5, half);
-  ctx.lineTo(0.5, height);
-  ctx.stroke();
-
-  if (this.refLines?.length) {
-    for (const rl of this.refLines) {
-      const ms = toMs(rl.date);
-      if (ms < this.ganttStartMs || ms > this.ganttEndMs) continue;
-      const x = this.dateToX(ms);
-  
-      ctx.save();
-      if (rl.dash) ctx.setLineDash(rl.dash);
-      ctx.strokeStyle = rl.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-  
-      // Подпись (необязательная "плашка" наверху)
-      if (rl.name) {
-        const text = rl.name;
-        ctx.font = this.headerFont;
-        const tw = ctx.measureText(text).width;
-        const pad = 4;
-        const bx = Math.min(Math.max(4, x + 4), width - tw - 8);
-        const by = 2;
-  
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.fillRect(bx - pad, by - pad, tw + pad * 2, 14 + pad * 2);
-  
-        ctx.fillStyle = rl.color;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(text, bx, by + 2);
-      }
-      ctx.restore();
-    }
-  }
+  const state = this.buildGanttState();
+  paintGanttHeader(canvas, state);
 }
 
-  private renderGanttBody() {
-    if (!this.showGantt) return;
-    const canvas = this.ganttCanvasRef.nativeElement;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const strokeBlack = '#000';
-    const width  = parseInt(canvas.style.width, 10);
-    const height = parseInt(canvas.style.height, 10);
-    const pxPerDay = this.ganttPxPerDay;
-
-    // Compute visible range
-    const { startIndex, endIndex } = this.visibleRowRange(this.ganttWrapperRef.nativeElement);
-
-    ctx.clearRect(0, 0, width, height);
-
-    // выбрать "единицу сетки" из текущего масштаба
-    let grid: TimeUnit;
-    switch (this.ganttScale) {
-      case 'week-day':       grid = 'day';     break;
-      case 'month-week':     grid = 'week';    break;
-      case 'quarter-month':  grid = 'month';   break;
-      case 'year-month':     grid = 'month';   break;
-      case 'year-quarter':   grid = 'quarter'; break;
-    }
-
-    // вертикальные линии сетки по выбранной единице
-    ctx.strokeStyle = '#ececec';
-    let cur = startOfUnit(new Date(this.ganttStartMs), grid);
-    while (cur.getTime() <= this.ganttEndMs) {
-      const x = Math.round(((cur.getTime() - this.ganttStartMs) / MS_PER_DAY) * pxPerDay) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-      cur = nextUnitStart(cur, grid);
-    }
-
-    // горизонтальные разделители строк
-    for (let i = startIndex; i <= endIndex; i++) {
-      const y = i * this.rowHeight;
-      ctx.beginPath();
-      ctx.moveTo(0, y + this.rowHeight + 0.5);
-      ctx.lineTo(width, y + this.rowHeight + 0.5);
-      ctx.strokeStyle = this.gridColor;
-      ctx.stroke();
-    }
-
-    // хелпер для скруглённых прямоугольников
-    const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
-      const rr = Math.min(r, h / 2, w / 2);
-      ctx.beginPath();
-      ctx.moveTo(x + rr, y);
-      ctx.lineTo(x + w - rr, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
-      ctx.lineTo(x + w, y + h - rr);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
-      ctx.lineTo(x + rr, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
-      ctx.lineTo(x, y + rr);
-      ctx.quadraticCurveTo(x, y, x + rr, y);
-      ctx.closePath();
-    };
-
-    // бары задач (без изменений)
-    for (let i = startIndex; i <= endIndex; i++) {
-      const row = this.flatRows[i];
-      const node = this.nodeIndex.get(row.id);
-       // фактические даты
-      const startStr  = node?.start  ?? row.start;
-      const finishStr = node?.finish ?? row.finish;
-      const s = new Date(startStr  + 'T00:00:00').getTime();
-      const f = new Date(finishStr + 'T00:00:00').getTime();
-      const x0 = Math.round(((s - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
-      const x1 = Math.round(((f - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
-      const w  = Math.max(3, x1 - x0);
-
-      // baseline (если есть)
-      const bStartStr  = node?.baselineStart ?? row.baselineStart;
-      const bFinishStr = node?.baselineFinish ?? row.baselineFinish;
-      const hasBaseline = !!(bStartStr && bFinishStr);
-
-      let bx0 = 0, bx1 = 0, bw = 0;
-      if (hasBaseline) {
-        const bs = new Date(bStartStr! + 'T00:00:00').getTime();
-        const bf = new Date(bFinishStr! + 'T00:00:00').getTime();
-        const _bx0 = Math.round(((bs - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
-        const _bx1 = Math.round(((bf - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
-        bx0 = Math.min(_bx0, _bx1);
-        bx1 = Math.max(_bx0, _bx1);
-        bw  = Math.max(3, bx1 - bx0);
-      }
-
-      // геометрия двух дорожек внутри строки
-      const rowTop = i * this.rowHeight;
-      const pad    = this.taskPad;
-      const gap    = this.taskGap;
-      const trackH = this.taskTrackH;
-      
-      const yActual   = rowTop + pad;              // верхняя дорожка — ACTUAL
-      const yBaseline = yActual + trackH + gap;    // нижняя дорожка — BASELINE
-      const r = 1;                                  // радиус углов
-
-      if (row.hasChildren) {
-        const groupFill = this.colorOf('group');
-        
-        const yc   = i * this.rowHeight + this.rowHeight / 2;
-        const thick = 6;
-        const capMax = 8;
-        const cap = Math.min(capMax, Math.floor(w / 2));
-        const yTop = Math.round(yc - thick / 2) + 0.5;
-        const yBot = Math.round(yc + thick / 2) + 0.5;
-        const coreX0 = x0 + cap;
-        const coreX1 = x1 - cap;
-        const fill   = groupFill;
-        const stroke = strokeBlack;
-
-        ctx.save();
-        if (coreX1 > coreX0) {
-          ctx.fillStyle = fill;
-          ctx.fillRect(coreX0, yTop - 0.5, coreX1 - coreX0, (yBot - yTop) + 1);
-        }
-        // левая "кепка"
-        ctx.beginPath();
-        ctx.moveTo(x0, yBot);
-        ctx.lineTo(coreX0, yBot);
-        ctx.lineTo(x0, yBot + cap);
-        ctx.closePath();
-        ctx.fillStyle = fill; ctx.fill();
-        ctx.strokeStyle = stroke; ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x0, yBot); ctx.lineTo(x0, yBot + cap);
-        ctx.moveTo(x0, yBot + cap); ctx.lineTo(coreX0, yBot);
-        ctx.stroke();
-        // правая "кепка"
-        ctx.beginPath();
-        ctx.moveTo(x1, yBot);
-        ctx.lineTo(coreX1, yBot);
-        ctx.lineTo(x1, yBot + cap);
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-        // верх/низ
-        ctx.fillStyle = fill;
-        ctx.fillRect(x0, yTop - 0.5, Math.max(0, coreX0 - x0), (yBot - yTop) + 1);
-        ctx.fillRect(coreX1, yTop - 0.5, Math.max(0, x1 - coreX1), (yBot - yTop) + 1);
-        ctx.strokeStyle = stroke;
-        ctx.beginPath();
-        ctx.moveTo(x0, yTop); ctx.lineTo(x1, yTop);
-        ctx.moveTo(coreX0-1, yBot); ctx.lineTo(coreX1+1, yBot);
-        ctx.moveTo(x0, yTop); ctx.lineTo(x0, yBot);
-        ctx.moveTo(x1, yTop); ctx.lineTo(x1, yBot);
-        ctx.stroke();
-        // === Прогресс для суммарного бара: внутренняя полоса ===
-        //const prog = this.rowProgress01(i);
-        //const pw = Math.max(0, Math.round(w * prog));
-        //if (pw > 0) {
-        //  const trackH = 4;                      // чуть тоньше, чтобы выглядело аккуратно
-        //  const ty = Math.round(yc - trackH / 2) + 0.5;
-        //  ctx.fillStyle = '#3d7bfd';
-        //  ctx.fillRect(x0, ty, pw, trackH);
-        //}
-        ctx.restore();
-
-      } else {
-
-        const isCritical = !!(node?.critical);
-        const actualColor = isCritical ? this.colorOf('criticalpatch')
-                                       : this.colorOf('actual');
-        const actualBase  = this.rgba(actualColor, 0.35);  // «остаток» светлее основного
-      
-        // baseline (если есть)
-        const bStartStr  = node?.baselineStart ?? row.baselineStart;
-        const bFinishStr = node?.baselineFinish ?? row.baselineFinish;
-        const hasBaseline = !!(bStartStr && bFinishStr);
-
-        if (hasBaseline) {
-          // === BASELINE (нижняя дорожка) ===
-          const baselineColor = this.colorOf('baseline');
-          ctx.save();
-          roundRect(bx0, yBaseline, bw, trackH, r);
-          ctx.fillStyle = this.rgba(baselineColor, 1);          // slate-300 (тело baseline)
-          ctx.fill();
-          ctx.lineWidth = 1;
-          ctx.strokeStyle = strokeBlack;//baselineColor;      // slate-400 (контур baseline)
-          ctx.stroke();
-          ctx.restore();
-    
-          // === ACTUAL (верхняя дорожка) ===
-          const prog = this.rowProgress01(i);
-          const pw = Math.max(0, Math.round(w * prog));
-    
-          ctx.save();
-          // тело actual
-          roundRect(x0, yActual, w, trackH, r);
-          ctx.clip();
-          // остаток (светлее)
-          ctx.fillStyle = actualBase;
-          ctx.fillRect(x0, yActual, w, trackH);
-          // прогресс (темнее)
-          ctx.fillStyle = actualColor;
-          if (pw > 0) ctx.fillRect(x0, yActual, pw, trackH);
-          ctx.restore();
-    
-          // обводка actual
-          ctx.save();
-          roundRect(x0, yActual, w, trackH, r);
-          ctx.strokeStyle = strokeBlack//actualColor;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          ctx.restore();
-    
-        } else {
-          const y = i * this.rowHeight + 6;
-          const h = this.rowHeight - 12;
-          const r = 1;
-          const prog = this.rowProgress01(i);
-          const cw = Math.max(0, Math.round(w * prog));
-          ctx.save();
-          ctx.strokeStyle = strokeBlack;  
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(x0 + r, y);
-          ctx.lineTo(x0 + w - r, y);
-          ctx.quadraticCurveTo(x0 + w, y, x0 + w, y + r);
-          ctx.lineTo(x0 + w, y + h - r);
-          ctx.quadraticCurveTo(x0 + w, y + h, x0 + w - r, y + h);
-          ctx.lineTo(x0 + r, y + h);
-          ctx.quadraticCurveTo(x0, y + h, x0, y + h - r);
-          ctx.lineTo(x0, y + r);
-          ctx.quadraticCurveTo(x0, y, x0 + r, y);
-          ctx.closePath();
-          ctx.save();
-          ctx.clip();
-          // База (остаток) — светлая
-          ctx.fillStyle = actualBase;
-          ctx.fillRect(x0, y, w, h);
-          // Прогресс — тёмнее
-          ctx.fillStyle = actualColor;
-          if (cw > 0) ctx.fillRect(x0, y, cw, h);
-
-          ctx.restore(); // снять клип
-          // Обводка по прежнему пути
-          ctx.stroke();
-          ctx.restore();
-        }
-        
-
-      }
-    }
-    if (this.refLines?.length) {
-      for (const rl of this.refLines) {
-        const ms = toMs(rl.date);
-        if (ms < this.ganttStartMs || ms > this.ganttEndMs) continue;
-        const x = this.dateToX(ms);
-    
-        ctx.save();
-        if (rl.dash) ctx.setLineDash(rl.dash);
-        ctx.strokeStyle = rl.color;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-
-    // dependency connectors on top of everything
-    this.drawDependencies(ctx);
-    this.drawLinkPreviewAndHandles(ctx);
-  }
+private renderGanttBody() {
+  if (!this.showGantt) return;
+  const canvas = this.ganttCanvasRef.nativeElement;
+  const state = this.buildGanttState();
+  paintGanttBody(canvas, state);
+}
 
 // Синхронизация complete при изменениях (не обязательно)
 // Если вы где-то обновляете node.complete и хотите сразу видеть это в таблице без полного prepareData(), можно добавить маленькую синхронизацию (по аналогии с датами):
 
-private updateFlatRowComplete(rowId: string) {
-  const node = this.nodeIndex.get(rowId);
-  if (!node) return;
-  const fr = this.flatRows.find(r => r.id === rowId);
-  if (!fr) return;
-  fr.complete = Math.max(0, Math.min(100, Number(node.complete ?? 0)));
-}
 
 private drawLinkPreviewAndHandles(ctx: CanvasRenderingContext2D) {
  
@@ -2497,196 +2044,7 @@ private get taskTrackH(): number {
     ctx.restore();
   }
 
-
-  // ==================== Drawing helpers ====================
-  private drawClippedText(
-    ctx: CanvasRenderingContext2D,
-    text: string,
-    x: number,
-    centerY: number,
-    cellWidth: number,
-    paddingLeft = 10
-  ) {
-    ctx.save();
-    ctx.fillStyle = this.textColor;
-
-    const maxW = Math.max(0, cellWidth - paddingLeft - 4);
-    const baseX = x + paddingLeft;
-    if (maxW <= 0) { ctx.restore(); return; }
-
-    if (ctx.measureText(text).width <= maxW) {
-      ctx.fillText(text, baseX, centerY);
-      ctx.restore();
-      return;
-    }
-
-    const ell = '…';
-    const ellW = ctx.measureText(ell).width;
-    let lo = 0, hi = text.length;
-    while (lo < hi) {
-      const mid = Math.ceil((lo + hi) / 2);
-      const w = ctx.measureText(text.slice(0, mid)).width + ellW;
-      if (w <= maxW) lo = mid; else hi = mid - 1;
-    }
-    const clipped = text.slice(0, lo) + ell;
-    ctx.fillText(clipped, baseX, centerY);
-    ctx.restore();
-  }
-
-  private drawLevelIndicators(ctx: CanvasRenderingContext2D, level: number, rowTopY: number, xToggle: number) {
-    const barW = this.toggleIndentPerLevel;
-    const h = this.rowHeight;
-
-    for (let l = 0; l <= level; l++) {
-      const x = xToggle + l * barW;
-      const y = rowTopY;
-      ctx.fillStyle = this.getLevelColor(l);
-      ctx.fillRect(x, y, barW, h);
-    }
-  }
-
-  private drawGrip(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-    const r = 1.2;
-    const cols = 2, rows = 3;
-    const gapX = (w - cols * (r * 2)) / (cols + 1);
-    const gapY = (h - rows * (r * 2)) / (rows + 1);
-    ctx.fillStyle = '#777';
-    for (let cx = 0; cx < cols; cx++) {
-      for (let cy = 0; cy < rows; cy++) {
-        const px = x + gapX * (cx + 1) + (r * 2) * cx + r;
-        const py = y + gapY * (cy + 1) + (r * 2) * cy + r;
-        ctx.beginPath();
-        ctx.arc(px, py, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-  }
-
-  private drawDragGhost(ctx: CanvasRenderingContext2D, rowIndex: number, yTop: number, width: number) {
-    const row = this.flatRows[rowIndex];
-
-    ctx.save();
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = '#e6f0ff';
-    ctx.fillRect(0, yTop, width, this.rowHeight);
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = '#4c8dff';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(0.5, yTop + 0.5, width - 1, this.rowHeight - 1);
-    ctx.restore();
-
-    ctx.save();
-    ctx.font = this.font;
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = this.textColor;
-
-    const xDataStart = this.colGrip + this.colToggle;
-    let cursor = xDataStart;
-    const midY = yTop + this.rowHeight / 2;
-
-    this.drawGrip(ctx, 0 + 10, yTop + (this.rowHeight - this.gripDotBox) / 2, this.gripDotBox, this.gripDotBox);
-    this.drawLevelIndicators(ctx, row.level, yTop, this.colGrip);
-
-    for (const col of this.columns) {
-      const val = this.getCellValue(row, col.key);
-      this.drawClippedText(ctx, val, cursor, midY, col.width);
-      cursor += col.width;
-    }
-    ctx.restore();
-  }
-
-  private drawInsertLine(ctx: CanvasRenderingContext2D, y: number, width: number) {
-    ctx.save();
-    ctx.strokeStyle = '#4c8dff';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  private drawDashedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-    ctx.save();
-    ctx.strokeStyle = '#4c8dff';
-    ctx.setLineDash([6, 4]);
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
-    ctx.restore();
-  }
-
   // -------------------- Data Generation --------------------
-  public addRandomNode() {
-    const allNodes = this.getAllNodes(this.workingData);
-    const potentialParents: (Node | null)[] = [null, ...allNodes];
-
-    const parentNode = potentialParents[Math.floor(Math.random() * potentialParents.length)];
-
-    const newNode = this.generateRandomWbsNode();
-
-    if (parentNode === null) {
-      this.workingData.push(newNode);
-    } else {
-      if (!parentNode.children) {
-        parentNode.children = [];
-      }
-      parentNode.children.push(newNode);
-      this.collapsed.delete(parentNode.id);
-    }
-
-    this.prepareData();
-    this.computeGanttRange();
-    this.resizeAllCanvases();
-    this.syncHeaderToBodyScroll();
-    this.syncGanttHeaderToScroll();
-    this.renderAll();
-  }
-
-  private getAllNodes(nodes: Node[]): Node[] {
-    let flatList: Node[] = [];
-    for (const node of nodes) {
-      flatList.push(node);
-      if (node.children && node.children.length > 0) {
-        flatList = flatList.concat(this.getAllNodes(node.children));
-      }
-    }
-    return flatList;
-  }
-
-  private generateRandomWbsNode(): Node {
-    const randomId = `gen-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const taskNames = ['Анализ требований', 'Проектирование архитектуры', 'Разработка модуля', 'Тестирование', 'Написание документации', 'Развертывание'];
-    const randomName = `${taskNames[Math.floor(Math.random() * taskNames.length)]} #${Math.floor(Math.random() * 100)}`;
-
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() + Math.floor(Math.random() * 365));
-    const durationDays = 3 + Math.floor(Math.random() * 28);
-    const finishDate = new Date(startDate);
-    finishDate.setDate(finishDate.getDate() + durationDays);
-
-    const formatDate = (d: Date): IsoDate => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}` as IsoDate;
-    };
-
-    const delta = Math.floor(Math.random() * 11) - 5; // -5..+5 дней
-    const bStartDate = new Date(startDate);  bStartDate.setDate(bStartDate.getDate() + delta);
-    const bFinishDate = new Date(finishDate); bFinishDate.setDate(bFinishDate.getDate() + delta);
-
-    return {
-      id: randomId,
-      name: randomName,
-      start: formatDate(startDate),
-      finish: formatDate(finishDate),
-      baselineStart: formatDate(bStartDate),
-      baselineFinish: formatDate(bFinishDate),
-      complete: Math.floor(Math.random() * 101)
-    };
-  }
 
   private rowProgress01(i: number): number {
     const fr = this.flatRows[i];
@@ -2714,10 +2072,7 @@ private get taskTrackH(): number {
    * Пересчитывает dxDays по последним координатам указателя и scrollLeft.
    */
 
-    // ЗАМЕНИТЕ ВАШ ТЕКУЩИЙ МЕТОД ЭТИМ КОДОМ
-// ЗАМЕНИТЕ ВАШ ТЕКУЩИЙ МЕТОД ЭТИМ КОДОМ
-// ЗАМЕНИТЕ ВЕСЬ МЕТОД ЦЕЛИКОМ НА ЭТОТ КОД
-// ЗАМЕНИТЕ ВЕСЬ МЕТОД ЦЕЛИКОМ НА ЭТОТ КОД
+
 private updateGanttDragFromScroll() {
   if (!this.showGantt) return;
   if (this.ganttDragMode === 'none' || this.ganttDragRowIndex < 0) return;

@@ -45,14 +45,14 @@
 /* (необязательно, но помогает браузеру) — заранее подсказать, что меняется ширина панелей */
 .pane-left, .pane-right { will-change: flex-basis; }
 
-.wbs-host, .gantt-host {
+.gantt-host {
   position: relative;
   width: 100%;
   overflow: hidden;
   background: #fff;
 }
 
-.wbs-header-canvas {
+.gantt-header-canvas {
   position: sticky;
   top: 0;
   z-index: 5;
@@ -61,10 +61,10 @@
   border-bottom: 1px solid #dcdfe6;
 }
 
-.wbs-body-wrapper {
+.gantt-body-wrapper {
   position: relative;
   overflow: auto;
-  max-height: 520px;
+  max-height: 50vw;
 }
 
 canvas { display: block; }
