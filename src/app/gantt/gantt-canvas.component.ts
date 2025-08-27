@@ -246,6 +246,8 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   private hoverBarRow: number | null = null;
   private leftHandleDownRow: number | null = null;
 
+  
+
   // ────────────────── Lifecycle ──────────────────
   ngAfterViewInit(): void {
     this.workingData = deepClone(this._externalData && this._externalData.length ? this._externalData : this.demoData);
@@ -1519,6 +1521,26 @@ private scheduleRender() {
     bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  /**
+   * Computes the visible row index range for a scrollable wrapper (inclusive).
+   */
+  private visibleRowRange(wrapper: HTMLElement): { startIndex: number; endIndex: number } {
+    const rh = this.rowHeight;
+    const scrollTop = wrapper.scrollTop;
+    const clientH = wrapper.clientHeight;
+    const total = this.flatRows.length;
+
+    if (total === 0) return { startIndex: 0, endIndex: -1 };
+
+    let startIndex = Math.floor(scrollTop / rh);
+    let endIndex = Math.ceil((scrollTop + clientH) / rh) - 1;
+
+    if (startIndex < 0) startIndex = 0;
+    if (endIndex >= total) endIndex = total - 1;
+
+    return { startIndex, endIndex };
+  }
+
   private renderAll() {
     this.renderHeader();
     this.renderBody();
@@ -1601,6 +1623,9 @@ private scheduleRender() {
     const width  = parseInt(canvas.style.width, 10);
     const height = parseInt(canvas.style.height, 10);
 
+    // Compute visible range
+    const { startIndex, endIndex } = this.visibleRowRange(this.bodyWrapperRef.nativeElement);
+
     ctx.clearRect(0, 0, width, height);
 
     const xGrip = 0;
@@ -1609,7 +1634,7 @@ private scheduleRender() {
 
     ctx.font = this.font;
 
-    for (let i = 0; i < this.flatRows.length; i++) {
+    for (let i = startIndex; i <= endIndex; i++) {
       const y = i * this.rowHeight;
 
       // зебра
@@ -1905,49 +1930,52 @@ private renderGanttHeader() {
   }
 }
 
-private renderGanttBody() {
-  if (!this.showGantt) return;
-  const canvas = this.ganttCanvasRef.nativeElement;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  const strokeBlack = '#000';
-  const width  = parseInt(canvas.style.width, 10);
-  const height = parseInt(canvas.style.height, 10);
-  const pxPerDay = this.ganttPxPerDay;
+  private renderGanttBody() {
+    if (!this.showGantt) return;
+    const canvas = this.ganttCanvasRef.nativeElement;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const strokeBlack = '#000';
+    const width  = parseInt(canvas.style.width, 10);
+    const height = parseInt(canvas.style.height, 10);
+    const pxPerDay = this.ganttPxPerDay;
 
-  ctx.clearRect(0, 0, width, height);
+    // Compute visible range
+    const { startIndex, endIndex } = this.visibleRowRange(this.ganttWrapperRef.nativeElement);
 
-  // выбрать "единицу сетки" из текущего масштаба
-  let grid: TimeUnit;
-  switch (this.ganttScale) {
-    case 'week-day':       grid = 'day';     break;
-    case 'month-week':     grid = 'week';    break;
-    case 'quarter-month':  grid = 'month';   break;
-    case 'year-month':     grid = 'month';   break;
-    case 'year-quarter':   grid = 'quarter'; break;
-  }
+    ctx.clearRect(0, 0, width, height);
 
-  // вертикальные линии сетки по выбранной единице
-  ctx.strokeStyle = '#ececec';
-  let cur = startOfUnit(new Date(this.ganttStartMs), grid);
-  while (cur.getTime() <= this.ganttEndMs) {
-    const x = Math.round(((cur.getTime() - this.ganttStartMs) / MS_PER_DAY) * pxPerDay) + 0.5;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-    cur = nextUnitStart(cur, grid);
-  }
+    // выбрать "единицу сетки" из текущего масштаба
+    let grid: TimeUnit;
+    switch (this.ganttScale) {
+      case 'week-day':       grid = 'day';     break;
+      case 'month-week':     grid = 'week';    break;
+      case 'quarter-month':  grid = 'month';   break;
+      case 'year-month':     grid = 'month';   break;
+      case 'year-quarter':   grid = 'quarter'; break;
+    }
 
-  // горизонтальные разделители строк
-  for (let i = 0; i < this.flatRows.length; i++) {
-    const y = i * this.rowHeight;
-    ctx.beginPath();
-    ctx.moveTo(0, y + this.rowHeight + 0.5);
-    ctx.lineTo(width, y + this.rowHeight + 0.5);
-    ctx.strokeStyle = this.gridColor;
-    ctx.stroke();
-  }
+    // вертикальные линии сетки по выбранной единице
+    ctx.strokeStyle = '#ececec';
+    let cur = startOfUnit(new Date(this.ganttStartMs), grid);
+    while (cur.getTime() <= this.ganttEndMs) {
+      const x = Math.round(((cur.getTime() - this.ganttStartMs) / MS_PER_DAY) * pxPerDay) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+      cur = nextUnitStart(cur, grid);
+    }
+
+    // горизонтальные разделители строк
+    for (let i = startIndex; i <= endIndex; i++) {
+      const y = i * this.rowHeight;
+      ctx.beginPath();
+      ctx.moveTo(0, y + this.rowHeight + 0.5);
+      ctx.lineTo(width, y + this.rowHeight + 0.5);
+      ctx.strokeStyle = this.gridColor;
+      ctx.stroke();
+    }
 
     // хелпер для скруглённых прямоугольников
     const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
@@ -1965,213 +1993,213 @@ private renderGanttBody() {
       ctx.closePath();
     };
 
-  // бары задач (без изменений)
-  for (let i = 0; i < this.flatRows.length; i++) {
-    const row = this.flatRows[i];
-    const node = this.nodeIndex.get(row.id);
-     // фактические даты
-    const startStr  = node?.start  ?? row.start;
-    const finishStr = node?.finish ?? row.finish;
-    const s = new Date(startStr  + 'T00:00:00').getTime();
-    const f = new Date(finishStr + 'T00:00:00').getTime();
-    const x0 = Math.round(((s - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
-    const x1 = Math.round(((f - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
-    const w  = Math.max(3, x1 - x0);
+    // бары задач (без изменений)
+    for (let i = startIndex; i <= endIndex; i++) {
+      const row = this.flatRows[i];
+      const node = this.nodeIndex.get(row.id);
+       // фактические даты
+      const startStr  = node?.start  ?? row.start;
+      const finishStr = node?.finish ?? row.finish;
+      const s = new Date(startStr  + 'T00:00:00').getTime();
+      const f = new Date(finishStr + 'T00:00:00').getTime();
+      const x0 = Math.round(((s - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
+      const x1 = Math.round(((f - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
+      const w  = Math.max(3, x1 - x0);
 
-    // baseline (если есть)
-    const bStartStr  = node?.baselineStart ?? row.baselineStart;
-    const bFinishStr = node?.baselineFinish ?? row.baselineFinish;
-    const hasBaseline = !!(bStartStr && bFinishStr);
-
-    let bx0 = 0, bx1 = 0, bw = 0;
-    if (hasBaseline) {
-      const bs = new Date(bStartStr! + 'T00:00:00').getTime();
-      const bf = new Date(bFinishStr! + 'T00:00:00').getTime();
-      const _bx0 = Math.round(((bs - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
-      const _bx1 = Math.round(((bf - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
-      bx0 = Math.min(_bx0, _bx1);
-      bx1 = Math.max(_bx0, _bx1);
-      bw  = Math.max(3, bx1 - bx0);
-    }
-
-    // геометрия двух дорожек внутри строки
-    const rowTop = i * this.rowHeight;
-    const pad    = this.taskPad;
-    const gap    = this.taskGap;
-    const trackH = this.taskTrackH;
-    
-    const yActual   = rowTop + pad;              // верхняя дорожка — ACTUAL
-    const yBaseline = yActual + trackH + gap;    // нижняя дорожка — BASELINE
-    const r = 1;                                  // радиус углов
-
-    if (row.hasChildren) {
-      const groupFill = this.colorOf('group');
-      
-      const yc   = i * this.rowHeight + this.rowHeight / 2;
-      const thick = 6;
-      const capMax = 8;
-      const cap = Math.min(capMax, Math.floor(w / 2));
-      const yTop = Math.round(yc - thick / 2) + 0.5;
-      const yBot = Math.round(yc + thick / 2) + 0.5;
-      const coreX0 = x0 + cap;
-      const coreX1 = x1 - cap;
-      const fill   = groupFill;
-      const stroke = strokeBlack;
-
-      ctx.save();
-      if (coreX1 > coreX0) {
-        ctx.fillStyle = fill;
-        ctx.fillRect(coreX0, yTop - 0.5, coreX1 - coreX0, (yBot - yTop) + 1);
-      }
-      // левая "кепка"
-      ctx.beginPath();
-      ctx.moveTo(x0, yBot);
-      ctx.lineTo(coreX0, yBot);
-      ctx.lineTo(x0, yBot + cap);
-      ctx.closePath();
-      ctx.fillStyle = fill; ctx.fill();
-      ctx.strokeStyle = stroke; ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x0, yBot); ctx.lineTo(x0, yBot + cap);
-      ctx.moveTo(x0, yBot + cap); ctx.lineTo(coreX0, yBot);
-      ctx.stroke();
-      // правая "кепка"
-      ctx.beginPath();
-      ctx.moveTo(x1, yBot);
-      ctx.lineTo(coreX1, yBot);
-      ctx.lineTo(x1, yBot + cap);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      // верх/низ
-      ctx.fillStyle = fill;
-      ctx.fillRect(x0, yTop - 0.5, Math.max(0, coreX0 - x0), (yBot - yTop) + 1);
-      ctx.fillRect(coreX1, yTop - 0.5, Math.max(0, x1 - coreX1), (yBot - yTop) + 1);
-      ctx.strokeStyle = stroke;
-      ctx.beginPath();
-      ctx.moveTo(x0, yTop); ctx.lineTo(x1, yTop);
-      ctx.moveTo(coreX0-1, yBot); ctx.lineTo(coreX1+1, yBot);
-      ctx.moveTo(x0, yTop); ctx.lineTo(x0, yBot);
-      ctx.moveTo(x1, yTop); ctx.lineTo(x1, yBot);
-      ctx.stroke();
-      // === Прогресс для суммарного бара: внутренняя полоса ===
-      //const prog = this.rowProgress01(i);
-      //const pw = Math.max(0, Math.round(w * prog));
-      //if (pw > 0) {
-      //  const trackH = 4;                      // чуть тоньше, чтобы выглядело аккуратно
-      //  const ty = Math.round(yc - trackH / 2) + 0.5;
-      //  ctx.fillStyle = '#3d7bfd';
-      //  ctx.fillRect(x0, ty, pw, trackH);
-      //}
-      ctx.restore();
-
-    } else {
-
-      const isCritical = !!(node?.critical);
-      const actualColor = isCritical ? this.colorOf('criticalpatch')
-                                     : this.colorOf('actual');
-      const actualBase  = this.rgba(actualColor, 0.35);  // «остаток» светлее основного
-    
       // baseline (если есть)
       const bStartStr  = node?.baselineStart ?? row.baselineStart;
       const bFinishStr = node?.baselineFinish ?? row.baselineFinish;
       const hasBaseline = !!(bStartStr && bFinishStr);
 
+      let bx0 = 0, bx1 = 0, bw = 0;
       if (hasBaseline) {
-        // === BASELINE (нижняя дорожка) ===
-        const baselineColor = this.colorOf('baseline');
-        ctx.save();
-        roundRect(bx0, yBaseline, bw, trackH, r);
-        ctx.fillStyle = this.rgba(baselineColor, 1);          // slate-300 (тело baseline)
-        ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = strokeBlack;//baselineColor;      // slate-400 (контур baseline)
-        ctx.stroke();
-        ctx.restore();
-  
-        // === ACTUAL (верхняя дорожка) ===
-        const prog = this.rowProgress01(i);
-        const pw = Math.max(0, Math.round(w * prog));
-  
-        ctx.save();
-        // тело actual
-        roundRect(x0, yActual, w, trackH, r);
-        ctx.clip();
-        // остаток (светлее)
-        ctx.fillStyle = actualBase;
-        ctx.fillRect(x0, yActual, w, trackH);
-        // прогресс (темнее)
-        ctx.fillStyle = actualColor;
-        if (pw > 0) ctx.fillRect(x0, yActual, pw, trackH);
-        ctx.restore();
-  
-        // обводка actual
-        ctx.save();
-        roundRect(x0, yActual, w, trackH, r);
-        ctx.strokeStyle = strokeBlack//actualColor;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.restore();
-  
-      } else {
-        const y = i * this.rowHeight + 6;
-        const h = this.rowHeight - 12;
-        const r = 1;
-        const prog = this.rowProgress01(i);
-        const cw = Math.max(0, Math.round(w * prog));
-        ctx.save();
-        ctx.strokeStyle = strokeBlack;  
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x0 + r, y);
-        ctx.lineTo(x0 + w - r, y);
-        ctx.quadraticCurveTo(x0 + w, y, x0 + w, y + r);
-        ctx.lineTo(x0 + w, y + h - r);
-        ctx.quadraticCurveTo(x0 + w, y + h, x0 + w - r, y + h);
-        ctx.lineTo(x0 + r, y + h);
-        ctx.quadraticCurveTo(x0, y + h, x0, y + h - r);
-        ctx.lineTo(x0, y + r);
-        ctx.quadraticCurveTo(x0, y, x0 + r, y);
-        ctx.closePath();
-        ctx.save();
-        ctx.clip();
-        // База (остаток) — светлая
-        ctx.fillStyle = actualBase;
-        ctx.fillRect(x0, y, w, h);
-        // Прогресс — тёмнее
-        ctx.fillStyle = actualColor;
-        if (cw > 0) ctx.fillRect(x0, y, cw, h);
+        const bs = new Date(bStartStr! + 'T00:00:00').getTime();
+        const bf = new Date(bFinishStr! + 'T00:00:00').getTime();
+        const _bx0 = Math.round(((bs - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
+        const _bx1 = Math.round(((bf - this.ganttStartMs) / MS_PER_DAY) * pxPerDay);
+        bx0 = Math.min(_bx0, _bx1);
+        bx1 = Math.max(_bx0, _bx1);
+        bw  = Math.max(3, bx1 - bx0);
+      }
 
-        ctx.restore(); // снять клип
-        // Обводка по прежнему пути
+      // геометрия двух дорожек внутри строки
+      const rowTop = i * this.rowHeight;
+      const pad    = this.taskPad;
+      const gap    = this.taskGap;
+      const trackH = this.taskTrackH;
+      
+      const yActual   = rowTop + pad;              // верхняя дорожка — ACTUAL
+      const yBaseline = yActual + trackH + gap;    // нижняя дорожка — BASELINE
+      const r = 1;                                  // радиус углов
+
+      if (row.hasChildren) {
+        const groupFill = this.colorOf('group');
+        
+        const yc   = i * this.rowHeight + this.rowHeight / 2;
+        const thick = 6;
+        const capMax = 8;
+        const cap = Math.min(capMax, Math.floor(w / 2));
+        const yTop = Math.round(yc - thick / 2) + 0.5;
+        const yBot = Math.round(yc + thick / 2) + 0.5;
+        const coreX0 = x0 + cap;
+        const coreX1 = x1 - cap;
+        const fill   = groupFill;
+        const stroke = strokeBlack;
+
+        ctx.save();
+        if (coreX1 > coreX0) {
+          ctx.fillStyle = fill;
+          ctx.fillRect(coreX0, yTop - 0.5, coreX1 - coreX0, (yBot - yTop) + 1);
+        }
+        // левая "кепка"
+        ctx.beginPath();
+        ctx.moveTo(x0, yBot);
+        ctx.lineTo(coreX0, yBot);
+        ctx.lineTo(x0, yBot + cap);
+        ctx.closePath();
+        ctx.fillStyle = fill; ctx.fill();
+        ctx.strokeStyle = stroke; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x0, yBot); ctx.lineTo(x0, yBot + cap);
+        ctx.moveTo(x0, yBot + cap); ctx.lineTo(coreX0, yBot);
+        ctx.stroke();
+        // правая "кепка"
+        ctx.beginPath();
+        ctx.moveTo(x1, yBot);
+        ctx.lineTo(coreX1, yBot);
+        ctx.lineTo(x1, yBot + cap);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // верх/низ
+        ctx.fillStyle = fill;
+        ctx.fillRect(x0, yTop - 0.5, Math.max(0, coreX0 - x0), (yBot - yTop) + 1);
+        ctx.fillRect(coreX1, yTop - 0.5, Math.max(0, x1 - coreX1), (yBot - yTop) + 1);
+        ctx.strokeStyle = stroke;
+        ctx.beginPath();
+        ctx.moveTo(x0, yTop); ctx.lineTo(x1, yTop);
+        ctx.moveTo(coreX0-1, yBot); ctx.lineTo(coreX1+1, yBot);
+        ctx.moveTo(x0, yTop); ctx.lineTo(x0, yBot);
+        ctx.moveTo(x1, yTop); ctx.lineTo(x1, yBot);
+        ctx.stroke();
+        // === Прогресс для суммарного бара: внутренняя полоса ===
+        //const prog = this.rowProgress01(i);
+        //const pw = Math.max(0, Math.round(w * prog));
+        //if (pw > 0) {
+        //  const trackH = 4;                      // чуть тоньше, чтобы выглядело аккуратно
+        //  const ty = Math.round(yc - trackH / 2) + 0.5;
+        //  ctx.fillStyle = '#3d7bfd';
+        //  ctx.fillRect(x0, ty, pw, trackH);
+        //}
+        ctx.restore();
+
+      } else {
+
+        const isCritical = !!(node?.critical);
+        const actualColor = isCritical ? this.colorOf('criticalpatch')
+                                       : this.colorOf('actual');
+        const actualBase  = this.rgba(actualColor, 0.35);  // «остаток» светлее основного
+      
+        // baseline (если есть)
+        const bStartStr  = node?.baselineStart ?? row.baselineStart;
+        const bFinishStr = node?.baselineFinish ?? row.baselineFinish;
+        const hasBaseline = !!(bStartStr && bFinishStr);
+
+        if (hasBaseline) {
+          // === BASELINE (нижняя дорожка) ===
+          const baselineColor = this.colorOf('baseline');
+          ctx.save();
+          roundRect(bx0, yBaseline, bw, trackH, r);
+          ctx.fillStyle = this.rgba(baselineColor, 1);          // slate-300 (тело baseline)
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = strokeBlack;//baselineColor;      // slate-400 (контур baseline)
+          ctx.stroke();
+          ctx.restore();
+    
+          // === ACTUAL (верхняя дорожка) ===
+          const prog = this.rowProgress01(i);
+          const pw = Math.max(0, Math.round(w * prog));
+    
+          ctx.save();
+          // тело actual
+          roundRect(x0, yActual, w, trackH, r);
+          ctx.clip();
+          // остаток (светлее)
+          ctx.fillStyle = actualBase;
+          ctx.fillRect(x0, yActual, w, trackH);
+          // прогресс (темнее)
+          ctx.fillStyle = actualColor;
+          if (pw > 0) ctx.fillRect(x0, yActual, pw, trackH);
+          ctx.restore();
+    
+          // обводка actual
+          ctx.save();
+          roundRect(x0, yActual, w, trackH, r);
+          ctx.strokeStyle = strokeBlack//actualColor;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+    
+        } else {
+          const y = i * this.rowHeight + 6;
+          const h = this.rowHeight - 12;
+          const r = 1;
+          const prog = this.rowProgress01(i);
+          const cw = Math.max(0, Math.round(w * prog));
+          ctx.save();
+          ctx.strokeStyle = strokeBlack;  
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x0 + r, y);
+          ctx.lineTo(x0 + w - r, y);
+          ctx.quadraticCurveTo(x0 + w, y, x0 + w, y + r);
+          ctx.lineTo(x0 + w, y + h - r);
+          ctx.quadraticCurveTo(x0 + w, y + h, x0 + w - r, y + h);
+          ctx.lineTo(x0 + r, y + h);
+          ctx.quadraticCurveTo(x0, y + h, x0, y + h - r);
+          ctx.lineTo(x0, y + r);
+          ctx.quadraticCurveTo(x0, y, x0 + r, y);
+          ctx.closePath();
+          ctx.save();
+          ctx.clip();
+          // База (остаток) — светлая
+          ctx.fillStyle = actualBase;
+          ctx.fillRect(x0, y, w, h);
+          // Прогресс — тёмнее
+          ctx.fillStyle = actualColor;
+          if (cw > 0) ctx.fillRect(x0, y, cw, h);
+
+          ctx.restore(); // снять клип
+          // Обводка по прежнему пути
+          ctx.stroke();
+          ctx.restore();
+        }
+        
+
+      }
+    }
+    if (this.refLines?.length) {
+      for (const rl of this.refLines) {
+        const ms = toMs(rl.date);
+        if (ms < this.ganttStartMs || ms > this.ganttEndMs) continue;
+        const x = this.dateToX(ms);
+    
+        ctx.save();
+        if (rl.dash) ctx.setLineDash(rl.dash);
+        ctx.strokeStyle = rl.color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
         ctx.stroke();
         ctx.restore();
       }
-      
-
     }
-  }
-  if (this.refLines?.length) {
-    for (const rl of this.refLines) {
-      const ms = toMs(rl.date);
-      if (ms < this.ganttStartMs || ms > this.ganttEndMs) continue;
-      const x = this.dateToX(ms);
-  
-      ctx.save();
-      if (rl.dash) ctx.setLineDash(rl.dash);
-      ctx.strokeStyle = rl.color;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
 
-  // dependency connectors on top of everything
-  this.drawDependencies(ctx);
-  this.drawLinkPreviewAndHandles(ctx);
-}
+    // dependency connectors on top of everything
+    this.drawDependencies(ctx);
+    this.drawLinkPreviewAndHandles(ctx);
+  }
 
 // Синхронизация complete при изменениях (не обязательно)
 // Если вы где-то обновляете node.complete и хотите сразу видеть это в таблице без полного prepareData(), можно добавить маленькую синхронизацию (по аналогии с датами):
