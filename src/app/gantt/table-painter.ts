@@ -232,6 +232,139 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
   ctx.restore();
 }
 
+export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaintState): void {
+  const ctx = bodyCanvas.getContext('2d');
+  if (!ctx) return;
+
+  const width  = parseInt(bodyCanvas.style.width, 10)  || bodyCanvas.width;
+  const height = parseInt(bodyCanvas.style.height, 10) || bodyCanvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.font = state.font;
+
+  const xGrip = 0;
+  const xToggle = xGrip + state.colGrip;
+  const xDataStart = xToggle + state.colToggle;
+
+  const total = state.flatRows.length;
+  if (!total) return;
+
+  const startIndex = clamp(state.visibleStartIndex, 0, total - 1);
+  const endIndex   = clamp(state.visibleEndIndex,   -1, total - 1);
+  if (endIndex < startIndex) return;
+
+  // ── ключевая математика «якоря» ─────────────────────────────────────
+  const firstTop = startIndex * state.rowHeight;                 // контент-Y начала окна
+  const yOffset  = -(state.scrollTop - firstTop);                // ∈ [-rowHeight, rowHeight)
+  // теперь рисуем строки по y = (i - startIndex)*rowHeight + yOffset
+
+  // Клип ровно по вьюпорту
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, width, height);
+  ctx.clip();
+
+  for (let i = startIndex; i <= endIndex; i++) {
+    const row = state.flatRows[i];
+    const y   = (i - startIndex) * state.rowHeight + yOffset;    // viewport-Y
+
+    // 1) зебра
+    if (i % 2 === 1) {
+      ctx.fillStyle = state.zebraColor;
+      ctx.fillRect(0, y, width, state.rowHeight);
+    }
+
+    // 2) фон уровня для родителя
+    if (row.hasChildren) {
+      ctx.fillStyle = getLevelColor(row.level, state.levelColors);
+      ctx.fillRect(state.colGrip, y, width - state.colGrip, state.rowHeight);
+    }
+
+    // 3) горизонтальная линия
+    ctx.beginPath();
+    ctx.moveTo(0, y + state.rowHeight + 0.5);
+    ctx.lineTo(width, y + state.rowHeight + 0.5);
+    ctx.strokeStyle = state.gridColor;
+    ctx.stroke();
+
+    // 4) «ручка» перетаскивания
+    drawGrip(ctx, xGrip + 10, y + (state.rowHeight - 12) / 2, 12, 12);
+
+    // 5) полосы-уровни (indent)
+    drawLevelIndicators(
+      ctx, row.level, y, xToggle,
+      state.toggleIndentPerLevel, state.rowHeight, state.levelColors
+    );
+
+    // 6) треугольник сворачивания/разворачивания
+    if (row.hasChildren) {
+      const triSize = 12;
+      const triX = xToggle + 8 + state.toggleIndentPerLevel * row.level;
+      const triY = y + (state.rowHeight - triSize) / 2;
+      ctx.save();
+      ctx.beginPath();
+      if (state.collapsedIds.has(row.id)) {
+        ctx.moveTo(triX + 2,  triY + 2);
+        ctx.lineTo(triX + 10, triY + 6);
+        ctx.lineTo(triX + 2,  triY + 10);
+      } else {
+        ctx.moveTo(triX + 2,  triY + 3);
+        ctx.lineTo(triX + 10, triY + 3);
+        ctx.lineTo(triX + 6,  triY + 11);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#666';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 7) ячейки
+    ctx.fillStyle = state.textColor;
+    const midY = y + state.rowHeight / 2;
+    let cursor = xDataStart;
+    for (const col of state.columns) {
+      const val = state.getCellValue(row, col.key);
+      drawClippedText(ctx, val, cursor, midY, col.width, 10);
+      cursor += col.width;
+    }
+
+
+  }
+  bodyCanvas.style.zIndex = '9999';
+  bodyCanvas.style.background = 'rgba(255,0,0,.06)';
+  // ── DnD overlays (во viewport-координатах) ──────────────────────────
+  if (state.isDragging && state.dragRowIndex >= 0) {
+    // lastMouseY — уже viewport-Y, поэтому без scrollTop
+    const ghostY = state.lastMouseY - state.dragMouseDy;
+    drawDragGhost(ctx, ghostY, width, state.rowHeight);
+
+    if (state.dropMode.kind === 'insert') {
+      // Переводим контент-Y линии вставки в viewport-Y:
+      const insY_view = (state.dropMode.beforeRowIndex - startIndex) * state.rowHeight + yOffset;
+      drawInsertLine(ctx, insY_view, width);
+    } else if (state.dropMode.kind === 'child') {
+      const rectY_view = (state.dropMode.targetRowIndex - startIndex) * state.rowHeight + yOffset;
+      drawDashedRect(ctx, 0, rectY_view, width, state.rowHeight);
+    }
+  }
+
+  // ── вертикальные линии сетки (во viewport) ──────────────────────────
+  ctx.beginPath();
+  ctx.moveTo(state.colGrip + 0.5, 0);
+  ctx.lineTo(state.colGrip + 0.5, height);
+  ctx.moveTo((state.colGrip + state.colToggle) + 0.5, 0);
+  ctx.lineTo((state.colGrip + state.colToggle) + 0.5, height);
+  let edge = xGrip + state.colGrip + state.colToggle;
+  for (const col of state.columns) {
+    edge += col.width;
+    ctx.moveTo(edge + 0.5, 0);
+    ctx.lineTo(edge + 0.5, height);
+  }
+  ctx.strokeStyle = state.gridColor;
+  ctx.stroke();
+
+  ctx.restore(); // clip
+}
 
 
 
