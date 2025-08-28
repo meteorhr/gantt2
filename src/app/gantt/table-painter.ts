@@ -214,8 +214,11 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
       drawClippedText(ctx, val, cursor, midY, col.width, 10);
       cursor += col.width;
     }
-  }
 
+
+  }
+  bodyCanvas.style.zIndex = '9999';
+  bodyCanvas.style.background = 'rgba(255,0,0,.06)';
   // ── DnD overlays (во viewport-координатах) ──────────────────────────
   if (state.isDragging && state.dragRowIndex >= 0) {
     // lastMouseY — уже viewport-Y, поэтому без scrollTop
@@ -251,13 +254,9 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
 }
 
 
-/* ==============================
- * ВНУТРЕННИЕ ХЕЛПЕРЫ ОТРИСОВКИ
- * ============================== */
 
-function clamp(v: number, a: number, b: number): number {
-  if (isNaN(v)) return a;
-  return Math.max(a, Math.min(b, v));
+function clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
 }
 
 /** Палитра уровня по индексу (циклически). */

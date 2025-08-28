@@ -462,10 +462,10 @@ private onGanttScroll() {
         bodyWrapper.scrollTop  += e.deltaY;
         bodyWrapper.scrollLeft += e.deltaX;
       };
-      tableOverlay.addEventListener('wheel', forwardWheelTable, { passive: true });
-      this.destroyRef.onDestroy(() =>
-        tableOverlay.removeEventListener('wheel', forwardWheelTable)
-      );
+      //tableOverlay.addEventListener('wheel', forwardWheelTable, { passive: true });
+      //this.destroyRef.onDestroy(() =>
+      //  tableOverlay.removeEventListener('wheel', forwardWheelTable)
+      //);
     
 
       if (this.showGantt) {
@@ -1699,33 +1699,27 @@ private resizeTableCanvases() {
   const bodyCanvas = this.canvasRef.nativeElement;
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
-  // ширина контента остаётся полной — чтобы был горизонтальный скролл
+  // ширина контента для Х-скролла (шапка)
   const contentWidth =
     this.colGrip + this.colToggle +
     this.columns.reduce((s, c) => s + c.width, 0);
 
-  // ВАЖНО: шапка — по max(hostWidth, contentWidth)
+  // шапка по max(hostWidth, contentWidth)
   const headerCssWidth = Math.max(host.clientWidth, contentWidth);
   headerCanvas.width  = Math.floor(headerCssWidth * dpr);
   headerCanvas.height = Math.floor(this.headerHeight * dpr);
   headerCanvas.style.width  = `${headerCssWidth}px`;
   headerCanvas.style.height = `${this.headerHeight}px`;
-  const hctx = headerCanvas.getContext('2d')!;
-  hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  headerCanvas.getContext('2d')!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // ТЕЛО: ширина как у шапки; ВЫСОТА — ТОЛЬКО ВЫСОТА ПРОКРУЧИВАЕМОГО ВЬЮПОРТА
-  // Контентная "высота" задаётся не канвасом, а scroll-контейнером (via CSS + виртуальный размер)
-  const bodyCssWidth  = headerCssWidth;
-  const bodyCssHeight = bodyWrapper.clientHeight; // принципиально!
+  // ⛳️ ВАЖНО: тело — ровно размер вьюпорта wrapper’а
+  const bodyCssWidth  = bodyWrapper.clientWidth;      // ← было headerCssWidth
+  const bodyCssHeight = bodyWrapper.clientHeight;     // (как и раньше)
   bodyCanvas.width  = Math.floor(bodyCssWidth * dpr);
   bodyCanvas.height = Math.floor(bodyCssHeight * dpr);
   bodyCanvas.style.width  = `${bodyCssWidth}px`;
   bodyCanvas.style.height = `${bodyCssHeight}px`;
-  const bctx = bodyCanvas.getContext('2d')!;
-  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  // Виртуальная высота для скролла обеспечивается самим bodyWrapper за счёт содержимого правого/левого канвасов
-  // (у нас обе панели синхронизированы; если нужно, можно дополнительно задать "фантом" контент через padding-bottom).
+  bodyCanvas.getContext('2d')!.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 /** Гантт канвасы: тело — по вьюпорту, без гигантской высоты. */
@@ -1740,24 +1734,21 @@ private resizeGanttCanvases() {
   const totalDays = Math.max(1, Math.ceil((this.ganttEndMs - this.ganttStartMs) / MS_PER_DAY));
   const contentWidth = totalDays * this.ganttPxPerDay;
 
-  // Шапка по ширине контента/хоста
   const headerCssWidth = Math.max(host.clientWidth, contentWidth);
-  headerCanvas.width = Math.floor(headerCssWidth * dpr);
+  headerCanvas.width  = Math.floor(headerCssWidth * dpr);
   headerCanvas.height = Math.floor(this.headerHeight * dpr);
-  headerCanvas.style.width = `${headerCssWidth}px`;
+  headerCanvas.style.width  = `${headerCssWidth}px`;
   headerCanvas.style.height = `${this.headerHeight}px`;
-  const hctx = headerCanvas.getContext('2d')!;
-  hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  headerCanvas.getContext('2d')!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // Тело: ширина — как у шапки; высота — только высота вьюпорта прокрутки
-  const bodyCssWidth = headerCssWidth;
-  const bodyCssHeight = wrapper.clientHeight; // ключевой момент
-  bodyCanvas.width = Math.floor(bodyCssWidth * dpr);
+  // ⛳️ тело — ВЬЮПОРТ wrapper’а
+  const bodyCssWidth  = wrapper.clientWidth;         // ← было headerCssWidth
+  const bodyCssHeight = wrapper.clientHeight;
+  bodyCanvas.width  = Math.floor(bodyCssWidth * dpr);
   bodyCanvas.height = Math.floor(bodyCssHeight * dpr);
-  bodyCanvas.style.width = `${bodyCssWidth}px`;
+  bodyCanvas.style.width  = `${bodyCssWidth}px`;
   bodyCanvas.style.height = `${bodyCssHeight}px`;
-  const bctx = bodyCanvas.getContext('2d')!;
-  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  bodyCanvas.getContext('2d')!.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
   /**
@@ -1796,42 +1787,34 @@ private resizeGanttCanvases() {
 
   // Файл: src/app/gantt/gantt-canvas.component.ts
 
-private renderBody() {
-  const canvas = this.canvasRef.nativeElement;
-  const ctx = canvas.getContext('2d')!;
-  const wrap = this.bodyWrapperRef.nativeElement;
-
-  const { startIndex, endIndex } = this.visibleRowRange(wrap);
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Сохраняем исходное состояние контекста (трансформации, стили и т.д.)
-  ctx.save();
-
-  // Устанавливаем область отсечения, чтобы ничего не рисовалось за пределами видимой части канваса
-  ctx.beginPath();
-  ctx.rect(0, 0, canvas.width, canvas.height);
-  ctx.clip();
+  private renderBody() {
+    const canvas = this.canvasRef.nativeElement;
+    const ctx = canvas.getContext('2d')!;
+    const wrap = this.bodyWrapperRef.nativeElement;
   
-  // !!! КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ !!!
-  // Сдвигаем всю систему координат канваса вверх на величину скролла.
-  // Теперь отрисовщик может рисовать строки по их абсолютным координатам (y = rowIndex * rowHeight),
-  // и они автоматически окажутся в правильном месте на экране.
-  ctx.translate(0, -wrap.scrollTop);
-
-  // Собираем состояние для отрисовщика. Мы по-прежнему передаем scrollTop,
-  // так как отрисовщик может его использовать для своих внутренних нужд,
-  // но за ВИЗУАЛЬНОЕ смещение теперь отвечает `translate`.
-  const state = this.buildTableState();
-  state.visibleStartIndex = startIndex;
-  state.visibleEndIndex = endIndex;
+    // ❌ не делаем translate здесь — НИЖЕ УБРАТЬ:
+    // ctx.translate(0, -wrap.scrollTop);
   
-  // Вызываем отрисовщик
-  renderTableBody(canvas, state);
-
-  // Восстанавливаем контекст в исходное состояние (убираем translate и clip)
-  ctx.restore();
-}
+    const width  = canvas.width;
+    const height = canvas.height;
+  
+    ctx.clearRect(0, 0, width, height);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, width, height);
+    ctx.clip();
+  
+    // buildTableState уже кладёт scrollTop и viewportHeight,
+    // а также корректные visibleStartIndex/visibleEndIndex
+    const { startIndex, endIndex } = this.visibleRowRange(wrap);
+    const state = this.buildTableState();
+    state.visibleStartIndex = startIndex;
+    state.visibleEndIndex   = endIndex;
+  
+    renderTableBody(canvas, state);
+  
+    ctx.restore();
+  }
   // ---------- ГАНТТ: диапазон и отрисовка ----------
   private computeGanttRange() {
     if (!this.workingData.length) {
@@ -1897,8 +1880,7 @@ private renderGanttBody() {
   ctx.rect(0, 0, canvas.width, canvas.height);
   ctx.clip();
 
-  ctx.save();
-  ctx.translate(0, -wrap.scrollTop); // только -scrollTop
+  
 
   const full = this.buildGanttState();
   const state = {

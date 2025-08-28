@@ -9,7 +9,7 @@
   width: 100%;
 }
 
-/* ВЕРХНИЙ TOOLBAR — как был */
+/* ВЕРХНИЙ TOOLBAR */
 .page-toolbar{
   position: sticky;
   top: 0;
@@ -61,7 +61,7 @@
   min-height: 0;
 }
 
-/* СПЛИТ-КОНТЕЙНЕР занимает всю доступную высоту .center */
+/* СПЛИТ-КОНТЕЙНЕР */
 .split-root {
   display: flex;
   align-items: stretch;
@@ -105,6 +105,7 @@
 }
 .pane-left, .pane-right { will-change: flex-basis; }
 
+/* Общий контейнер панели (и для таблицы, и для ганта) */
 .gantt-host {
   position: relative;
   width: 100%;
@@ -116,7 +117,7 @@
   min-height: 0;
 }
 
-/* липкая шапка */
+/* Липкая шапка */
 .gantt-header-canvas {
   position: sticky;
   top: 0;
@@ -126,25 +127,23 @@
   border-bottom: 1px solid #dcdfe6;
 }
 
-/* ✅ ✅ ✅ ИСПРАВЛЕННЫЙ БЛОК ✅ ✅ ✅ */
+/* === Scroll-wrapper + overlay canvas + spacer === */
 .gantt-body-wrapper {
   position: relative;
   overflow: auto;
-  /* Добавлено: растягиваем обертку на всю доступную высоту */
   flex: 1 1 auto;
   min-height: 0;
 }
 
 .gantt-body-overlay {
-  position: absolute;
-  top: 0; 
+  position: sticky;
+  top: 0;
   left: 0;
   z-index: 2;
   display: block;
-  pointer-events: auto;
+  pointer-events: auto; /* нужно для кликов/drag */
 }
 
-/* спейсер даёт реальную scrollHeight/scrollWidth; размеры задаёшь из TS */
 .gantt-spacer {
   width: 100%;
   height: 100%;

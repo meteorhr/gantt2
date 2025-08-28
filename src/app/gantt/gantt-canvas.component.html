@@ -8,7 +8,6 @@
   </div>
 
   <div class="gantt-toolbar">
-    <!-- Группы управления Гантом показываем только если showGantt -->
     @if(showGantt){
       <div class="zoom">
         <button type="button" (click)="bumpScale(-1)" title="Zoom out">−</button>
@@ -17,7 +16,7 @@
         <button type="button" (click)="zoomToFit()" title="Zoom to fit all tasks">Fit</button>
         <span class="zoom-label">Timescale</span>
       </div>
-      <select  [value]="ganttScale" (change)="onScaleChange($event)">
+      <select [value]="ganttScale" (change)="onScaleChange($event)">
         <option value="week-day">week | day</option>
         <option value="month-week">month | week</option>
         <option value="quarter-month">quarter | month</option>
@@ -34,33 +33,42 @@
 <!-- ОСНОВНОЕ СОДЕРЖИМОЕ -->
 <div class="center">
   <div #splitRoot class="split-root">
-    <!-- Левая панель (таблица) -->
+    <!-- Левая панель (ТАБЛИЦА) -->
     <div class="pane pane-left" [style.flex-basis.%]="showGantt ? leftPct : 100">
       <div #host class="gantt-host">
+        <!-- шапка таблицы -->
         <canvas #headerCanvas class="gantt-header-canvas"></canvas>
+
+        <!-- прокручиваемое тело таблицы -->
         <div #bodyWrapper class="gantt-body-wrapper">
-          <div #tableSpacer class="gantt-spacer"></div>
-          <!-- Оверлей ВНУТРИ wrapper'а -->
           <canvas #canvas class="gantt-body-overlay"></canvas>
+          <div #tableSpacer class="gantt-spacer"></div>
+          <!-- overlay-канвас ДОЛЖЕН быть ВНУТРИ wrapper -->
+
         </div>
       </div>
     </div>
 
     <!-- Разделитель -->
-    <div class="splitter"
-         (mousedown)="onSplitMouseDown($event)"
-         [style.display]="showGantt ? '' : 'none'"></div>
+    <div
+      class="splitter"
+      (mousedown)="onSplitMouseDown($event)"
+      [style.display]="showGantt ? '' : 'none'">
+    </div>
 
-    <!-- Правая панель (гантт) -->
-    <div class="pane pane-right"
-         [style.flex-basis.%]="100 - leftPct"
-         [style.display]="showGantt ? '' : 'none'">
+    <!-- Правая панель (ГАНТТ) -->
+    <div
+      class="pane pane-right"
+      [style.flex-basis.%]="100 - leftPct"
+      [style.display]="showGantt ? '' : 'none'">
       <div #ganttHost class="gantt-host">
+        <!-- шапка ганта -->
         <canvas #ganttHeaderCanvas class="gantt-header-canvas"></canvas>
+
+        <!-- прокручиваемое тело ганта -->
         <div #ganttWrapper class="gantt-body-wrapper">
-          <div #ganttSpacer class="gantt-spacer"></div>
-          <!-- Оверлей ВНУТРИ wrapper'а -->
           <canvas #ganttCanvas class="gantt-body-overlay"></canvas>
+          <div #ganttSpacer class="gantt-spacer"></div>
         </div>
       </div>
     </div>
