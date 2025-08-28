@@ -29,7 +29,7 @@ export class App {
   ];
 
   constructor(){
-    const g =  generateActivityData(100, { seed: 20250826, rootsCount: 5, criticalProbability: true  });
+    const g =  generateActivityData(10000, { seed: 20250826, rootsCount: 5, criticalProbability: true  });
     console.log(g)
     this.activityData = g 
   }

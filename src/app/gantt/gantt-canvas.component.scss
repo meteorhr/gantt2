@@ -136,18 +136,26 @@
   border-bottom: 1px solid #dcdfe6;
 }
 
-/* ВАЖНО: тело должно занимать весь остаток высоты и скроллиться */
 .gantt-body-wrapper {
-  position: relative;
+  position: relative;   /* обязательно */
   overflow: auto;
-
-  /* ГЛАВНОЕ: растянуться по высоте родителя и убрать прежний max-height */
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
 }
 
-canvas { display: block; }
+.gantt-body-wrapper canvas {
+  position: absolute;   /* канвас поверх спейсера */
+  top: 0;
+  left: 0;
+  display: block;
+}
+
+.virtual-spacer {
+  /* невидимый, только для размеров скролла */
+  visibility: hidden;
+  pointer-events: none;
+}
 
 /* Прочее без изменений */
 .zoom{ display:flex; align-items:center; gap:6px; }

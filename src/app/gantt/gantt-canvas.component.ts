@@ -73,6 +73,9 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   // ===== Корень сплита =====
   @ViewChild('splitRoot', { static: true }) splitRootRef!: ElementRef<HTMLDivElement>;
 
+  @ViewChild('tableSpacer', { static: true }) tableSpacerRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('ganttSpacer', { static: true }) ganttSpacerRef!: ElementRef<HTMLDivElement>;
+
   @Input() refLines: RefLine[] = [];
 
   // ===== Вводные данные =====
@@ -410,6 +413,8 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     });
     this.prepareData();
     this.computeGanttRange();
+    this.resizeAllCanvases();         // << обязательно до sync
+    this.updateVirtualSpacers();      // << добавлено
     this.resizeAllCanvases();
     this.renderAll();
     this.syncHeaderToBodyScroll();
@@ -529,6 +534,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
       this.collapseAllWithChildren();
       this.prepareData();
       this.computeGanttRange();
+      this.updateVirtualSpacers();                // << добавлено
       this.resizeAllCanvases();
       this.syncHeaderToBodyScroll();
       this.syncGanttHeaderToScroll();
@@ -572,6 +578,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   @HostListener('window:resize')
   onResize() {
     this.resizeAllCanvases();
+    this.updateVirtualSpacers();       
     this.syncHeaderToBodyScroll();
     this.syncGanttHeaderToScroll();
     this.renderAll();
@@ -580,6 +587,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   onScaleChange(e: Event) {
     this.ganttScale = (e.target as HTMLSelectElement).value as GanttScale;
     this.resizeGanttCanvases();
+    this.updateVirtualSpacers();
     this.renderGanttHeader();
     this.renderGanttBody();
   }
@@ -598,6 +606,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     this.prepareData();
     this.computeGanttRange();
     this.resizeAllCanvases();
+    this.updateVirtualSpacers();     
     this.syncHeaderToBodyScroll();
     this.syncGanttHeaderToScroll();
     this.renderAll();
@@ -608,6 +617,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     this.prepareData();
     this.computeGanttRange();
     this.resizeAllCanvases();
+    this.updateVirtualSpacers();     
     this.syncHeaderToBodyScroll();
     this.syncGanttHeaderToScroll();
     this.renderAll();
@@ -627,6 +637,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     requestAnimationFrame(() => {
       this.bodyWrapperRef.nativeElement.scrollLeft = 0;
       this.resizeAllCanvases();
+      this.updateVirtualSpacers();
       this.syncHeaderToBodyScroll();
       this.syncGanttHeaderToScroll();
       this.renderAll();
@@ -994,6 +1005,7 @@ this.ganttCanvasRef.nativeElement.style.cursor = 'default';
   // Финал: если бар ушёл за пределы — обновим диапазон, размеры и перерисуем всё
   this.computeGanttRange();
   this.resizeGanttCanvases();
+  this.updateVirtualSpacers();  
   this.syncGanttHeaderToScroll();
   this.renderGanttHeader();
   this.renderGanttBody();
@@ -1039,6 +1051,7 @@ private commitGanttDates(rowId: string, startMs: number, finishMs: number) {
   
     // 3) пересчёт размеров канвасов
     this.resizeGanttCanvases();
+    this.updateVirtualSpacers();  
   
     // 4) восстанавливаем скролл так, чтобы та же дата осталась на якоре
     const newAnchorPx =
@@ -1072,8 +1085,8 @@ private commitGanttDates(rowId: string, startMs: number, finishMs: number) {
   
       // ВАЖНО: применить [style.flex-basis.%]="leftPct" до измерений
       this.cdr.detectChanges();
-  
       this.resizeAllCanvases();
+      this.updateVirtualSpacers()
       this.syncHeaderToBodyScroll();
       this.syncGanttHeaderToScroll();
       this.renderAll();
@@ -1595,88 +1608,101 @@ private scheduleRender() {
   private resizeAllCanvases() {
     this.resizeTableCanvases();
     this.resizeGanttCanvases();
+    this.updateVirtualSpacers();
   }
 
-  // --- таблица ---
-  private resizeTableCanvases() {
-    const host = this.hostRef.nativeElement;
-    const bodyWrapper = this.bodyWrapperRef.nativeElement;
-    const headerCanvas = this.headerCanvasRef.nativeElement;
-    const bodyCanvas = this.canvasRef.nativeElement;
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+/** Табличные канвасы: шапка по ширине контента, тело — по ВЬЮПОРТУ, не по всем строкам. */
+private resizeTableCanvases() {
+  const host = this.hostRef.nativeElement;
+  const bodyWrapper = this.bodyWrapperRef.nativeElement;
+  const headerCanvas = this.headerCanvasRef.nativeElement;
+  const bodyCanvas = this.canvasRef.nativeElement;
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
-    const contentWidth =
-      this.colGrip + this.colToggle +
-      this.columns.reduce((s, c) => s + c.width, 0);
-    const contentHeight = this.headerHeight + this.flatRows.length * this.rowHeight;
+  // ширина контента остаётся полной — чтобы был горизонтальный скролл
+  const contentWidth =
+    this.colGrip + this.colToggle +
+    this.columns.reduce((s, c) => s + c.width, 0);
 
-    const headerCssWidth = Math.max(host.clientWidth, contentWidth);
-    headerCanvas.width  = Math.floor(headerCssWidth * dpr);
-    headerCanvas.height = Math.floor(this.headerHeight * dpr);
-    headerCanvas.style.width  = `${headerCssWidth}px`;
-    headerCanvas.style.height = `${this.headerHeight}px`;
-    const hctx = headerCanvas.getContext('2d')!;
-    hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // ВАЖНО: шапка — по max(hostWidth, contentWidth)
+  const headerCssWidth = Math.max(host.clientWidth, contentWidth);
+  headerCanvas.width  = Math.floor(headerCssWidth * dpr);
+  headerCanvas.height = Math.floor(this.headerHeight * dpr);
+  headerCanvas.style.width  = `${headerCssWidth}px`;
+  headerCanvas.style.height = `${this.headerHeight}px`;
+  const hctx = headerCanvas.getContext('2d')!;
+  hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const bodyCssWidth  = headerCssWidth;
-    const bodyCssHeight = Math.max(bodyWrapper.clientHeight, contentHeight - this.headerHeight);
-    bodyCanvas.width  = Math.floor(bodyCssWidth * dpr);
-    bodyCanvas.height = Math.floor(bodyCssHeight * dpr);
-    bodyCanvas.style.width  = `${bodyCssWidth}px`;
-    bodyCanvas.style.height = `${bodyCssHeight}px`;
-    const bctx = bodyCanvas.getContext('2d')!;
-    bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
+  // ТЕЛО: ширина как у шапки; ВЫСОТА — ТОЛЬКО ВЫСОТА ПРОКРУЧИВАЕМОГО ВЬЮПОРТА
+  // Контентная "высота" задаётся не канвасом, а scroll-контейнером (via CSS + виртуальный размер)
+  const bodyCssWidth  = headerCssWidth;
+  const bodyCssHeight = bodyWrapper.clientHeight; // принципиально!
+  bodyCanvas.width  = Math.floor(bodyCssWidth * dpr);
+  bodyCanvas.height = Math.floor(bodyCssHeight * dpr);
+  bodyCanvas.style.width  = `${bodyCssWidth}px`;
+  bodyCanvas.style.height = `${bodyCssHeight}px`;
+  const bctx = bodyCanvas.getContext('2d')!;
+  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // --- гантт ---
-  private resizeGanttCanvases() {
-    if (!this.showGantt) return;
-    const host = this.ganttHostRef.nativeElement;
-    const wrapper = this.ganttWrapperRef.nativeElement;
-    const headerCanvas = this.ganttHeaderCanvasRef.nativeElement;
-    const bodyCanvas = this.ganttCanvasRef.nativeElement;
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  // Виртуальная высота для скролла обеспечивается самим bodyWrapper за счёт содержимого правого/левого канвасов
+  // (у нас обе панели синхронизированы; если нужно, можно дополнительно задать "фантом" контент через padding-bottom).
+}
 
-    const totalDays = Math.max(1, Math.ceil((this.ganttEndMs - this.ganttStartMs) / MS_PER_DAY));
-    const contentWidth = totalDays * this.ganttPxPerDay;
-    const contentHeight = this.headerHeight + this.flatRows.length * this.rowHeight;
+/** Гантт канвасы: тело — по вьюпорту, без гигантской высоты. */
+private resizeGanttCanvases() {
+  if (!this.showGantt) return;
+  const host = this.ganttHostRef.nativeElement;
+  const wrapper = this.ganttWrapperRef.nativeElement;
+  const headerCanvas = this.ganttHeaderCanvasRef.nativeElement;
+  const bodyCanvas = this.ganttCanvasRef.nativeElement;
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
-    const headerCssWidth = Math.max(host.clientWidth, contentWidth);
-    headerCanvas.width = Math.floor(headerCssWidth * dpr);
-    headerCanvas.height = Math.floor(this.headerHeight * dpr);
-    headerCanvas.style.width = `${headerCssWidth}px`;
-    headerCanvas.style.height = `${this.headerHeight}px`;
-    const hctx = headerCanvas.getContext('2d')!;
-    hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const totalDays = Math.max(1, Math.ceil((this.ganttEndMs - this.ganttStartMs) / MS_PER_DAY));
+  const contentWidth = totalDays * this.ganttPxPerDay;
 
-    const bodyCssWidth = headerCssWidth;
-    const bodyCssHeight = Math.max(wrapper.clientHeight, contentHeight - this.headerHeight);
-    bodyCanvas.width = Math.floor(bodyCssWidth * dpr);
-    bodyCanvas.height = Math.floor(bodyCssHeight * dpr);
-    bodyCanvas.style.width = `${bodyCssWidth}px`;
-    bodyCanvas.style.height = `${bodyCssHeight}px`;
-    const bctx = bodyCanvas.getContext('2d')!;
-    bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
+  // Шапка по ширине контента/хоста
+  const headerCssWidth = Math.max(host.clientWidth, contentWidth);
+  headerCanvas.width = Math.floor(headerCssWidth * dpr);
+  headerCanvas.height = Math.floor(this.headerHeight * dpr);
+  headerCanvas.style.width = `${headerCssWidth}px`;
+  headerCanvas.style.height = `${this.headerHeight}px`;
+  const hctx = headerCanvas.getContext('2d')!;
+  hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Тело: ширина — как у шапки; высота — только высота вьюпорта прокрутки
+  const bodyCssWidth = headerCssWidth;
+  const bodyCssHeight = wrapper.clientHeight; // ключевой момент
+  bodyCanvas.width = Math.floor(bodyCssWidth * dpr);
+  bodyCanvas.height = Math.floor(bodyCssHeight * dpr);
+  bodyCanvas.style.width = `${bodyCssWidth}px`;
+  bodyCanvas.style.height = `${bodyCssHeight}px`;
+  const bctx = bodyCanvas.getContext('2d')!;
+  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
 
   /**
    * Computes the visible row index range for a scrollable wrapper (inclusive).
    */
-  private visibleRowRange(wrapper: HTMLElement): { startIndex: number; endIndex: number } {
+  private visibleRowRange(wrapper: HTMLElement): { startIndex: number; endIndex: number; offsetY: number } {
     const rh = this.rowHeight;
     const scrollTop = wrapper.scrollTop;
     const clientH = wrapper.clientHeight;
     const total = this.flatRows.length;
-
-    if (total === 0) return { startIndex: 0, endIndex: -1 };
-
+  
+    if (total === 0) return { startIndex: 0, endIndex: -1, offsetY: 0 };
+  
+    // базовый диапазон
     let startIndex = Math.floor(scrollTop / rh);
     let endIndex = Math.ceil((scrollTop + clientH) / rh) - 1;
-
-    if (startIndex < 0) startIndex = 0;
-    if (endIndex >= total) endIndex = total - 1;
-
-    return { startIndex, endIndex };
+  
+    // overscan: по 8 строк сверху и снизу
+    const overscan = 8;
+    startIndex = Math.max(0, startIndex - overscan);
+    endIndex = Math.min(total - 1, endIndex + overscan);
+  
+    // смещение рисования в канвасе (верх первого рисуемого элемента)
+    const offsetY = startIndex * rh - scrollTop;
+    return { startIndex, endIndex, offsetY };
   }
 
   private renderAll() {
@@ -1694,8 +1720,39 @@ private scheduleRender() {
   
   private renderBody() {
     const bodyCanvas = this.canvasRef.nativeElement;
-    const state = this.buildTableState();
+    const ctx = bodyCanvas.getContext('2d')!;
+    const wrap = this.bodyWrapperRef.nativeElement;
+  
+    // 1) вычисляем окно
+    const { startIndex, endIndex, offsetY } = this.visibleRowRange(wrap);
+  
+    // 2) чистим только вьюпорт
+    ctx.clearRect(0, 0, bodyCanvas.width, bodyCanvas.height);
+  
+    // 3) ограничиваем рендер областью вьюпорта
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, bodyCanvas.width, bodyCanvas.height);
+    ctx.clip();
+  
+    // 4) локальный translate по вертикали — рисуем видимый отрезок в нулевых координатах
+    ctx.save();
+    ctx.translate(0, Math.floor(offsetY));
+  
+    // 5) Собираем TablePaintState с ограниченным диапазоном
+    const full = this.buildTableState();
+    const state = {
+      ...full,
+      // жёстко ограничиваем диапазон для рендера
+      visibleStartIndex: startIndex,
+      visibleEndIndex: endIndex,
+    };
+  
+    // 6) Вызываем ваш рендерер (он должен уважать видимый диапазон)
     renderTableBody(bodyCanvas, state);
+  
+    ctx.restore();
+    ctx.restore();
   }
 
   // ---------- ГАНТТ: диапазон и отрисовка ----------
@@ -1751,8 +1808,31 @@ private renderGanttHeader() {
 private renderGanttBody() {
   if (!this.showGantt) return;
   const canvas = this.ganttCanvasRef.nativeElement;
-  const state = this.buildGanttState();
+  const ctx = canvas.getContext('2d')!;
+  const wrap = this.ganttWrapperRef.nativeElement;
+
+  const { startIndex, endIndex, offsetY } = this.visibleRowRange(wrap);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, canvas.width, canvas.height);
+  ctx.clip();
+
+  ctx.save();
+  ctx.translate(0, Math.floor(offsetY));
+
+  const full = this.buildGanttState();
+  const state = {
+    ...full,
+    visibleStartIndex: startIndex,
+    visibleEndIndex: endIndex,
+  };
+
   paintGanttBody(canvas, state);
+
+  ctx.restore();
+  ctx.restore();
 }
 
 // Синхронизация complete при изменениях (не обязательно)
@@ -2114,4 +2194,27 @@ private updateGanttDragFromScroll() {
   // Немедленная перерисовка
   this.renderGanttBody();
   this.renderGanttHeader();
-}}
+}
+
+private updateVirtualSpacers() {
+  // ---- Таблица ----
+  const tableSpacer = this.tableSpacerRef.nativeElement;
+  const tableContentWidth =
+    this.colGrip + this.colToggle + this.columns.reduce((s, c) => s + c.width, 0);
+  const tableContentHeight = this.flatRows.length * this.rowHeight; // только тело
+  tableSpacer.style.width  = `${Math.max(this.hostRef.nativeElement.clientWidth, tableContentWidth)}px`;
+  tableSpacer.style.height = `${tableContentHeight}px`;
+
+  // ---- Гантт ----
+  if (this.showGantt) {
+    const totalDays = Math.max(1, Math.ceil((this.ganttEndMs - this.ganttStartMs) / MS_PER_DAY));
+    const ganttContentWidth = totalDays * this.ganttPxPerDay;
+    const ganttContentHeight = this.flatRows.length * this.rowHeight;
+
+    const ganttSpacer = this.ganttSpacerRef.nativeElement;
+    ganttSpacer.style.width  = `${Math.max(this.ganttHostRef.nativeElement.clientWidth, ganttContentWidth)}px`;
+    ganttSpacer.style.height = `${ganttContentHeight}px`;
+  }
+}
+
+}
