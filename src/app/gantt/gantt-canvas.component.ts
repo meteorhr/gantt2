@@ -301,6 +301,8 @@ private onGanttScrollBound = () => this.onGanttScroll();
       // Добавлено для корректного позиционирования при скролле
       scrollTop: wrapper.scrollTop,
       viewportHeight: wrapper.clientHeight,
+      scrollLeft: wrapper.scrollLeft,          
+      viewportWidth: wrapper.clientWidth,      
   
       // Поставщик значения ячейки
       getCellValue: (row, key) => this.getCellValue(row, key),
@@ -1699,12 +1701,10 @@ private resizeTableCanvases() {
   const bodyCanvas = this.canvasRef.nativeElement;
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
-  // ширина контента для Х-скролла (шапка)
   const contentWidth =
-    this.colGrip + this.colToggle +
-    this.columns.reduce((s, c) => s + c.width, 0);
+    this.colGrip + this.colToggle + this.columns.reduce((s, c) => s + c.width, 0);
 
-  // шапка по max(hostWidth, contentWidth)
+  // Хедер — по max(host, content), как и раньше
   const headerCssWidth = Math.max(host.clientWidth, contentWidth);
   headerCanvas.width  = Math.floor(headerCssWidth * dpr);
   headerCanvas.height = Math.floor(this.headerHeight * dpr);
@@ -1712,9 +1712,9 @@ private resizeTableCanvases() {
   headerCanvas.style.height = `${this.headerHeight}px`;
   headerCanvas.getContext('2d')!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // ⛳️ ВАЖНО: тело — ровно размер вьюпорта wrapper’а
-  const bodyCssWidth  = bodyWrapper.clientWidth;      // ← было headerCssWidth
-  const bodyCssHeight = bodyWrapper.clientHeight;     // (как и раньше)
+  // ✅ Тело: ширина = ширина ВЬЮПОРТА, высота = высота ВЬЮПОРТА
+  const bodyCssWidth  = bodyWrapper.clientWidth;
+  const bodyCssHeight = bodyWrapper.clientHeight;
   bodyCanvas.width  = Math.floor(bodyCssWidth * dpr);
   bodyCanvas.height = Math.floor(bodyCssHeight * dpr);
   bodyCanvas.style.width  = `${bodyCssWidth}px`;
