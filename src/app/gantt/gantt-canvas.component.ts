@@ -482,13 +482,14 @@ private onGanttScroll() {
 
 
     // Hover/колонки/и т.п. при колесе мыши внутри таблицы
-    const onWheel = () => {
-      const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-      const contentX = this.lastClientX - rect.left;
-      this.updateHoverFromContentX(contentX);
-      this.syncHeaderToBodyScroll();
-      this.renderAll();
-    };
+const onWheel = () => {
+  const wrap = this.bodyWrapperRef.nativeElement;
+  const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+  const contentX = this.lastClientX - rect.left + wrap.scrollLeft; // <— фикс
+  this.updateHoverFromContentX(contentX);
+  this.syncHeaderToBodyScroll();
+  this.renderAll();
+};
     bodyWrapper.addEventListener('wheel', onWheel, { passive: true });
     this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('wheel', onWheel));
 
@@ -707,6 +708,13 @@ private onGanttScroll() {
   }
 
   // ────────────────── Утилиты компонента ──────────────────
+  private toContentCoordsAbs(event: MouseEvent) {
+    const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+    const vx = event.clientX - rect.left;
+    const vy = event.clientY - rect.top;
+    const wrap = this.bodyWrapperRef.nativeElement;
+    return { x: vx + wrap.scrollLeft, y: vy + wrap.scrollTop };
+  }
   private colorOf(n: BarColorName): string { return this.colorMap[n]; }
   private rgba(hex: string, a: number): string { return hexToRgba(hex, a); }
 
@@ -1396,33 +1404,32 @@ private scheduleRender() {
     this.d3Canvas.call(this.zoomBehavior as any);
   
     // Click (toggle collapse) по телу
-    this.d3Canvas.on('click', (event: MouseEvent) => {
-      if (this.isDragging) return;
-      const { x, y } = this.toContentCoords(event);
-  
-      const rowIndex = Math.floor(y / this.rowHeight);
-      if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
-      const row = this.flatRows[rowIndex];
-  
-      const xToggle = this.colGrip;
-      const triSize = 12;
-      const triX = xToggle + 8 + this.toggleIndentPerLevel * row.level;
-      const triY = rowIndex * this.rowHeight + (this.rowHeight - triSize) / 2;
-      const hitPad = 4;
-  
-      const inTriangle =
-        x >= (triX - hitPad) && x <= (triX + triSize + hitPad) &&
-        y >= (triY - hitPad) && y <= (triY + triSize + hitPad);
-  
-      if (row.hasChildren && inTriangle) {
-        if (this.collapsed.has(row.id)) this.collapsed.delete(row.id);
-        else this.collapsed.add(row.id);
-        this.prepareData();
-        this.computeGanttRange();
-        this.resizeAllCanvases();
-        this.renderAll();
-      }
-    });
+this.d3Canvas.on('click', (event: MouseEvent) => {
+  if (this.isDragging) return;
+  const { x, y } = this.toContentCoordsAbs(event); // <— было toContentCoords (вьюпорт)
+  const rowIndex = Math.floor(y / this.rowHeight);
+  if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
+  const row = this.flatRows[rowIndex];
+
+  const xToggle = this.colGrip;
+  const triSize = 12;
+  const triX = xToggle + 8 + this.toggleIndentPerLevel * row.level;
+  const triY = rowIndex * this.rowHeight + (this.rowHeight - triSize) / 2;
+  const hitPad = 4;
+
+  const inTriangle =
+    x >= (triX - hitPad) && x <= (triX + triSize + hitPad) &&
+    y >= (triY - hitPad) && y <= (triY + triSize + hitPad);
+
+  if (row.hasChildren && inTriangle) {
+    if (this.collapsed.has(row.id)) this.collapsed.delete(row.id);
+    else this.collapsed.add(row.id);
+    this.prepareData();
+    this.computeGanttRange();
+    this.resizeAllCanvases();
+    this.renderAll();
+  }
+});
 
     
   
@@ -1432,42 +1439,35 @@ private scheduleRender() {
     window.addEventListener('mouseup', this.onMouseUpBound, { passive: true });
   
     // Hover/resize/grab в теле — ОБНОВЛЕНО
-    this.d3Canvas.on('mousemove', (event: MouseEvent) => {
-      this.lastClientX = event.clientX;
-      const { x, y } = this.toContentCoords(event);
-  
-      // 1) активный резайз колонок
-      if (this.isResizingCol) {
-        this.canvasRef.nativeElement.style.cursor = 'col-resize';
-        return;
-      }
-  
-      // 2) активный DnD строк
-      if (this.isDragging) {
-        this.canvasRef.nativeElement.style.cursor = 'grabbing';
-        return;
-      }
-  
-      // 3) хит-тест текущей строки
-      const rowIndex = Math.floor(y / this.rowHeight);
-      if (rowIndex >= 0 && rowIndex < this.flatRows.length) {
-        // 3.1) 6 точек (ручка)
-        if (this.isInsideGrip(x, y, rowIndex)) {
-          this.canvasRef.nativeElement.style.cursor = 'grab';
-          return;
-        }
-        // 3.2) треугольник сворачивания/разворачивания
-        if (this.isInsideToggle(x, y, rowIndex)) {
-          this.canvasRef.nativeElement.style.cursor = 'pointer';
-          return;
-        }
-      }
-  
-      // 4) иначе — логика наведения на разделители колонок
-      this.updateHoverFromContentX(x);
-      this.scheduleRender();
-    });
-  
+this.d3Canvas.on('mousemove', (event: MouseEvent) => {
+  this.lastClientX = event.clientX;
+
+  const { x: xContent, y: yContent } = this.toContentCoordsAbs(event); // контент
+  const rowIndex = Math.floor(yContent / this.rowHeight);
+
+  if (this.isResizingCol) {
+    this.canvasRef.nativeElement.style.cursor = 'col-resize';
+    return;
+  }
+  if (this.isDragging) {
+    this.canvasRef.nativeElement.style.cursor = 'grabbing';
+    return;
+  }
+
+  if (rowIndex >= 0 && rowIndex < this.flatRows.length) {
+    if (this.isInsideGrip(xContent, yContent, rowIndex)) {
+      this.canvasRef.nativeElement.style.cursor = 'grab';
+      return;
+    }
+    if (this.isInsideToggle(xContent, yContent, rowIndex)) {
+      this.canvasRef.nativeElement.style.cursor = 'pointer';
+      return;
+    }
+  }
+
+  this.updateHoverFromContentX(xContent); // <— обязательно content X
+  this.scheduleRender();
+});
     // Сброс курсора при уходе мыши — ДОБАВЛЕНО
     this.d3Canvas.on('mouseleave', () => {
       if (!this.isDragging && !this.isResizingCol) {
@@ -1528,65 +1528,76 @@ private scheduleRender() {
     const { gx, gy, gw, gh } = this.gripRectForRow(rowIndex);
     return x >= gx && x <= gx + gw && y >= gy && y <= gy + gh;
   }
+private isOverGrip(event: MouseEvent) {
+  const { x, y } = this.toContentCoordsAbs(event);
+  const rowIndex = Math.floor(y / this.rowHeight);
+  if (rowIndex < 0 || rowIndex >= this.flatRows.length) return false;
+  return this.isInsideGrip(x, y, rowIndex);
+}
 
-  private isOverGrip(event: MouseEvent) {
-    const { x, y } = this.toContentCoords(event);
-    const rowIndex = Math.floor(y / this.rowHeight);
-    if (rowIndex < 0 || rowIndex >= this.flatRows.length) return false;
-    return this.isInsideGrip(x, y, rowIndex);
+private onMouseDown(event: MouseEvent) {
+  event.preventDefault();
+
+  // VIEWPORT для оверлеев
+  const { x: xView, y: yView } = this.toContentCoords(event);
+  // CONTENT для индексов/хитов
+  const { x: xContent, y: yContent } = this.toContentCoordsAbs(event);
+  const wrap = this.bodyWrapperRef.nativeElement;
+
+  this.lastClientX = event.clientX;
+  this.lastMouseX = xView;   // остаётся вьюпорт
+  this.lastMouseY = yView;   // остаётся вьюпорт
+
+  // Ресайз делителя — по CONTENT X
+  const hit = this.hitResizableDivider(xContent);
+  if (hit.index != null) {
+    this.isResizingCol = true;
+    this.resizeStartX = xContent;
+    this.resizeTargetIndex = hit.index;
+    this.initialWidth = this.getWidthAt(hit.index);
+    this.canvasRef.nativeElement.style.cursor = 'col-resize';
+    return;
   }
 
-  private onMouseDown(event: MouseEvent) {
-    event.preventDefault();
+  const rowIndex = Math.floor(yContent / this.rowHeight);
+  if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
 
-    const { x, y } = this.toContentCoords(event);
-    this.lastClientX = event.clientX;
-    this.lastMouseX = x;
-    this.lastMouseY = y;
+  if (!this.isInsideGrip(xContent, yContent, rowIndex)) return;
 
-    const hit = this.hitResizableDivider(x);
-    if (hit.index != null) {
-      this.isResizingCol = true;
-      this.resizeStartX = x;
-      this.resizeTargetIndex = hit.index;
-      this.initialWidth = this.getWidthAt(hit.index);
-      this.canvasRef.nativeElement.style.cursor = 'col-resize';
-      return;
-    }
+  const { gx } = this.gripRectForRow(rowIndex); // CONTENT
+  this.isDragging = true;
+  this.canvasRef.nativeElement.style.cursor = 'grabbing';
+  this.dragRowIndex = rowIndex;
 
-    const rowIndex = Math.floor(y / this.rowHeight);
-    if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
+  // dx: переводим gx (CONTENT) в VIEWPORT => вычитаем scrollLeft
+  this.dragMouseDx = xView - (gx - wrap.scrollLeft);
+  // dy: верх строки во VIEWPORT = rowIndex*rowHeight - scrollTop
+  this.dragMouseDy = yView - (rowIndex * this.rowHeight - wrap.scrollTop);
 
-    if (!this.isInsideGrip(x, y, rowIndex)) return;
+  this.dropMode = { kind: 'none' };
+  this.renderAll();
+}
 
-    const { gx } = this.gripRectForRow(rowIndex);
-    this.isDragging = true;
-    this.canvasRef.nativeElement.style.cursor = 'grabbing';
-    this.dragRowIndex = rowIndex;
-    this.dragMouseDx = x - gx;
-    this.dragMouseDy = y - (rowIndex * this.rowHeight);
-    this.dropMode = { kind: 'none' };
+private onMouseMove(event: MouseEvent) {
+  this.lastClientX = event.clientX;
 
-    this.renderAll();
+  const { x: xView, y: yView } = this.toContentCoords(event);         // VIEWPORT
+  const { x: xContent, y: yContent } = this.toContentCoordsAbs(event); // CONTENT
+
+  this.lastMouseX = xView; // для оверлея
+  this.lastMouseY = yView; // для оверлея
+
+  if (this.isResizingCol && this.resizeTargetIndex != null) {
+    this.autoScrollIfNearEdge(xContent);
+    this.applyLiveResizeAtContentX(xContent);
+    return;
   }
 
-  private onMouseMove(event: MouseEvent) {
-    this.lastClientX = event.clientX;
-    const { x, y } = this.toContentCoords(event);
-    this.lastMouseX = x;
-    this.lastMouseY = y;
+  if (!this.isDragging) return;
 
-    if (this.isResizingCol && this.resizeTargetIndex != null) {
-      this.autoScrollIfNearEdge(x);
-      this.applyLiveResizeAtContentX(x);
-      return;
-    }
-
-    if (!this.isDragging) return;
-
-    this.dropMode = this.calculateDropMode(x, y);
-    this.scheduleRender();
-  }
+  this.dropMode = this.calculateDropMode(xContent, yContent); // CONTENT!
+  this.scheduleRender();
+}
 
   private onMouseUp(_event: MouseEvent) {
     if (this.isResizingCol) {

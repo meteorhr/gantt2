@@ -395,14 +395,16 @@ export function handleBodyMouseMove(
   mouseY: number
 ): void {
   // Абсолютный индекс строки под мышью: мышь во вьюпорте => добавляем scrollTop
-  const absIndex = Math.floor((mouseY + state.scrollTop) / state.rowHeight);
-  const rowIndex = clamp(
-    absIndex,
-    state.visibleStartIndex,
-    state.visibleEndIndex
-  );
+  const rowIndex = Math.floor((mouseY + state.scrollTop) / state.rowHeight);
+  
+  // Проверяем, что индекс в пределах всего массива строк
+  if (rowIndex < 0 || rowIndex >= state.flatRows.length) {
+    bodyCanvas.style.cursor = 'default';
+    return;
+  }
+
   const row = state.flatRows[rowIndex];
-  if (!row) {
+  if (!row) { // Дополнительная проверка на всякий случай
     bodyCanvas.style.cursor = 'default';
     return;
   }
