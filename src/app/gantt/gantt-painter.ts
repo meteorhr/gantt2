@@ -61,6 +61,8 @@ export interface GanttPaintState {
   linkHandleR: number;                 // радиус кружка
   linkHandleGap: number;               // зазор от бара до кружка
 
+  
+
   // Прогресс строки [0..1]
   rowProgress01: (rowIndex: number) => number;
 }

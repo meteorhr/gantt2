@@ -116,6 +116,9 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
 
+  private onTableScrollBound = () => this.onTableScroll();
+private onGanttScrollBound = () => this.onGanttScroll();
+
   private rebuildColorMap() {
     const next = { ...this.colorMap };
     for (const c of this.barcolor || []) {
@@ -255,7 +258,8 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   private leftHandleDownRow: number | null = null;
 
   private buildTableState(): TablePaintState {
-    const { startIndex, endIndex } = this.visibleRowRange(this.bodyWrapperRef.nativeElement);
+    const wrapper = this.bodyWrapperRef.nativeElement;
+    const { startIndex, endIndex } = this.visibleRowRange(wrapper);
   
     return {
       // Данные
@@ -270,7 +274,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
       colToggle: this.colToggle,
       toggleIndentPerLevel: this.toggleIndentPerLevel,
   
-      // Палитра уровней — ВАЖНО!
+      // Палитра уровней
       levelColors: this.levelColors,
   
       // Стили
@@ -294,10 +298,15 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
       visibleStartIndex: startIndex,
       visibleEndIndex: endIndex,
   
-      // Ячейки
+      // Добавлено для корректного позиционирования при скролле
+      scrollTop: wrapper.scrollTop,
+      viewportHeight: wrapper.clientHeight,
+  
+      // Поставщик значения ячейки
       getCellValue: (row, key) => this.getCellValue(row, key),
     };
   }
+  
 
   private buildGanttState(): GanttPaintState {
     const { startIndex, endIndex } = this.visibleRowRange(this.ganttWrapperRef.nativeElement);
@@ -380,6 +389,34 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
 
+// синхронизаторы
+private onTableScroll() {
+  if (this.syncingScroll) return;
+  this.syncingScroll = true;
+
+  const bw = this.bodyWrapperRef.nativeElement;
+  if (this.showGantt) this.ganttWrapperRef.nativeElement.scrollTop = bw.scrollTop;
+
+  this.syncHeaderToBodyScroll();   // шапка таблицы
+  this.renderBody();               // виртуальное тело таблицы
+  this.renderGanttBody();          // тело гантта (вертикально тот же scrollTop)
+
+  this.syncingScroll = false;
+}
+
+private onGanttScroll() {
+  if (this.syncingScroll) return;
+  this.syncingScroll = true;
+
+  const gw = this.ganttWrapperRef.nativeElement;
+  this.bodyWrapperRef.nativeElement.scrollTop = gw.scrollTop;
+
+  this.syncGanttHeaderToScroll();  // шапка гантта (по X)
+  this.renderGanttBody();          // виртуальное тело гантта
+  this.renderBody();               // таблицу тоже перерисуем для верности
+
+  this.syncingScroll = false;
+}
 
   private hitGanttBarAt(x: number, y: number) {
     return hitGanttBarAt(this.buildGeomState(), x, y, this.ganttResizeHandlePx);
@@ -403,6 +440,9 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     return xToMs(this.buildGeomState(), px);
   }
 
+  private onGanttMouseMoveBound = (e: MouseEvent) => this.onGanttMouseMove(e);
+  private onGanttMouseUpBound   = (e: MouseEvent) => this.onGanttMouseUp(e);
+
   // ────────────────── Lifecycle ──────────────────
   ngAfterViewInit(): void {
     this.workingData = deepClone(this._externalData && this._externalData.length ? this._externalData : this.demoData);
@@ -410,121 +450,87 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
 
     this.ngZone.runOutsideAngular(() => {
       this.initD3();
+
+      const bodyWrapper = this.bodyWrapperRef.nativeElement;
+      bodyWrapper.addEventListener('scroll', this.onTableScrollBound, { passive: true });
+      const tableOverlay = this.canvasRef.nativeElement;
+    
+      const forwardWheelTable = (e: WheelEvent) => {
+        // если хочешь горизонтальный скролл по Shift — тоже учти
+        bodyWrapper.scrollTop  += e.deltaY;
+        bodyWrapper.scrollLeft += e.deltaX;
+      };
+      tableOverlay.addEventListener('wheel', forwardWheelTable, { passive: true });
+      this.destroyRef.onDestroy(() =>
+        tableOverlay.removeEventListener('wheel', forwardWheelTable)
+      );
+    
+
+      if (this.showGantt) {
+        const ganttWrapper = this.ganttWrapperRef.nativeElement;
+        ganttWrapper.addEventListener('scroll', this.onGanttScrollBound, { passive: true });
+      }
+    
+      this.destroyRef.onDestroy(() => {
+        this.bodyWrapperRef.nativeElement.removeEventListener('scroll', this.onTableScrollBound);
+        this.ganttWrapperRef?.nativeElement?.removeEventListener('scroll', this.onGanttScrollBound);
+      });
+
+
+    // Hover/колонки/и т.п. при колесе мыши внутри таблицы
+    const onWheel = () => {
+      const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+      const contentX = this.lastClientX - rect.left;
+      this.updateHoverFromContentX(contentX);
+      this.syncHeaderToBodyScroll();
+      this.renderAll();
+    };
+    bodyWrapper.addEventListener('wheel', onWheel, { passive: true });
+    this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('wheel', onWheel));
+
+    // Слушатели для сплита (добавляем на window)
+    const onSplitMove = (e: MouseEvent) => {
+      if (!this.isResizingSplit) return;
+      const rootRect = this.splitRootRef.nativeElement.getBoundingClientRect();
+      const dx = e.clientX - this.splitStartX;
+      const dxPct = (dx / rootRect.width) * 100;
+      // клампим от 15% до 85%, чтобы не схлопывать панели
+      this.leftPct = Math.min(85, Math.max(15, this.splitStartLeftPct + dxPct));
+
+      // вместо мгновенной тяжёлой перерисовки — rAF
+      this.queueSplitReflow();
+    };
+
+    const onSplitUp = () => {
+      if (!this.isResizingSplit) return;
+      this.isResizingSplit = false;
+
+      // финальный проход (чтобы зафиксировать размеры)
+      this.queueSplitReflow();
+
+      // снять визуальный статус + вернуть курсор
+      this.splitRootRef.nativeElement.classList.remove('splitting');
+      document.body.style.cursor = '';
+    };
+
+    window.addEventListener('mousemove', onSplitMove, { passive: true });
+    window.addEventListener('mouseup', onSplitUp, { passive: true });
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('mousemove', onSplitMove);
+      window.removeEventListener('mouseup', onSplitUp);
     });
+
+    });
+
+    
     this.prepareData();
     this.computeGanttRange();
     this.resizeAllCanvases();         // << обязательно до sync
     this.updateVirtualSpacers();      // << добавлено
-    this.resizeAllCanvases();
+    this.applyOverlaySafeInsets(); // <--- ДОБАВИТЬ ЗДЕСЬ
     this.renderAll();
     this.syncHeaderToBodyScroll();
     this.syncGanttHeaderToScroll();
-
-    this.ngZone.runOutsideAngular(() => {
-      const bodyWrapper = this.bodyWrapperRef.nativeElement;
-      const ganttWrapper = this.ganttWrapperRef.nativeElement;
-
-      // Прокрутка таблицы
-      const onScrollTable = () => {
-        if (this.syncingScroll) return;
-        this.syncingScroll = true;
-        this.syncHeaderToBodyScroll();
-        ganttWrapper.scrollTop = bodyWrapper.scrollTop;
-        this.syncingScroll = false;
-        this.scheduleRender();
-      };
-      bodyWrapper.addEventListener('scroll', onScrollTable);
-      this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('scroll', onScrollTable));
-
-      // Прокрутка гантта
-      const onScrollGantt = () => {
-        if (this.syncingScroll) return;
-        this.syncingScroll = true;
-        this.syncGanttHeaderToScroll();
-        bodyWrapper.scrollTop = ganttWrapper.scrollTop;
-        this.syncingScroll = false;
-
-        if (this.ganttDragMode !== 'none') {
-          this.updateGanttDragFromScroll();
-        } else {
-          this.updateGanttCursorFromLast();
-          this.scheduleRender();
-        }
-      };
-      ganttWrapper.addEventListener('scroll', onScrollGantt);
-      const onWheelGantt = () => this.updateGanttCursorFromLast();
-      ganttWrapper.addEventListener('wheel', onWheelGantt, { passive: true });
-      this.destroyRef.onDestroy(() => {
-        ganttWrapper.removeEventListener('scroll', onScrollGantt);
-        ganttWrapper.removeEventListener('wheel', onWheelGantt);
-      });
-
-      // Hover при колесе мыши внутри таблицы
-      const onWheel = () => {
-        const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-        const contentX = this.lastClientX - rect.left;
-        this.updateHoverFromContentX(contentX);
-        this.syncHeaderToBodyScroll();
-        this.renderAll();
-      };
-      bodyWrapper.addEventListener('wheel', onWheel, { passive: true });
-      this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('wheel', onWheel));
-
-      // Слушатели для сплита
-      const onSplitMove = (e: MouseEvent) => {
-        if (!this.isResizingSplit) return;
-        const rootRect = this.splitRootRef.nativeElement.getBoundingClientRect();
-        const dx = e.clientX - this.splitStartX;
-        const dxPct = (dx / rootRect.width) * 100;
-        this.leftPct = Math.min(85, Math.max(15, this.splitStartLeftPct + dxPct));
-        this.queueSplitReflow();
-      };
-
-      const onSplitUp = () => {
-        if (!this.isResizingSplit) return;
-        this.isResizingSplit = false;
-        this.queueSplitReflow();
-        this.splitRootRef.nativeElement.classList.remove('splitting');
-        document.body.style.cursor = '';
-      };
-
-      window.addEventListener('mousemove', onSplitMove, { passive: true });
-      window.addEventListener('mouseup', onSplitUp, { passive: true });
-      this.destroyRef.onDestroy(() => {
-        window.removeEventListener('mousemove', onSplitMove);
-        window.removeEventListener('mouseup', onSplitUp);
-      });
-
-      // --- Gantt DnD ---
-      const ganttCanvas = this.ganttCanvasRef.nativeElement;
-      const onGanttDown = (ev: MouseEvent) => this.onGanttMouseDown(ev);
-      const onGanttMove = (ev: MouseEvent) => this.onGanttMouseMove(ev);
-      const onGanttUp   = (ev: MouseEvent) => this.onGanttMouseUp(ev);
-
-      ganttCanvas.addEventListener('mousedown', onGanttDown);
-      const onGanttHover = (ev: MouseEvent) => {
-        this.lastGanttClientX = ev.clientX;
-        this.lastGanttClientY = ev.clientY;
-        this.updateGanttCursor(ev);
-        this.renderGanttBody();
-      };
-      const onGanttLeave = () => this.resetGanttCursor();
-
-      ganttCanvas.addEventListener('mousemove', onGanttHover, { passive: true });
-      ganttCanvas.addEventListener('mouseleave', onGanttLeave);
-
-      this.destroyRef.onDestroy(() => {
-        ganttCanvas.removeEventListener('mousedown', onGanttDown);
-        ganttCanvas.removeEventListener('mousemove', onGanttHover);
-        ganttCanvas.removeEventListener('mouseleave', onGanttLeave);
-      });
-      window.addEventListener('mousemove', onGanttMove, { passive: true });
-      window.addEventListener('mouseup',   onGanttUp,   { passive: true });
-      this.destroyRef.onDestroy(() => {
-        window.removeEventListener('mousemove', onGanttMove);
-        window.removeEventListener('mouseup',   onGanttUp);
-      });
-    });
 
     this._initialized = true;
   }
@@ -578,11 +584,30 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   @HostListener('window:resize')
   onResize() {
     this.resizeAllCanvases();
-    this.updateVirtualSpacers();       
+    this.updateVirtualSpacers();  
+    this.applyOverlaySafeInsets(); // <--- ДОБАВИТЬ ЗДЕСЬ     
     this.syncHeaderToBodyScroll();
     this.syncGanttHeaderToScroll();
     this.renderAll();
   }
+
+  @HostListener('window:mousemove', ['$event'])
+    onSplitMouseMove(e: MouseEvent) {
+      if (!this.isResizingSplit || !this.showGantt) return;
+      const root = this.splitRootRef.nativeElement;
+      const dx = e.clientX - this.splitStartX;
+      const pct = this.splitStartLeftPct + (dx / root.clientWidth) * 100;
+      this.leftPct = Math.min(90, Math.max(10, pct));
+      this.queueSplitReflow();
+    }
+
+    @HostListener('window:mouseup')
+    onSplitMouseUp() {
+      if (!this.isResizingSplit) return;
+      this.isResizingSplit = false;
+      this.splitRootRef.nativeElement.classList.remove('splitting');
+      document.body.style.cursor = '';
+    }
 
   onScaleChange(e: Event) {
     this.ganttScale = (e.target as HTMLSelectElement).value as GanttScale;
@@ -655,7 +680,32 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     const y = (e.clientY - wrect.top)  + wrap.scrollTop;
     return { x, y };
   }
-
+  
+  private applyOverlaySafeInsets() {
+    // --- Таблица ---
+    const tableWrapper = this.bodyWrapperRef.nativeElement;
+    const tableOverlay = this.canvasRef.nativeElement;
+    
+    // Вычисляем ширину вертикального и высоту горизонтального скроллбара
+    const vScrollbarWidth = Math.max(0, tableWrapper.offsetWidth - tableWrapper.clientWidth);
+    const hScrollbarHeight = Math.max(0, tableWrapper.offsetHeight - tableWrapper.clientHeight);
+    
+    // Применяем как отступы для оверлея
+    tableOverlay.style.right = `${vScrollbarWidth}px`;
+    tableOverlay.style.bottom = `${hScrollbarHeight}px`;
+  
+    // --- Гантт (если он видим) ---
+    if (this.showGantt) {
+      const ganttWrapper = this.ganttWrapperRef.nativeElement;
+      const ganttOverlay = this.ganttCanvasRef.nativeElement;
+      
+      const gvScrollbarWidth = Math.max(0, ganttWrapper.offsetWidth - ganttWrapper.clientWidth);
+      const ghScrollbarHeight = Math.max(0, ganttWrapper.offsetHeight - ganttWrapper.clientHeight);
+      
+      ganttOverlay.style.right = `${gvScrollbarWidth}px`;
+      ganttOverlay.style.bottom = `${ghScrollbarHeight}px`;
+    }
+  }
 
 
   // ────────────────── Пересчёт дат суммарных задач ──────────────────
@@ -1087,6 +1137,7 @@ private commitGanttDates(rowId: string, startMs: number, finishMs: number) {
       this.cdr.detectChanges();
       this.resizeAllCanvases();
       this.updateVirtualSpacers()
+       this.applyOverlaySafeInsets(); // <--- ДОБАВИТЬ ЗДЕСЬ
       this.syncHeaderToBodyScroll();
       this.syncGanttHeaderToScroll();
       this.renderAll();
@@ -1305,12 +1356,7 @@ private scheduleRender() {
     this.d3Canvas = select(canvas);
   
     this.zoomBehavior = zoom<HTMLCanvasElement, unknown>()
-      .filter((ev: any) => ev.type === 'wheel')
-      .scaleExtent([1, 1])
-      .on('zoom', (ev) => {
-        this.zoomTransform = ev.transform;
-      });
-  
+    .filter(() => false);
     this.d3Canvas.call(this.zoomBehavior as any);
   
     // Click (toggle collapse) по телу
@@ -1683,26 +1729,22 @@ private resizeGanttCanvases() {
   /**
    * Computes the visible row index range for a scrollable wrapper (inclusive).
    */
-  private visibleRowRange(wrapper: HTMLElement): { startIndex: number; endIndex: number; offsetY: number } {
+  private visibleRowRange(wrapper: HTMLElement): { startIndex: number; endIndex: number } {
     const rh = this.rowHeight;
     const scrollTop = wrapper.scrollTop;
     const clientH = wrapper.clientHeight;
     const total = this.flatRows.length;
   
-    if (total === 0) return { startIndex: 0, endIndex: -1, offsetY: 0 };
+    if (total === 0) return { startIndex: 0, endIndex: -1 };
   
-    // базовый диапазон
     let startIndex = Math.floor(scrollTop / rh);
-    let endIndex = Math.ceil((scrollTop + clientH) / rh) - 1;
+    let endIndex   = Math.ceil((scrollTop + clientH) / rh) - 1;
   
-    // overscan: по 8 строк сверху и снизу
-    const overscan = 8;
+    const overscan = 8; // можно 6–12
     startIndex = Math.max(0, startIndex - overscan);
-    endIndex = Math.min(total - 1, endIndex + overscan);
+    endIndex   = Math.min(total - 1, endIndex + overscan);
   
-    // смещение рисования в канвасе (верх первого рисуемого элемента)
-    const offsetY = startIndex * rh - scrollTop;
-    return { startIndex, endIndex, offsetY };
+    return { startIndex, endIndex };
   }
 
   private renderAll() {
@@ -1717,44 +1759,45 @@ private resizeGanttCanvases() {
     const state = this.buildTableState();
     renderTableHeader(headerCanvas, state);
   }
-  
-  private renderBody() {
-    const bodyCanvas = this.canvasRef.nativeElement;
-    const ctx = bodyCanvas.getContext('2d')!;
-    const wrap = this.bodyWrapperRef.nativeElement;
-  
-    // 1) вычисляем окно
-    const { startIndex, endIndex, offsetY } = this.visibleRowRange(wrap);
-  
-    // 2) чистим только вьюпорт
-    ctx.clearRect(0, 0, bodyCanvas.width, bodyCanvas.height);
-  
-    // 3) ограничиваем рендер областью вьюпорта
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, bodyCanvas.width, bodyCanvas.height);
-    ctx.clip();
-  
-    // 4) локальный translate по вертикали — рисуем видимый отрезок в нулевых координатах
-    ctx.save();
-    ctx.translate(0, Math.floor(offsetY));
-  
-    // 5) Собираем TablePaintState с ограниченным диапазоном
-    const full = this.buildTableState();
-    const state = {
-      ...full,
-      // жёстко ограничиваем диапазон для рендера
-      visibleStartIndex: startIndex,
-      visibleEndIndex: endIndex,
-    };
-  
-    // 6) Вызываем ваш рендерер (он должен уважать видимый диапазон)
-    renderTableBody(bodyCanvas, state);
-  
-    ctx.restore();
-    ctx.restore();
-  }
 
+  // Файл: src/app/gantt/gantt-canvas.component.ts
+
+private renderBody() {
+  const canvas = this.canvasRef.nativeElement;
+  const ctx = canvas.getContext('2d')!;
+  const wrap = this.bodyWrapperRef.nativeElement;
+
+  const { startIndex, endIndex } = this.visibleRowRange(wrap);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Сохраняем исходное состояние контекста (трансформации, стили и т.д.)
+  ctx.save();
+
+  // Устанавливаем область отсечения, чтобы ничего не рисовалось за пределами видимой части канваса
+  ctx.beginPath();
+  ctx.rect(0, 0, canvas.width, canvas.height);
+  ctx.clip();
+  
+  // !!! КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ !!!
+  // Сдвигаем всю систему координат канваса вверх на величину скролла.
+  // Теперь отрисовщик может рисовать строки по их абсолютным координатам (y = rowIndex * rowHeight),
+  // и они автоматически окажутся в правильном месте на экране.
+  ctx.translate(0, -wrap.scrollTop);
+
+  // Собираем состояние для отрисовщика. Мы по-прежнему передаем scrollTop,
+  // так как отрисовщик может его использовать для своих внутренних нужд,
+  // но за ВИЗУАЛЬНОЕ смещение теперь отвечает `translate`.
+  const state = this.buildTableState();
+  state.visibleStartIndex = startIndex;
+  state.visibleEndIndex = endIndex;
+  
+  // Вызываем отрисовщик
+  renderTableBody(canvas, state);
+
+  // Восстанавливаем контекст в исходное состояние (убираем translate и clip)
+  ctx.restore();
+}
   // ---------- ГАНТТ: диапазон и отрисовка ----------
   private computeGanttRange() {
     if (!this.workingData.length) {
@@ -1811,16 +1854,17 @@ private renderGanttBody() {
   const ctx = canvas.getContext('2d')!;
   const wrap = this.ganttWrapperRef.nativeElement;
 
-  const { startIndex, endIndex, offsetY } = this.visibleRowRange(wrap);
+  const { startIndex, endIndex } = this.visibleRowRange(wrap);
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, canvas.width, canvas.height);
   ctx.clip();
 
   ctx.save();
-  ctx.translate(0, Math.floor(offsetY));
+  ctx.translate(0, -wrap.scrollTop); // только -scrollTop
 
   const full = this.buildGanttState();
   const state = {

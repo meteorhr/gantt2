@@ -34,34 +34,33 @@
 <!-- ОСНОВНОЕ СОДЕРЖИМОЕ -->
 <div class="center">
   <div #splitRoot class="split-root">
-    <!-- Левая панель: Таблица -->
+    <!-- Левая панель (таблица) -->
     <div class="pane pane-left" [style.flex-basis.%]="showGantt ? leftPct : 100">
       <div #host class="gantt-host">
         <canvas #headerCanvas class="gantt-header-canvas"></canvas>
         <div #bodyWrapper class="gantt-body-wrapper">
-          <div #tableSpacer class="virtual-spacer"></div>
-          <canvas #canvas></canvas>
+          <div #tableSpacer class="gantt-spacer"></div>
+          <!-- Оверлей ВНУТРИ wrapper'а -->
+          <canvas #canvas class="gantt-body-overlay"></canvas>
         </div>
       </div>
     </div>
 
     <!-- Разделитель -->
-    <div
-      class="splitter"
-      (mousedown)="onSplitMouseDown($event)"
-      [style.display]="showGantt ? '' : 'none'">
-    </div>
+    <div class="splitter"
+         (mousedown)="onSplitMouseDown($event)"
+         [style.display]="showGantt ? '' : 'none'"></div>
 
-    <!-- Правая панель: Гантт -->
-    <div
-      class="pane pane-right"
-      [style.flex-basis.%]="100 - leftPct"
-      [style.display]="showGantt ? '' : 'none'">
+    <!-- Правая панель (гантт) -->
+    <div class="pane pane-right"
+         [style.flex-basis.%]="100 - leftPct"
+         [style.display]="showGantt ? '' : 'none'">
       <div #ganttHost class="gantt-host">
         <canvas #ganttHeaderCanvas class="gantt-header-canvas"></canvas>
         <div #ganttWrapper class="gantt-body-wrapper">
-          <div #ganttSpacer class="virtual-spacer"></div>
-          <canvas #ganttCanvas></canvas>
+          <div #ganttSpacer class="gantt-spacer"></div>
+          <!-- Оверлей ВНУТРИ wrapper'а -->
+          <canvas #ganttCanvas class="gantt-body-overlay"></canvas>
         </div>
       </div>
     </div>

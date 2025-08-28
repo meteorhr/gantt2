@@ -1,6 +1,7 @@
 // file: src/app/gantt/table-painter.ts
 // Чистая отрисовка ТОЛЬКО табличной части (хедер + тело) на Canvas.
-// Принимает все необходимые данные через TablePaintState.
+// ВНИМАНИЕ: painter сам учитывает вертикальный скролл через state.scrollTop
+// и отрисовывает ТОЛЬКО видимое окно (visibleStartIndex..visibleEndIndex).
 
 import { ColumnDef, FlatRow } from './models/gantt.model';
 import { DropMode } from './models/gantt.types';
@@ -19,28 +20,32 @@ export interface TablePaintState {
   toggleIndentPerLevel: number;  // напр. 12
 
   // Палитра уровней
-  levelColors: string[];         // ['#F2BE90', ...] — передаётся из компонента
+  levelColors: string[];
 
   // Шрифты/цвета/стили
-  font: string;           // '12px system-ui, ...'
-  headerFont: string;     // '600 12px system-ui, ...'
-  zebraColor: string;     // '#fafafa'
-  gridColor: string;      // '#e6e6e6'
-  textColor: string;      // '#000'
-  headerBg: string;       // '#f5f7fb'
-  headerBorder: string;   // '#dcdfe6'
+  font: string;
+  headerFont: string;
+  zebraColor: string;
+  gridColor: string;
+  textColor: string;
+  headerBg: string;
+  headerBorder: string;
 
   // Состояния ховера/ресайза/перетаскивания
   hoverDividerX: number | null;
   isDragging: boolean;
   dragRowIndex: number;
-  lastMouseY: number;
+  lastMouseY: number;   // ВЬЮПОРТНАЯ координата Y из компонента
   dragMouseDy: number;
   dropMode: DropMode;
 
-  // Виртуализация: видимый диапазон строк (включительно)
+  // Виртуализация (включительно)
   visibleStartIndex: number;
   visibleEndIndex: number;
+
+  // Вьюпорт/скролл
+  scrollTop: number;       // вертикальный скролл контейнера
+  viewportHeight: number;  // высота видимой области контейнера
 
   // Поставщик значения ячейки
   getCellValue: (row: FlatRow, key: string) => string;
@@ -113,7 +118,7 @@ export function renderTableHeader(headerCanvas: HTMLCanvasElement, state: TableP
   }
 }
 
-/** Отрисовать тело таблицы (виртуализировано через переданный диапазон). */
+/** Отрисовать тело таблицы (виртуализировано, учитывает scrollTop). */
 export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaintState): void {
   const ctx = bodyCanvas.getContext('2d');
   if (!ctx) return;
@@ -128,51 +133,57 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
   const xToggle = xGrip + state.colGrip;
   const xDataStart = xToggle + state.colToggle;
 
-  const startIndex = clamp(state.visibleStartIndex, 0, state.flatRows.length - 1);
-  const endIndex   = clamp(state.visibleEndIndex,   -1, state.flatRows.length - 1);
+  const total = state.flatRows.length;
+  if (!total) return;
+
+  const startIndex = clamp(state.visibleStartIndex, 0, total - 1);
+  const endIndex   = clamp(state.visibleEndIndex,   -1, total - 1);
+  if (endIndex < startIndex) return;
+
+  // ── ключевая математика «якоря» ─────────────────────────────────────
+  const firstTop = startIndex * state.rowHeight;                 // контент-Y начала окна
+  const yOffset  = -(state.scrollTop - firstTop);                // ∈ [-rowHeight, rowHeight)
+  // теперь рисуем строки по y = (i - startIndex)*rowHeight + yOffset
+
+  // Клип ровно по вьюпорту
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, width, height);
+  ctx.clip();
 
   for (let i = startIndex; i <= endIndex; i++) {
-    const y = i * state.rowHeight;
     const row = state.flatRows[i];
+    const y   = (i - startIndex) * state.rowHeight + yOffset;    // viewport-Y
 
-    // 1) Зебра
+    // 1) зебра
     if (i % 2 === 1) {
       ctx.fillStyle = state.zebraColor;
       ctx.fillRect(0, y, width, state.rowHeight);
     }
 
-    // 2) Фон уровня для РОДИТЕЛЯ (как вы просили)
+    // 2) фон уровня для родителя
     if (row.hasChildren) {
       ctx.fillStyle = getLevelColor(row.level, state.levelColors);
       ctx.fillRect(state.colGrip, y, width - state.colGrip, state.rowHeight);
     }
 
-    // 3) Горизонтальная линия строки
+    // 3) горизонтальная линия
     ctx.beginPath();
     ctx.moveTo(0, y + state.rowHeight + 0.5);
     ctx.lineTo(width, y + state.rowHeight + 0.5);
     ctx.strokeStyle = state.gridColor;
     ctx.stroke();
 
-    // 4) Текст/иконки
-    ctx.fillStyle = state.textColor;
-    ctx.textBaseline = 'middle';
-
-    // «ручка» перетаскивания (3 точки)
+    // 4) «ручка» перетаскивания
     drawGrip(ctx, xGrip + 10, y + (state.rowHeight - 12) / 2, 12, 12);
 
-    // 5) ВИЗУАЛИЗАЦИЯ УРОВНЕЙ: цветные полосы (индентация)
+    // 5) полосы-уровни (indent)
     drawLevelIndicators(
-      ctx,
-      row.level,
-      y,
-      xToggle,
-      state.toggleIndentPerLevel,
-      state.rowHeight,
-      state.levelColors
+      ctx, row.level, y, xToggle,
+      state.toggleIndentPerLevel, state.rowHeight, state.levelColors
     );
 
-    // 6) Треугольник сворачивания/разворачивания
+    // 6) треугольник сворачивания/разворачивания
     if (row.hasChildren) {
       const triSize = 12;
       const triX = xToggle + 8 + state.toggleIndentPerLevel * row.level;
@@ -194,8 +205,8 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
       ctx.restore();
     }
 
-    // 7) Значения ячеек
-    ctx.fillStyle = state.textColor
+    // 7) ячейки
+    ctx.fillStyle = state.textColor;
     const midY = y + state.rowHeight / 2;
     let cursor = xDataStart;
     for (const col of state.columns) {
@@ -205,13 +216,28 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
     }
   }
 
-  // 8) Вертикальные линии сетки
+  // ── DnD overlays (во viewport-координатах) ──────────────────────────
+  if (state.isDragging && state.dragRowIndex >= 0) {
+    // lastMouseY — уже viewport-Y, поэтому без scrollTop
+    const ghostY = state.lastMouseY - state.dragMouseDy;
+    drawDragGhost(ctx, ghostY, width, state.rowHeight);
+
+    if (state.dropMode.kind === 'insert') {
+      // Переводим контент-Y линии вставки в viewport-Y:
+      const insY_view = (state.dropMode.beforeRowIndex - startIndex) * state.rowHeight + yOffset;
+      drawInsertLine(ctx, insY_view, width);
+    } else if (state.dropMode.kind === 'child') {
+      const rectY_view = (state.dropMode.targetRowIndex - startIndex) * state.rowHeight + yOffset;
+      drawDashedRect(ctx, 0, rectY_view, width, state.rowHeight);
+    }
+  }
+
+  // ── вертикальные линии сетки (во viewport) ──────────────────────────
   ctx.beginPath();
   ctx.moveTo(state.colGrip + 0.5, 0);
   ctx.lineTo(state.colGrip + 0.5, height);
   ctx.moveTo((state.colGrip + state.colToggle) + 0.5, 0);
   ctx.lineTo((state.colGrip + state.colToggle) + 0.5, height);
-
   let edge = xGrip + state.colGrip + state.colToggle;
   for (const col of state.columns) {
     edge += col.width;
@@ -221,33 +247,9 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
   ctx.strokeStyle = state.gridColor;
   ctx.stroke();
 
-  // 9) Подсветка наведённого делителя
-  if (state.hoverDividerX != null) {
-    ctx.save();
-    ctx.strokeStyle = '#4c8dff';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    ctx.moveTo(state.hoverDividerX + 0.5, 0);
-    ctx.lineTo(state.hoverDividerX + 0.5, height);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // 10) «Призрак» перетаскивания и подсветки дропа
-  if (state.isDragging && state.dragRowIndex >= 0) {
-    const ghostY = state.lastMouseY - state.dragMouseDy;
-    drawDragGhost(ctx, ghostY, width, state.rowHeight);
-
-    if (state.dropMode.kind === 'insert') {
-      const insY = state.dropMode.beforeRowIndex * state.rowHeight;
-      drawInsertLine(ctx, insY, width);
-    } else if (state.dropMode.kind === 'child') {
-      const rectY = state.dropMode.targetRowIndex * state.rowHeight;
-      drawDashedRect(ctx, 0, rectY, width, state.rowHeight);
-    }
-  }
+  ctx.restore(); // clip
 }
+
 
 /* ==============================
  * ВНУТРЕННИЕ ХЕЛПЕРЫ ОТРИСОВКИ
@@ -267,25 +269,25 @@ function getLevelColor(levelIndex: number, levelColors: string[]): string {
 
 /** Цветные полосы-уровни по ширине indent, на всю высоту строки. */
 function drawLevelIndicators(
-    ctx: CanvasRenderingContext2D,
-    level: number,
-    rowTopY: number,
-    xToggle: number,
-    indentPerLevel: number,
-    rowHeight: number,
-    levelColors: string[]
-  ) {
-    const barW = indentPerLevel;
-    const h = rowHeight;
-  
-    ctx.save(); // ← FIX: не протекаем fillStyle наружу
-    for (let l = 0; l <= level; l++) {
-      const x = xToggle + l * barW;
-      ctx.fillStyle = getLevelColor(l, levelColors);
-      ctx.fillRect(x, rowTopY, barW, h);
-    }
-    ctx.restore(); // ← FIX
+  ctx: CanvasRenderingContext2D,
+  level: number,
+  rowTopY: number,
+  xToggle: number,
+  indentPerLevel: number,
+  rowHeight: number,
+  levelColors: string[]
+) {
+  const barW = indentPerLevel;
+  const h = rowHeight;
+
+  ctx.save();
+  for (let l = 0; l <= level; l++) {
+    const x = xToggle + l * barW;
+    ctx.fillStyle = getLevelColor(l, levelColors);
+    ctx.fillRect(x, rowTopY, barW, h);
   }
+  ctx.restore();
+}
 
 /** Текст с обрезкой по ширине (эллипсис). y — по центру строки. */
 function drawClippedText(
@@ -325,155 +327,155 @@ function drawClippedText(
 
 /** Шесть точки «ручки» для Drag. */
 function drawGrip(
-    ctx: CanvasRenderingContext2D,
-    x: number, y: number,
-    w: number, h: number
-  ) {
-    const cols = 2;           // 2 столбца
-    const rows = 3;           // 3 строки
-    const dotR = 1.5;         // радиус точки
-    const gapX = 4;           // шаг по X между колонками
-    const gapY = 4;           // шаг по Y между рядами
-  
-    // Центрируем решётку внутри прямоугольника w x h
-    const gridW = (cols - 1) * gapX;
-    const gridH = (rows - 1) * gapY;
-    const cx0 = x + w / 2 - gridW / 2;
-    const cy0 = y + h / 2 - gridH / 2;
-  
-    ctx.save();
-    ctx.fillStyle = '#888';
-    for (let c = 0; c < cols; c++) {
-      for (let r = 0; r < rows; r++) {
-        const cx = cx0 + c * gapX;
-        const cy = cy0 + r * gapY;
-        ctx.beginPath();
-        ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
-        ctx.fill();
-      }
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  w: number, h: number
+) {
+  const cols = 2;
+  const rows = 3;
+  const dotR = 1.5;
+  const gapX = 4;
+  const gapY = 4;
+
+  const gridW = (cols - 1) * gapX;
+  const gridH = (rows - 1) * gapY;
+  const cx0 = x + w / 2 - gridW / 2;
+  const cy0 = y + h / 2 - gridH / 2;
+
+  ctx.save();
+  ctx.fillStyle = '#888';
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      const cx = cx0 + c * gapX;
+      const cy = cy0 + r * gapY;
+      ctx.beginPath();
+      ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.restore();
   }
+  ctx.restore();
+}
 
-  function getGripHitRect(
-    rowIndex: number,
-    state: TablePaintState
-  ): { x: number; y: number; w: number; h: number } {
-    const xGrip = 0; // колонка ручки начинается с 0
-    const x = xGrip + 10;
-    const y = rowIndex * state.rowHeight + Math.floor((state.rowHeight - 12) / 2);
-    const w = 12;
-    const h = 12;
-    return { x, y, w, h };
-  }
+/** Прямоугольник хит-зоны «ручки» (ВО ВЬЮПОРТНЫХ координатах). */
+function getGripHitRectViewport(
+  rowIndex: number,
+  state: TablePaintState
+): { x: number; y: number; w: number; h: number } {
+  const xGrip = 0; // колонка ручки начинается с 0
+  const x = xGrip + 10;
+  const yContent = rowIndex * state.rowHeight + Math.floor((state.rowHeight - 12) / 2);
+  const yViewport = yContent - state.scrollTop; // переводим в вьюпорт
+  return { x, y: yViewport, w: 12, h: 12 };
+}
 
+/** Прямоугольник хит-зоны треугольника (ВО ВЬЮПОРТНЫХ координатах). */
+function getToggleHitRectViewport(
+  row: FlatRow,
+  rowIndex: number,
+  state: TablePaintState
+): { x: number; y: number; w: number; h: number } | null {
+  if (!row.hasChildren) return null;
 
-  /** НОВОЕ: прямоугольник хит-зоны треугольника; null, если нет детей. */
-function getToggleHitRect(
-    row: FlatRow,
-    rowIndex: number,
-    state: TablePaintState
-  ): { x: number; y: number; w: number; h: number } | null {
-    if (!row.hasChildren) return null;
-  
-    const triSize = 12;
-    const xGrip = 0;
-    const xToggle = xGrip + state.colGrip;
-    const triX = xToggle + 8 + state.toggleIndentPerLevel * row.level;
-    const triY = rowIndex * state.rowHeight + Math.floor((state.rowHeight - triSize) / 2);
-    return { x: triX, y: triY, w: triSize, h: triSize };
-  }
+  const triSize = 12;
+  const xGrip = 0;
+  const xToggle = xGrip + state.colGrip;
+  const triX = xToggle + 8 + state.toggleIndentPerLevel * row.level;
 
-  /** НОВОЕ: курсор "grab"/"grabbing" над 6 точками и "pointer" над треугольником. */
+  const yContent = rowIndex * state.rowHeight + Math.floor((state.rowHeight - triSize) / 2);
+  const yViewport = yContent - state.scrollTop;
+
+  return { x: triX, y: yViewport, w: triSize, h: triSize };
+}
+
+/** Курсор "grab"/"grabbing" над 6 точками и "pointer" над треугольником. */
 export function handleBodyMouseMove(
-    bodyCanvas: HTMLCanvasElement,
-    state: TablePaintState,
-    mouseX: number,
-    mouseY: number
-  ): void {
-    // Индекс строки относительно видимого окна
-    const rel = Math.floor(mouseY / state.rowHeight);
-    const rowIndex = clamp(
-      state.visibleStartIndex + rel,
-      state.visibleStartIndex,
-      state.visibleEndIndex
-    );
-    const row = state.flatRows[rowIndex];
-    if (!row) {
-      bodyCanvas.style.cursor = 'default';
-      return;
-    }
-  
-    // Тест "6 точек"
-    const grip = getGripHitRect(rowIndex, state);
-    const inGrip =
-      mouseX >= grip.x && mouseX <= grip.x + grip.w &&
-      mouseY >= grip.y && mouseY <= grip.y + grip.h;
-  
-    if (inGrip) {
-      bodyCanvas.style.cursor = state.isDragging ? 'grabbing' : 'grab';
-      return;
-    }
-  
-    // Тест треугольника
-    const toggleRect = getToggleHitRect(row, rowIndex, state);
-    if (toggleRect) {
-      const inToggle =
-        mouseX >= toggleRect.x && mouseX <= toggleRect.x + toggleRect.w &&
-        mouseY >= toggleRect.y && mouseY <= toggleRect.y + toggleRect.h;
-  
-      if (inToggle) {
-        bodyCanvas.style.cursor = 'pointer';
-        return;
-      }
-    }
-  
-    // Иначе курсор по умолчанию
+  bodyCanvas: HTMLCanvasElement,
+  state: TablePaintState,
+  mouseX: number,
+  mouseY: number
+): void {
+  // Абсолютный индекс строки под мышью: мышь во вьюпорте => добавляем scrollTop
+  const absIndex = Math.floor((mouseY + state.scrollTop) / state.rowHeight);
+  const rowIndex = clamp(
+    absIndex,
+    state.visibleStartIndex,
+    state.visibleEndIndex
+  );
+  const row = state.flatRows[rowIndex];
+  if (!row) {
     bodyCanvas.style.cursor = 'default';
-  }
-  
-  /** НОВОЕ: сброс курсора при уходе мыши с	canvas. */
-  export function handleBodyMouseLeave(bodyCanvas: HTMLCanvasElement): void {
-    bodyCanvas.style.cursor = 'default';
+    return;
   }
 
-/** Линия-вставка для DropMode.insert. */
-function drawInsertLine(ctx: CanvasRenderingContext2D, y: number, width: number) {
+  // Хит по "ручке"
+  const grip = getGripHitRectViewport(rowIndex, state);
+  const inGrip =
+    mouseX >= grip.x && mouseX <= grip.x + grip.w &&
+    mouseY >= grip.y && mouseY <= grip.y + grip.h;
+
+  if (inGrip) {
+    bodyCanvas.style.cursor = state.isDragging ? 'grabbing' : 'grab';
+    return;
+  }
+
+  // Хит по треугольнику
+  const toggleRect = getToggleHitRectViewport(row, rowIndex, state);
+  if (toggleRect) {
+    const inToggle =
+      mouseX >= toggleRect.x && mouseX <= toggleRect.x + toggleRect.w &&
+      mouseY >= toggleRect.y && mouseY <= toggleRect.y + toggleRect.h;
+
+    if (inToggle) {
+      bodyCanvas.style.cursor = 'pointer';
+      return;
+    }
+  }
+
+  bodyCanvas.style.cursor = 'default';
+}
+
+/** Сброс курсора при уходе мыши с canvas. */
+export function handleBodyMouseLeave(bodyCanvas: HTMLCanvasElement): void {
+  bodyCanvas.style.cursor = 'default';
+}
+
+/** Линия-вставка для DropMode.insert. (КОНТЕНТНЫЕ координаты) */
+function drawInsertLine(ctx: CanvasRenderingContext2D, yContent: number, width: number) {
   ctx.save();
   ctx.strokeStyle = '#4c8dff';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, y + 0.5);
-  ctx.lineTo(width, y + 0.5);
+  ctx.moveTo(0, yContent + 0.5);
+  ctx.lineTo(width, yContent + 0.5);
   ctx.stroke();
   ctx.restore();
 }
 
-/** Пунктирный прямоугольник для DropMode.child. */
+/** Пунктирный прямоугольник для DropMode.child. (КОНТЕНТНЫЕ координаты) */
 function drawDashedRect(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number,
+  x: number, yContent: number,
   w: number, h: number
 ) {
   ctx.save();
   ctx.strokeStyle = '#4c8dff';
   ctx.setLineDash([6, 4]);
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.strokeRect(x + 0.5, yContent + 0.5, w - 1, h - 1);
   ctx.restore();
 }
 
-/** Призрачный «перетаскиваемый» прямоугольник. */
+/** Призрачный «перетаскиваемый» прямоугольник. (КОНТЕНТНЫЕ координаты) */
 function drawDragGhost(
   ctx: CanvasRenderingContext2D,
-  y: number,
+  yContent: number,
   width: number,
   rowHeight: number
 ) {
   ctx.save();
   ctx.globalAlpha = 0.15;
   ctx.fillStyle = '#4c8dff';
-  ctx.fillRect(0, Math.round(y), width, rowHeight);
+  ctx.fillRect(0, Math.round(yContent), width, rowHeight);
   ctx.globalAlpha = 1;
   ctx.restore();
 }
