@@ -415,6 +415,8 @@ private onGanttScroll() {
   this.renderGanttBody();          // виртуальное тело гантта
   this.renderBody();               // таблицу тоже перерисуем для верности
 
+  this.updateGanttCursorFromLast();
+
   this.syncingScroll = false;
 }
 
@@ -512,6 +514,39 @@ private onGanttScroll() {
       this.splitRootRef.nativeElement.classList.remove('splitting');
       document.body.style.cursor = '';
     };
+
+    if (this.showGantt) {
+      const ganttCanvas = this.ganttCanvasRef.nativeElement;
+    
+      // 1) Локальные события канваса — ховер и старт действий
+      const onGanttMouseMove = (e: MouseEvent) => this.onGanttMouseMoveBound(e);
+      const onGanttMouseDown = (e: MouseEvent) => this.onGanttMouseDown(e);
+      const onGanttMouseUp   = (e: MouseEvent) => this.onGanttMouseUpBound(e);
+      const onGanttMouseLeave = () => this.resetGanttCursor();
+    
+      ganttCanvas.addEventListener('mousemove', onGanttMouseMove, { passive: true });
+      ganttCanvas.addEventListener('mousedown', onGanttMouseDown);
+      ganttCanvas.addEventListener('mouseup',   onGanttMouseUp,   { passive: true });
+      ganttCanvas.addEventListener('mouseleave', onGanttMouseLeave, { passive: true });
+    
+      // 2) Глобальные события на время Drag/Link — чтобы удерживать операцию вне канваса
+      const onWinMove = (e: MouseEvent) => this.onGanttMouseMoveBound(e);
+      const onWinUp   = (e: MouseEvent) => this.onGanttMouseUpBound(e);
+    
+      window.addEventListener('mousemove', onWinMove, { passive: true });
+      window.addEventListener('mouseup',   onWinUp);
+    
+      // 3) Очистка
+      this.destroyRef.onDestroy(() => {
+        ganttCanvas.removeEventListener('mousemove', onGanttMouseMove);
+        ganttCanvas.removeEventListener('mousedown', onGanttMouseDown);
+        ganttCanvas.removeEventListener('mouseup',   onGanttMouseUp);
+        ganttCanvas.removeEventListener('mouseleave', onGanttMouseLeave);
+    
+        window.removeEventListener('mousemove', onWinMove);
+        window.removeEventListener('mouseup',   onWinUp);
+      });
+    }
 
     window.addEventListener('mousemove', onSplitMove, { passive: true });
     window.addEventListener('mouseup', onSplitUp, { passive: true });
@@ -706,7 +741,6 @@ private onGanttScroll() {
       ganttOverlay.style.bottom = `${ghScrollbarHeight}px`;
     }
   }
-
 
   // ────────────────── Пересчёт дат суммарных задач ──────────────────
   private recalcParentDatesFromChildren(parentId: string): void {
