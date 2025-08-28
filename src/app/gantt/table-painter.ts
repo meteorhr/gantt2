@@ -214,6 +214,25 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
     }
   }
 
+  // ── DnD overlays (во вьюпорте) ─────────────────────────────────────
+  if (state.isDragging && state.dragRowIndex >= 0) {
+    // Призрак перетаскивания: lastMouseY уже во вьюпорте
+    const ghostY_view = state.lastMouseY - state.dragMouseDy;
+    drawDragGhost(ctx, ghostY_view, width + state.scrollLeft, state.rowHeight);
+
+    if (state.dropMode.kind === 'insert') {
+      // Линия вставки: преобразуем топ строки из контентных координат к вьюпорту
+      const insY_view = state.dropMode.beforeRowIndex * state.rowHeight - state.scrollTop;
+      drawInsertLine(ctx, insY_view, width + state.scrollLeft);
+      // Бейдж режима
+      drawModeBadge(ctx, 'Вставка', Math.max(8 - state.scrollLeft, 4), insY_view - 18);
+    } else if (state.dropMode.kind === 'child') {
+      const rectY_view = state.dropMode.targetRowIndex * state.rowHeight - state.scrollTop;
+      drawDashedRect(ctx, 0, rectY_view, width + state.scrollLeft, state.rowHeight);
+      drawModeBadge(ctx, 'Вложение', Math.max(8 - state.scrollLeft, 4), rectY_view - 18);
+    }
+  }
+
   // вертикальные линии сетки (уже со сдвигом)
   ctx.beginPath();
   ctx.moveTo(state.colGrip + 0.5, 0);
@@ -232,139 +251,7 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
   ctx.restore();
 }
 
-export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaintState): void {
-  const ctx = bodyCanvas.getContext('2d');
-  if (!ctx) return;
 
-  const width  = parseInt(bodyCanvas.style.width, 10)  || bodyCanvas.width;
-  const height = parseInt(bodyCanvas.style.height, 10) || bodyCanvas.height;
-
-  ctx.clearRect(0, 0, width, height);
-  ctx.font = state.font;
-
-  const xGrip = 0;
-  const xToggle = xGrip + state.colGrip;
-  const xDataStart = xToggle + state.colToggle;
-
-  const total = state.flatRows.length;
-  if (!total) return;
-
-  const startIndex = clamp(state.visibleStartIndex, 0, total - 1);
-  const endIndex   = clamp(state.visibleEndIndex,   -1, total - 1);
-  if (endIndex < startIndex) return;
-
-  // ── ключевая математика «якоря» ─────────────────────────────────────
-  const firstTop = startIndex * state.rowHeight;                 // контент-Y начала окна
-  const yOffset  = -(state.scrollTop - firstTop);                // ∈ [-rowHeight, rowHeight)
-  // теперь рисуем строки по y = (i - startIndex)*rowHeight + yOffset
-
-  // Клип ровно по вьюпорту
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, width, height);
-  ctx.clip();
-
-  for (let i = startIndex; i <= endIndex; i++) {
-    const row = state.flatRows[i];
-    const y   = (i - startIndex) * state.rowHeight + yOffset;    // viewport-Y
-
-    // 1) зебра
-    if (i % 2 === 1) {
-      ctx.fillStyle = state.zebraColor;
-      ctx.fillRect(0, y, width, state.rowHeight);
-    }
-
-    // 2) фон уровня для родителя
-    if (row.hasChildren) {
-      ctx.fillStyle = getLevelColor(row.level, state.levelColors);
-      ctx.fillRect(state.colGrip, y, width - state.colGrip, state.rowHeight);
-    }
-
-    // 3) горизонтальная линия
-    ctx.beginPath();
-    ctx.moveTo(0, y + state.rowHeight + 0.5);
-    ctx.lineTo(width, y + state.rowHeight + 0.5);
-    ctx.strokeStyle = state.gridColor;
-    ctx.stroke();
-
-    // 4) «ручка» перетаскивания
-    drawGrip(ctx, xGrip + 10, y + (state.rowHeight - 12) / 2, 12, 12);
-
-    // 5) полосы-уровни (indent)
-    drawLevelIndicators(
-      ctx, row.level, y, xToggle,
-      state.toggleIndentPerLevel, state.rowHeight, state.levelColors
-    );
-
-    // 6) треугольник сворачивания/разворачивания
-    if (row.hasChildren) {
-      const triSize = 12;
-      const triX = xToggle + 8 + state.toggleIndentPerLevel * row.level;
-      const triY = y + (state.rowHeight - triSize) / 2;
-      ctx.save();
-      ctx.beginPath();
-      if (state.collapsedIds.has(row.id)) {
-        ctx.moveTo(triX + 2,  triY + 2);
-        ctx.lineTo(triX + 10, triY + 6);
-        ctx.lineTo(triX + 2,  triY + 10);
-      } else {
-        ctx.moveTo(triX + 2,  triY + 3);
-        ctx.lineTo(triX + 10, triY + 3);
-        ctx.lineTo(triX + 6,  triY + 11);
-      }
-      ctx.closePath();
-      ctx.fillStyle = '#666';
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // 7) ячейки
-    ctx.fillStyle = state.textColor;
-    const midY = y + state.rowHeight / 2;
-    let cursor = xDataStart;
-    for (const col of state.columns) {
-      const val = state.getCellValue(row, col.key);
-      drawClippedText(ctx, val, cursor, midY, col.width, 10);
-      cursor += col.width;
-    }
-
-
-  }
-  bodyCanvas.style.zIndex = '9999';
-  bodyCanvas.style.background = 'rgba(255,0,0,.06)';
-  // ── DnD overlays (во viewport-координатах) ──────────────────────────
-  if (state.isDragging && state.dragRowIndex >= 0) {
-    // lastMouseY — уже viewport-Y, поэтому без scrollTop
-    const ghostY = state.lastMouseY - state.dragMouseDy;
-    drawDragGhost(ctx, ghostY, width, state.rowHeight);
-
-    if (state.dropMode.kind === 'insert') {
-      // Переводим контент-Y линии вставки в viewport-Y:
-      const insY_view = (state.dropMode.beforeRowIndex - startIndex) * state.rowHeight + yOffset;
-      drawInsertLine(ctx, insY_view, width);
-    } else if (state.dropMode.kind === 'child') {
-      const rectY_view = (state.dropMode.targetRowIndex - startIndex) * state.rowHeight + yOffset;
-      drawDashedRect(ctx, 0, rectY_view, width, state.rowHeight);
-    }
-  }
-
-  // ── вертикальные линии сетки (во viewport) ──────────────────────────
-  ctx.beginPath();
-  ctx.moveTo(state.colGrip + 0.5, 0);
-  ctx.lineTo(state.colGrip + 0.5, height);
-  ctx.moveTo((state.colGrip + state.colToggle) + 0.5, 0);
-  ctx.lineTo((state.colGrip + state.colToggle) + 0.5, height);
-  let edge = xGrip + state.colGrip + state.colToggle;
-  for (const col of state.columns) {
-    edge += col.width;
-    ctx.moveTo(edge + 0.5, 0);
-    ctx.lineTo(edge + 0.5, height);
-  }
-  ctx.strokeStyle = state.gridColor;
-  ctx.stroke();
-
-  ctx.restore(); // clip
-}
 
 
 
@@ -477,7 +364,7 @@ function getGripHitRectViewport(
   const x = xGrip + 10;
   const yContent = rowIndex * state.rowHeight + Math.floor((state.rowHeight - 12) / 2);
   const yViewport = yContent - state.scrollTop; // переводим в вьюпорт
-  return { x, y: yViewport, w: 12, h: 12 };
+  return { x: x - state.scrollLeft, y: yViewport, w: 12, h: 12 };
 }
 
 /** Прямоугольник хит-зоны треугольника (ВО ВЬЮПОРТНЫХ координатах). */
@@ -492,11 +379,12 @@ function getToggleHitRectViewport(
   const xGrip = 0;
   const xToggle = xGrip + state.colGrip;
   const triX = xToggle + 8 + state.toggleIndentPerLevel * row.level;
+  const triXViewport = triX - state.scrollLeft;
 
   const yContent = rowIndex * state.rowHeight + Math.floor((state.rowHeight - triSize) / 2);
   const yViewport = yContent - state.scrollTop;
 
-  return { x: triX, y: yViewport, w: triSize, h: triSize };
+  return { x: triXViewport, y: yViewport, w: triSize, h: triSize };
 }
 
 /** Курсор "grab"/"grabbing" над 6 точками и "pointer" над треугольником. */
@@ -589,5 +477,49 @@ function drawDragGhost(
   ctx.fillStyle = '#4c8dff';
   ctx.fillRect(0, Math.round(yContent), width, rowHeight);
   ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+/** Маленький бейдж с текстом режима DnD (ВО ВЬЮПОРТНЫХ координатах). */
+function drawModeBadge(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number
+) {
+  const padX = 6;
+  const padY = 3;
+
+  ctx.save();
+  ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+  ctx.textBaseline = 'alphabetic';
+  const w = Math.ceil(ctx.measureText(text).width) + padX * 2;
+  const h = 16; // фиксированная высота бейджа
+
+  // фон с небольшой прозрачностью
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = '#1f6feb';
+  // скруглённый прямоугольник
+  const r = 6;
+  const rx = Math.round(x);
+  const ry = Math.round(y);
+  ctx.beginPath();
+  ctx.moveTo(rx + r, ry);
+  ctx.lineTo(rx + w - r, ry);
+  ctx.quadraticCurveTo(rx + w, ry, rx + w, ry + r);
+  ctx.lineTo(rx + w, ry + h - r);
+  ctx.quadraticCurveTo(rx + w, ry + h, rx + w - r, ry + h);
+  ctx.lineTo(rx + r, ry + h);
+  ctx.quadraticCurveTo(rx, ry + h, rx, ry + h - r);
+  ctx.lineTo(rx, ry + r);
+  ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+  ctx.closePath();
+  ctx.fill();
+
+  // текст
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.fillText(text, rx + padX, ry + h - padY - 2);
   ctx.restore();
 }
