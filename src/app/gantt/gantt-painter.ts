@@ -69,6 +69,9 @@ export interface GanttPaintState {
 
   // Прогресс
   rowProgress01: (rowIndex: number) => number;
+
+  selectedRowIndex: number;      // -1 если нет
+  selectedRowColor: string;      // напр. 'rgba(76,141,255,0.14)'
 }
 
 /** Отрисовать шапку Ганта. */
@@ -255,13 +258,24 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
   // ===== Горизонтальные разделители строк =====
   ctx.strokeStyle = st.gridColor;
   for (let i = st.visibleStartIndex; i <= st.visibleEndIndex; i++) {
-    const y = (i + 1) * st.rowHeight + 0.5;
+    const yTop    = i * st.rowHeight;               // верх текущей строки
+    const yBottom = (i + 1) * st.rowHeight + 0.5;   // линия-низ строки (для stroke)
+  
+    // подсветка должна начинаться с ВЕРХА строки
+    if (i === st.selectedRowIndex) {
+      ctx.save();
+      ctx.fillStyle = st.selectedRowColor || 'rgba(76,141,255,0.14)';
+      // можно заливать только видимую область, чтобы не опасаться translate/clip
+      ctx.fillRect(x0, yTop, x1 - x0, st.rowHeight);
+      ctx.restore();
+    }
+  
+    // разделительная линия по низу строки
     ctx.beginPath();
-    ctx.moveTo(x0, y);
-    ctx.lineTo(x1, y);
+    ctx.moveTo(x0, yBottom);
+    ctx.lineTo(x1, yBottom);
     ctx.stroke();
   }
-
   // Хелпер скругления
   const rr = (x: number, y: number, w: number, h: number, r: number) => {
     const rad = Math.min(r, h / 2, w / 2);

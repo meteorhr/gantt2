@@ -50,6 +50,9 @@ export interface TablePaintState {
   scrollLeft: number;        // <— NEW
   viewportWidth: number;     // <— NEW
 
+  selectedRowIndex: number;       // -1 если нет выделения
+  selectedRowColor: string;       // цвет подсветки строки
+
   // Поставщик значения ячейки
   getCellValue: (row: FlatRow, key: string) => string;
 }
@@ -168,6 +171,13 @@ export function renderTableBody(bodyCanvas: HTMLCanvasElement, state: TablePaint
     if (row.hasChildren) {
       ctx.fillStyle = getLevelColor(row.level, state.levelColors);
       ctx.fillRect(state.colGrip, y, width + state.scrollLeft - state.colGrip, state.rowHeight);
+    }
+
+    if (i === state.selectedRowIndex) {
+      ctx.save();
+      ctx.fillStyle = state.selectedRowColor || 'rgba(76,141,255,0.14)'; // мягкий голубой
+      ctx.fillRect(0, y, width + state.scrollLeft, state.rowHeight);
+      ctx.restore();
     }
 
     ctx.beginPath();

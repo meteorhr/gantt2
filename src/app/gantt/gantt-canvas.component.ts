@@ -259,6 +259,42 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   private hoverBarRow: number | null = null;
   private leftHandleDownRow: number | null = null;
 
+  //private selectedRowIndex: number = -1;
+
+  //private setSelectedRow(idx: number) {
+  //  if (idx < 0 || idx >= this.flatRows.length) idx = -1;
+  //  if (this.selectedRowIndex !== idx) {
+  //    this.selectedRowIndex = idx;
+  //    this.tableMenuRow = idx;            // чтобы меню работало с той же строкой
+  //    this.renderBody();                  // достаточно перерисовать тело таблицы
+  //  }
+  //}
+
+  private selectedRowId: string | null = null;
+
+  private getSelectedRowIndex(): number {
+    if (!this.selectedRowId) return -1;
+    const idx = this.rowIndexById.get(this.selectedRowId);
+    return (idx ?? -1);
+  }
+
+  private setSelectedRowByIndex(idx: number) {
+    if (idx < 0 || idx >= this.flatRows.length) {
+      this.selectedRowId = null;
+    } else {
+      this.selectedRowId = this.flatRows[idx].id;
+    }
+    // перерисовываем обе части
+    this.renderBody();
+    this.renderGanttBody();
+  }
+
+  private setSelectedRowById(id: string | null) {
+    this.selectedRowId = id;
+    this.renderBody();
+    this.renderGanttBody();
+  }
+
   private buildTableState(): TablePaintState {
     const wrapper = this.bodyWrapperRef.nativeElement;
     const { startIndex, endIndex } = this.visibleRowRange(wrapper);
@@ -305,6 +341,9 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
       viewportHeight: wrapper.clientHeight,
       scrollLeft: wrapper.scrollLeft,          
       viewportWidth: wrapper.clientWidth,      
+
+      selectedRowIndex: this.getSelectedRowIndex(),
+      selectedRowColor: 'rgba(76,141,255,0.14)', // можно вынести в настройку/тему
   
       // Поставщик значения ячейки
       getCellValue: (row, key) => this.getCellValue(row, key),
@@ -370,6 +409,9 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
       linkHoverTargetRow: this.linkHoverTargetRow,
       linkHandleR: this.linkHandleR,
       linkHandleGap: this.linkHandleGap,
+
+      selectedRowIndex: this.getSelectedRowIndex(),
+      selectedRowColor: 'rgba(76,141,255,0.14)', // можно вынести в настройку/тему
   
       // Прогресс
       rowProgress01: (i: number) => this.rowProgress01(i),
@@ -760,6 +802,9 @@ private insertSiblingAt(targetRow: number, where: 'before'|'after') {
       const rowIndex = Math.floor(contentY / this.rowHeight);
 
       this.ngZone.run(() => {
+        this.setSelectedRowByIndex(rowIndex);           // ⬅️ ВАЖНО
+        
+        
         this.tableMenuRow = (rowIndex >= 0 && rowIndex < this.flatRows.length) ? rowIndex : -1;
         this.openTableMenuAt(xView, yView);
       });
@@ -1168,6 +1213,12 @@ private onGanttMouseDown(ev: MouseEvent) {
   this.lastGanttClientX = ev.clientX;
   this.lastGanttClientY = ev.clientY;
 
+  const rowIndex = Math.floor(y / this.rowHeight);
+  if (rowIndex >= 0 && rowIndex < this.flatRows.length) {
+    this.ngZone.run(() => this.setSelectedRowByIndex(rowIndex));
+  } else {
+    this.ngZone.run(() => this.setSelectedRowById(null));
+  }
   
   // 0) клик по ЛЕВОМУ кружку — ничего не двигаем, просто «держим»
   const lHit = this.barLeftHandleHit(x, y);
@@ -1627,6 +1678,10 @@ private scheduleRender() {
       if (this.isDragging) return;
       const { x, y } = this.toContentCoordsAbs(event); // <— было toContentCoords (вьюпорт)
       const rowIndex = Math.floor(y / this.rowHeight);
+
+      // ⬇️ выделяем независимо от того, попал ли треугольник
+      this.ngZone.run(() => this.setSelectedRowByIndex(rowIndex));
+
       if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
       const row = this.flatRows[rowIndex];
 
@@ -1766,6 +1821,13 @@ private onMouseDown(event: MouseEvent) {
   this.lastMouseX = xView;   // остаётся вьюпорт
   this.lastMouseY = yView;   // остаётся вьюпорт
 
+    // индекс строки (CONTENT)
+    const rowIndex = Math.floor(yContent / this.rowHeight);
+    if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
+  
+    // ⬇️ выделяем строку на ЛКМ сразу
+    this.setSelectedRowByIndex(rowIndex);
+
   // Ресайз делителя — по CONTENT X
   const hit = this.hitResizableDivider(xContent);
   if (hit.index != null) {
@@ -1777,7 +1839,6 @@ private onMouseDown(event: MouseEvent) {
     return;
   }
 
-  const rowIndex = Math.floor(yContent / this.rowHeight);
   if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
 
   if (!this.isInsideGrip(xContent, yContent, rowIndex)) return;
@@ -2023,9 +2084,11 @@ private resizeGanttCanvases() {
   
     // ❌ не делаем translate здесь — НИЖЕ УБРАТЬ:
     // ctx.translate(0, -wrap.scrollTop);
+
+    const dpr = (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
   
-    const width  = canvas.width;
-    const height = canvas.height;
+    const width  = canvas.width / dpr;
+    const height = canvas.height / dpr;
   
     ctx.clearRect(0, 0, width, height);
     ctx.save();
@@ -2100,9 +2163,10 @@ private renderGanttBody() {
   const ctx = canvas.getContext('2d')!;
   const wrap = this.ganttWrapperRef.nativeElement;
 
+  const dpr = (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
   const { startIndex, endIndex } = this.visibleRowRange(wrap);
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
   const full = this.buildGanttState();
   const state: GanttPaintState = {
@@ -2379,6 +2443,19 @@ private updateVirtualSpacers() {
     const ganttSpacer = this.ganttSpacerRef.nativeElement;
     ganttSpacer.style.width  = `${Math.max(this.ganttHostRef.nativeElement.clientWidth, ganttContentWidth)}px`;
     ganttSpacer.style.height = `${ganttContentHeight}px`;
+  }
+}
+
+private revealRow(i: number) {
+  const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+  const targetTop = i * this.rowHeight;
+  const wrappers = [this.bodyWrapperRef.nativeElement, this.ganttWrapperRef?.nativeElement].filter(Boolean) as HTMLElement[];
+
+  for (const w of wrappers) {
+    const maxTop = w.scrollHeight - w.clientHeight;
+    const newTop = clamp(targetTop - Math.floor((w.clientHeight - this.rowHeight)/2), 0, maxTop);
+    w.scrollTop = newTop;
   }
 }
 
