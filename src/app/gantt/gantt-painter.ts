@@ -19,13 +19,19 @@ export interface GanttPaintState {
   nodeIndex: Map<string, Node>;
   rowIndexById: Map<string, number>;
   rowIndexByWbs: Map<string, number>;
-  refLines: RefLine[]; // можно []
+  refLines: RefLine[];
 
   // Геометрия/виртуализация
-  headerHeight: number;   // напр. 36
-  rowHeight: number;      // напр. 28
-  visibleStartIndex: number; // включительно
-  visibleEndIndex: number;   // включительно
+  headerHeight: number;
+  rowHeight: number;
+  visibleStartIndex: number;
+  visibleEndIndex: number;
+
+  // Вьюпорт/скролл — НОВОЕ
+  scrollTop: number;
+  viewportHeight: number;
+  scrollLeft: number;
+  viewportWidth: number;
 
   // Временная шкала
   ganttPxPerDay: number;
@@ -34,36 +40,34 @@ export interface GanttPaintState {
   ganttScale: GanttScale;
 
   // Внешний вид
-  font: string;        // '12px system-ui,...'
-  headerFont: string;  // '600 12px system-ui,...'
-  gridColor: string;   // '#e6e6e6'
-  textColor: string;   // '#000'
-  headerBg: string;    // '#f5f7fb'
-  headerBorder: string;// '#dcdfe6'
+  font: string;
+  headerFont: string;
+  gridColor: string;
+  textColor: string;
+  headerBg: string;
+  headerBorder: string;
 
   // Цвета баров
   colorOf: (name: BarColorName) => string;
   rgba: (hex: string, a: number) => string;
 
   // Визуальные параметры задач
-  summaryThick: number; // толщина summary по центру строки
-  taskPad: number;      // вертикальный отступ от краёв строки
-  taskGap: number;      // зазор между actual и baseline
+  summaryThick: number;
+  taskPad: number;
+  taskGap: number;
 
-  // Hover / линкование (только для ВИДИМОСТИ в отрисовке)
+  // Hover / линкование
   hoverBarRow: number | null;
   hoverGanttHitMode: 'move' | 'resize-start' | 'resize-finish' | null;
   linkMode: 'none' | 'drag';
-  linkSourceRow: number;               // -1 если нет
+  linkSourceRow: number;
   linkStartX: number; linkStartY: number;
   linkMouseX: number; linkMouseY: number;
   linkHoverTargetRow: number | null;
-  linkHandleR: number;                 // радиус кружка
-  linkHandleGap: number;               // зазор от бара до кружка
+  linkHandleR: number;
+  linkHandleGap: number;
 
-  
-
-  // Прогресс строки [0..1]
+  // Прогресс
   rowProgress01: (rowIndex: number) => number;
 }
 
@@ -210,13 +214,27 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const width  = parseInt(canvas.style.width, 10)  || canvas.width;
-  const height = parseInt(canvas.style.height, 10) || canvas.height;
-  const strokeBlack = '#000';
+  const width  = st.viewportWidth  || parseInt(canvas.style.width, 10)  || canvas.width;
+  const height = st.viewportHeight || parseInt(canvas.style.height, 10) || canvas.height;
 
   ctx.clearRect(0, 0, width, height);
 
-  // сетка по времени
+  // Клип по вьюпорту
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, width, height);
+  ctx.clip();
+
+  // ✅ Сдвигаем контекст ровно на scrollLeft/scrollTop (а не на yShift)
+  ctx.translate(-st.scrollLeft, -st.scrollTop);
+
+  // Видимое окно в КОНТЕНТНЫХ координатах
+  const x0 = st.scrollLeft;
+  const x1 = st.scrollLeft + st.viewportWidth;
+  const y0 = st.scrollTop;
+  const y1 = st.scrollTop + st.viewportHeight;
+
+  // ===== Вертикальная сетка времени =====
   ctx.strokeStyle = '#ececec';
   const gridUnit: TimeUnit =
     st.ganttScale === 'week-day'      ? 'day' :
@@ -228,23 +246,23 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
   while (cur.getTime() <= st.ganttEndMs) {
     const x = Math.round(msToX(st, cur.getTime())) + 0.5;
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
     ctx.stroke();
     cur = nextUnitStart(cur, gridUnit);
   }
 
-  // горизонтальные разделители строк
+  // ===== Горизонтальные разделители строк =====
   ctx.strokeStyle = st.gridColor;
   for (let i = st.visibleStartIndex; i <= st.visibleEndIndex; i++) {
-    const y = i * st.rowHeight;
+    const y = (i + 1) * st.rowHeight + 0.5;
     ctx.beginPath();
-    ctx.moveTo(0, y + st.rowHeight + 0.5);
-    ctx.lineTo(width, y + st.rowHeight + 0.5);
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
     ctx.stroke();
   }
 
-  // хелпер закруглённого прямоугольника
+  // Хелпер скругления
   const rr = (x: number, y: number, w: number, h: number, r: number) => {
     const rad = Math.min(r, h / 2, w / 2);
     ctx.beginPath();
@@ -260,20 +278,20 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
     ctx.closePath();
   };
 
-  // бары задач
+  // ===== Бары (как было) =====
+  const strokeBlack = '#000';
   for (let i = st.visibleStartIndex; i <= st.visibleEndIndex; i++) {
-    const row = st.flatRows[i];
+    const row  = st.flatRows[i];
     const node = st.nodeIndex.get(row.id);
-    // фактические даты
+
     const startStr  = node?.start  ?? row.start;
     const finishStr = node?.finish ?? row.finish;
     const s = new Date(startStr  + 'T00:00:00').getTime();
     const f = new Date(finishStr + 'T00:00:00').getTime();
-    const x0 = Math.round(msToX(st, s));
-    const x1 = Math.round(msToX(st, f));
-    const w  = Math.max(3, x1 - x0);
+    const x0b = Math.round(msToX(st, s));
+    const x1b = Math.round(msToX(st, f));
+    const w  = Math.max(3, x1b - x0b);
 
-    // baseline (если есть)
     const bStartStr  = node?.baselineStart  ?? row.baselineStart;
     const bFinishStr = node?.baselineFinish ?? row.baselineFinish;
     const hasBaseline = !!(bStartStr && bFinishStr);
@@ -289,14 +307,12 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
       bw  = Math.max(3, bx1 - bx0);
     }
 
-    // геометрия дорожек
     const rowTop = i * st.rowHeight;
     const pad    = st.taskPad;
     const gap    = st.taskGap;
     const trackH = Math.max(4, Math.floor((st.rowHeight - pad * 2 - gap) / 2));
 
     if (row.hasChildren) {
-      // summary-бар по центру строки, «кепки»
       const groupFill = st.colorOf('group');
       const yc   = rowTop + st.rowHeight / 2;
       const thick = st.summaryThick;
@@ -304,43 +320,42 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
       const cap = Math.min(capMax, Math.floor(w / 2));
       const yTop = Math.round(yc - thick / 2) + 0.5;
       const yBot = Math.round(yc + thick / 2) + 0.5;
-      const coreX0 = x0 + cap;
-      const coreX1 = x1 - cap;
+      const coreX0 = x0b + cap;
+      const coreX1 = x1b - cap;
 
       ctx.save();
       if (coreX1 > coreX0) {
         ctx.fillStyle = groupFill;
         ctx.fillRect(coreX0, yTop - 0.5, coreX1 - coreX0, (yBot - yTop) + 1);
       }
-      // левая «кепка»
       ctx.beginPath();
-      ctx.moveTo(x0, yBot);
+      ctx.moveTo(x0b, yBot);
       ctx.lineTo(coreX0, yBot);
-      ctx.lineTo(x0, yBot + cap);
+      ctx.lineTo(x0b, yBot + cap);
       ctx.closePath();
       ctx.fillStyle = groupFill; ctx.fill();
       ctx.strokeStyle = strokeBlack; ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(x0, yBot); ctx.lineTo(x0, yBot + cap);
-      ctx.moveTo(x0, yBot + cap); ctx.lineTo(coreX0, yBot);
+      ctx.moveTo(x0b, yBot); ctx.lineTo(x0b, yBot + cap);
+      ctx.moveTo(x0b, yBot + cap); ctx.lineTo(coreX0, yBot);
       ctx.stroke();
-      // правая «кепка»
+
       ctx.beginPath();
-      ctx.moveTo(x1, yBot);
+      ctx.moveTo(x1b, yBot);
       ctx.lineTo(coreX1, yBot);
-      ctx.lineTo(x1, yBot + cap);
+      ctx.lineTo(x1b, yBot + cap);
       ctx.closePath();
       ctx.fill(); ctx.stroke();
-      // верх/низ сплошняк
+
       ctx.fillStyle = groupFill;
-      ctx.fillRect(x0, yTop - 0.5, Math.max(0, coreX0 - x0), (yBot - yTop) + 1);
-      ctx.fillRect(coreX1, yTop - 0.5, Math.max(0, x1 - coreX1), (yBot - yTop) + 1);
+      ctx.fillRect(x0b, yTop - 0.5, Math.max(0, coreX0 - x0b), (yBot - yTop) + 1);
+      ctx.fillRect(coreX1, yTop - 0.5, Math.max(0, x1b - coreX1), (yBot - yTop) + 1);
       ctx.strokeStyle = strokeBlack;
       ctx.beginPath();
-      ctx.moveTo(x0, yTop); ctx.lineTo(x1, yTop);
+      ctx.moveTo(x0b, yTop); ctx.lineTo(x1b, yTop);
       ctx.moveTo(coreX0 - 1, yBot); ctx.lineTo(coreX1 + 1, yBot);
-      ctx.moveTo(x0, yTop); ctx.lineTo(x0, yBot);
-      ctx.moveTo(x1, yTop); ctx.lineTo(x1, yBot);
+      ctx.moveTo(x0b, yTop); ctx.lineTo(x0b, yBot);
+      ctx.moveTo(x1b, yTop); ctx.lineTo(x1b, yBot);
       ctx.stroke();
       ctx.restore();
 
@@ -350,7 +365,6 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
       const actualBase  = st.rgba(actualColor, 0.35);
 
       if (hasBaseline) {
-        // baseline — нижняя дорожка
         const baselineColor = st.colorOf('baseline');
         ctx.save();
         rr(bx0, rowTop + pad + trackH + gap, bw, trackH, 1);
@@ -361,30 +375,25 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
         ctx.stroke();
         ctx.restore();
 
-        // actual — верхняя дорожка с прогрессом
         const prog = st.rowProgress01(i);
         const pw = Math.max(0, Math.round(w * prog));
-
         ctx.save();
-        rr(x0, rowTop + pad, w, trackH, 1);
+        rr(x0b, rowTop + pad, w, trackH, 1);
         ctx.clip();
-        // остаток
         ctx.fillStyle = actualBase;
-        ctx.fillRect(x0, rowTop + pad, w, trackH);
-        // прогресс
+        ctx.fillRect(x0b, rowTop + pad, w, trackH);
         ctx.fillStyle = actualColor;
-        if (pw > 0) ctx.fillRect(x0, rowTop + pad, pw, trackH);
+        if (pw > 0) ctx.fillRect(x0b, rowTop + pad, pw, trackH);
         ctx.restore();
 
         ctx.save();
-        rr(x0, rowTop + pad, w, trackH, 1);
+        rr(x0b, rowTop + pad, w, trackH, 1);
         ctx.strokeStyle = strokeBlack;
         ctx.lineWidth = 1;
         ctx.stroke();
         ctx.restore();
 
       } else {
-        // прямоугольник на всю высоту за вычетом отступов
         const y = rowTop + 6;
         const h = st.rowHeight - 12;
         const prog = st.rowProgress01(i);
@@ -394,36 +403,33 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
         ctx.strokeStyle = strokeBlack;
         ctx.lineWidth = 1;
 
-        // контур
         ctx.beginPath();
-        ctx.moveTo(x0 + 1, y);
-        ctx.lineTo(x0 + w - 1, y);
-        ctx.quadraticCurveTo(x0 + w, y, x0 + w, y + 1);
-        ctx.lineTo(x0 + w, y + h - 1);
-        ctx.quadraticCurveTo(x0 + w, y + h, x0 + w - 1, y + h);
-        ctx.lineTo(x0 + 1, y + h);
-        ctx.quadraticCurveTo(x0, y + h, x0, y + h - 1);
-        ctx.lineTo(x0, y + 1);
-        ctx.quadraticCurveTo(x0, y, x0 + 1, y);
+        ctx.moveTo(x0b + 1, y);
+        ctx.lineTo(x0b + w - 1, y);
+        ctx.quadraticCurveTo(x0b + w, y, x0b + w, y + 1);
+        ctx.lineTo(x0b + w, y + h - 1);
+        ctx.quadraticCurveTo(x0b + w, y + h, x0b + w - 1, y + h);
+        ctx.lineTo(x0b + 1, y + h);
+        ctx.quadraticCurveTo(x0b, y + h, x0b, y + h - 1);
+        ctx.lineTo(x0b, y + 1);
+        ctx.quadraticCurveTo(x0b, y, x0b + 1, y);
         ctx.closePath();
 
-        // заливки
         ctx.save();
         ctx.clip();
-        ctx.fillStyle = actualBase; // остаток
-        ctx.fillRect(x0, y, w, h);
-        ctx.fillStyle = actualColor; // прогресс
-        if (cw > 0) ctx.fillRect(x0, y, cw, h);
+        ctx.fillStyle = actualBase;
+        ctx.fillRect(x0b, y, w, h);
+        ctx.fillStyle = actualColor;
+        if (cw > 0) ctx.fillRect(x0b, y, cw, h);
         ctx.restore();
 
-        // обводка
         ctx.stroke();
         ctx.restore();
       }
     }
   }
 
-  // референс-линии
+  // ===== Референс-линии =====
   if (st.refLines?.length) {
     for (const rl of st.refLines) {
       const ms = toMs(rl.date);
@@ -435,16 +441,36 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
       ctx.strokeStyle = rl.color;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
+      ctx.moveTo(x, y0);
+      ctx.lineTo(x, y1);
       ctx.stroke();
       ctx.restore();
     }
   }
 
-  // зависимости и превью линков + кружки-хэндлы
+  // ===== Зависимости + превью линков/кружки =====
   drawDependencies(ctx, st);
   drawLinkPreviewAndHandles(ctx, st);
+
+  ctx.restore();
+}
+
+
+
+// вспомогательный «скруглённик»
+function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rad = Math.min(r, h / 2, w / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+  ctx.lineTo(x + w, y + h - rad);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+  ctx.lineTo(x + rad, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+  ctx.lineTo(x, y + rad);
+  ctx.quadraticCurveTo(x, y, x + rad, y);
+  ctx.closePath();
 }
 
 /* ===========================

@@ -1,4 +1,4 @@
-// file: wbs-canvas-table.component.ts
+// file: gantt-canvas.component.ts
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -309,9 +309,9 @@ private onGanttScrollBound = () => this.onGanttScroll();
     };
   }
   
-
   private buildGanttState(): GanttPaintState {
-    const { startIndex, endIndex } = this.visibleRowRange(this.ganttWrapperRef.nativeElement);
+    const wrap = this.ganttWrapperRef.nativeElement;
+    const { startIndex, endIndex } = this.visibleRowRange(wrap);
   
     return {
       // Данные
@@ -326,6 +326,12 @@ private onGanttScrollBound = () => this.onGanttScroll();
       rowHeight: this.rowHeight,
       visibleStartIndex: startIndex,
       visibleEndIndex: endIndex,
+  
+      // Вьюпорт/скролл (НОВОЕ — как у таблицы)
+      scrollTop: wrap.scrollTop,
+      viewportHeight: wrap.clientHeight,
+      scrollLeft: wrap.scrollLeft,
+      viewportWidth: wrap.clientWidth,
   
       // Временная шкала
       ganttPxPerDay: this.ganttPxPerDay,
@@ -350,7 +356,7 @@ private onGanttScrollBound = () => this.onGanttScroll();
       taskPad: this.taskPad,
       taskGap: this.taskGap,
   
-      // Hover/линкование (только для визуализации)
+      // Hover/линкование (визуализация)
       hoverBarRow: this.hoverBarRow,
       hoverGanttHitMode: this.hoverGanttHitMode,
       linkMode: this.linkMode,
@@ -363,10 +369,11 @@ private onGanttScrollBound = () => this.onGanttScroll();
       linkHandleR: this.linkHandleR,
       linkHandleGap: this.linkHandleGap,
   
-      // Прогресс (0..1)
+      // Прогресс
       rowProgress01: (i: number) => this.rowProgress01(i),
     };
   }
+  
 
   private buildGeomState(): GanttGeometryState {
     return {
@@ -402,6 +409,7 @@ private onTableScroll() {
   this.syncHeaderToBodyScroll();   // шапка таблицы
   this.renderBody();               // виртуальное тело таблицы
   this.renderGanttBody();          // тело гантта (вертикально тот же scrollTop)
+  this.updateGanttCursorFromLast();
 
   this.syncingScroll = false;
 }
@@ -1886,24 +1894,15 @@ private renderGanttBody() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, canvas.width, canvas.height);
-  ctx.clip();
-
-  
-
   const full = this.buildGanttState();
-  const state = {
+  const state: GanttPaintState = {
     ...full,
     visibleStartIndex: startIndex,
     visibleEndIndex: endIndex,
   };
 
+  // Вся логика клипа/перевода координат — внутри painter
   paintGanttBody(canvas, state);
-
-  ctx.restore();
-  ctx.restore();
 }
 
 // Синхронизация complete при изменениях (не обязательно)
@@ -2077,121 +2076,6 @@ private get taskTrackH(): number {
     }
     ctx.closePath();
     ctx.fill();
-    ctx.restore();
-  }
-
-  /** Draws connectors using each node's `dependency` array.
-   * Маршрут: из центра источника → вправо → (вниз/вверх к уровню около цели)
-   * → влево над (или под) целевым баром → вертикально к центру цели
-   * → коротко вправо и вход в центр бара со стрелкой.
-   * Поддерживает dependency по id и по WBS.
-   */
-  private drawDependencies(ctx: CanvasRenderingContext2D) {
-    ctx.save();
-    ctx.lineWidth = 1;
-    ctx.setLineDash([]);
-  
-    const padH = 10;         // горизонтальные отступы
-    const padV = 8;          // вертикальный клиренс над/под целевым баром
-    const stubExit = 4;      // длина короткого выхода из правого края источника
-    const color = '#4a5568';
-  
-    for (let toIdx = 0; toIdx < this.flatRows.length; toIdx++) {
-      const targetRow = this.flatRows[toIdx];
-      const targetNode = this.nodeIndex.get(targetRow.id);
-      const deps = targetNode?.dependency || [];
-      if (!deps.length) continue;
-  
-      // Геометрия целевого бара
-      const t = this.barPixelsForRowIndex(toIdx);
-      const tx0 = t.x0, tx1 = t.x1;
-      const tyTop = t.yTop, tyMid = t.yMid, tyBot = t.yBot;
-  
-      for (const dep of deps) {
-        // resolve source index: сначала id, затем WBS
-        let fromIdx = this.rowIndexById.get(dep);
-        if (fromIdx === undefined) fromIdx = this.rowIndexByWbs.get(dep);
-        if (fromIdx === undefined) continue;
-  
-        const s = this.barPixelsForRowIndex(fromIdx);
-        const sx1 = s.x1;
-        const syMid = s.yMid;
-  
-        // Берём реальные даты (ms) для сравнения
-        const fromRow = this.flatRows[fromIdx];
-        const fromNode = this.nodeIndex.get(fromRow.id);
-        const fromFinishMs = new Date((fromNode?.finish ?? fromRow.finish) + 'T00:00:00').getTime();
-        const targetStartMs = new Date((targetNode?.start ?? targetRow.start) + 'T00:00:00').getTime();
-  
-        const targetBelow = toIdx > fromIdx; // цель ниже источника?
-        const yClear = targetBelow ? (tyTop - padV) : (tyBot + padV);
-        const xL = tx0 - padH;
-  
-
-        ctx.strokeStyle = color;
-  
-        if (fromFinishMs >= targetStartMs) {
-          // КОРОТКИЙ маршрут: маленький «штырёк» → вертикально → влево к xL
-          const exitX = sx1 + stubExit;
-          ctx.beginPath();
-          ctx.moveTo(sx1 + 0.5, syMid + 0.5);
-          ctx.lineTo(exitX + 0.5, syMid + 0.5);
-          ctx.lineTo(exitX + 0.5, yClear + 0.5);
-          ctx.lineTo(xL + 0.5, yClear + 0.5);
-          ctx.stroke();
-        } else {
-          // КЛАССИЧЕСКИЙ маршрут: вправо за оба бара → вниз/вверх → влево к xL
-          // расстояние между правым краем источника и левым краем цели
-          const gap = tx0 - sx1;          // px
-          const entryLen = tx0 - xL;      // = padH
-          // длина горизонтального выхода из источника (не меньше 0 и не больше gap)
-          const exitLen = Math.max(0, Math.min(gap - entryLen, gap));
-          const xExit = sx1 + exitLen;
-
-          ctx.strokeStyle = color;
-
-          // 1) короткий горизонтальный выход вправо из правого ребра источника
-          // 2) сразу вертикально к "эстакаде" над/под целью
-          // 3) горизонтально до точки слева от цели (xL)
-          ctx.beginPath();
-          ctx.moveTo(sx1 + 0.5, syMid + 0.5);
-          ctx.lineTo(xExit + 0.5, syMid + 0.5);
-          ctx.lineTo(xExit + 0.5, yClear + 0.5);
-          ctx.lineTo(xL + 0.5,  yClear + 0.5);
-          ctx.stroke();
-
-          // 4) вертикально в центр целевого бара
-          ctx.beginPath();
-          ctx.moveTo(xL + 0.5, yClear + 0.5);
-          ctx.lineTo(xL + 0.5, tyMid  + 0.5);
-          ctx.stroke();
-
-          // 5) короткий ход вправо и вход в левую грань цели
-          ctx.beginPath();
-          ctx.moveTo(xL + 0.5, tyMid + 0.5);
-          ctx.lineTo(tx0 + 0.5, tyMid + 0.5);
-          ctx.stroke();
-
-          this.drawArrowhead(ctx, tx0 + 0.5, tyMid + 0.5, 'right', color);
-        }
-  
-        // Вертикально к центру цели
-        ctx.beginPath();
-        ctx.moveTo(xL + 0.5, yClear + 0.5);
-        ctx.lineTo(xL + 0.5, tyMid + 0.5);
-        ctx.stroke();
-  
-        // Коротко вправо и вход в левый край целевого бара
-        ctx.beginPath();
-        ctx.moveTo(xL + 0.5, tyMid + 0.5);
-        ctx.lineTo(tx0 + 0.5, tyMid + 0.5);
-        ctx.stroke();
-  
-        // Стрелка вправо — в центр левого ребра цели
-        this.drawArrowhead(ctx, tx0 + 0.5, tyMid + 0.5, 'right', color);
-      }
-    }
-  
     ctx.restore();
   }
 
