@@ -46,3 +46,14 @@ export interface FlatRow {
   baselineStart?: string;
   baselineFinish?: string;
 }
+
+export interface GanttTooltipData {
+  wbs?: string | null;
+  name: string;
+  start?: string | null;
+  finish?: string | null;
+  baselineStart?: string | null;
+  baselineFinish?: string | null;
+  durationDays?: number | null;
+  complete?: number | null;
+}

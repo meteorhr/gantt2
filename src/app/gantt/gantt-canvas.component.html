@@ -75,12 +75,20 @@
       <div #ganttHost class="gantt-host">
         <!-- шапка ганта -->
         <canvas #ganttHeaderCanvas class="gantt-header-canvas"></canvas>
-
+        @if (ganttTooltipOpen && ganttTooltipData) {
+          <gantt-tooltip
+            [open]="ganttTooltipOpen"
+            [x]="ganttTooltipX"
+            [y]="ganttTooltipY"
+            [data]="ganttTooltipData">
+          </gantt-tooltip>
+        }
         <!-- прокручиваемое тело ганта -->
         <div #ganttWrapper class="gantt-body-wrapper">
           <canvas #ganttCanvas class="gantt-body-overlay"></canvas>
           <div #ganttSpacer class="gantt-spacer"></div>
         </div>
+
       </div>
     </div>
   </div>

@@ -18,7 +18,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { select, Selection } from 'd3-selection';
 import { zoom, ZoomBehavior, ZoomTransform } from 'd3-zoom';
-import { BarColor, ColumnDef, FlatRow, RefLine, Node } from './models/gantt.model';
+import { BarColor, ColumnDef, FlatRow, RefLine, Node, GanttTooltipData } from './models/gantt.model';
 import { BarColorName, DropMode, GanttScale } from './models/gantt.types';
 import {
   msToIso,
@@ -50,10 +50,12 @@ import {
 
 import { TableContextMenuComponent } from './table-context-menu/table-context-menu.component';
 
+import { GanttTooltipComponent } from './tooltip/gantt-tooltip.component';
+
 @Component({
   selector: 'gantt-canvas',
   standalone: true,
-  imports: [CommonModule, TableContextMenuComponent],
+  imports: [CommonModule, TableContextMenuComponent, GanttTooltipComponent],
   templateUrl: './gantt-canvas.component.html',
   styleUrls: ['./gantt-canvas.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -105,6 +107,11 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     { name: 'criticalpatch', color: '#E74C3C' },
     { name: 'group',         color: '#7A8288' },
   ];
+
+  public ganttTooltipOpen = false;
+  public ganttTooltipX = 0;
+  public ganttTooltipY = 0;
+  public ganttTooltipData: GanttTooltipData | null = null;
 
   // внутренняя карта для быстрого доступа
   private colorMap: Record<BarColorName, string> = {
@@ -159,10 +166,6 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     '#F2BE90', '#F8E187', '#96E5B8', '#F58EA8',
     '#B07EFB', '#FF8C69', '#64C2C8', '#C29FFF'
   ];
-  private getLevelColor(levelIndex: number) {
-    const arr = this.levelColors;
-    return arr[(levelIndex % arr.length + arr.length) % arr.length];
-  }
   private toggleIndentPerLevel = 12;
   private baseToggleWidth = 28;
 
@@ -456,6 +459,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     this.renderBody();               // виртуальное тело таблицы
     this.renderGanttBody();          // тело гантта (вертикально тот же scrollTop)
     this.updateGanttCursorFromLast();
+    this.updateTooltipFromLast();
     this.closeTableMenu();
     this.syncingScroll = false;
   }
@@ -472,9 +476,109 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     this.renderBody();               // таблицу тоже перерисуем для верности
 
     this.updateGanttCursorFromLast();
+    this.updateTooltipFromLast();
     this.closeTableMenu();
     this.syncingScroll = false;
   }
+
+// gantt-canvas.component.ts
+private openGanttTooltipAt(clientX: number, clientY: number, rowIndex: number) {
+  const host = this.ganttHostRef.nativeElement;
+  const r = host.getBoundingClientRect();
+
+  const fr = this.flatRows[rowIndex];
+  const n  = this.nodeIndex.get(fr.id);
+  const start  = n?.start  ?? fr.start;
+  const finish = n?.finish ?? fr.finish;
+  const bs = n?.baselineStart ?? fr.baselineStart;
+  const bf = n?.baselineFinish ?? fr.baselineFinish;
+  const durDays = (start && finish)
+    ? Math.max(1, Math.round((new Date(finish+'T00:00:00').getTime()
+                            - new Date(start +'T00:00:00').getTime()) / MS_PER_DAY))
+    : null;
+
+  const PAD = 0;
+  const estW = 260, estH = 96;
+  let x = clientX - r.left - estW / 2 + PAD ;
+  let y = clientY - r.top  - estH / 2 + PAD + 24;  
+  x = Math.max(6, Math.min(x, host.clientWidth  - estW - 6));
+  y = Math.max(6, Math.min(y, host.clientHeight - estH - 6));
+
+  this.ngZone.run(() => {
+    this.ganttTooltipData = {
+      wbs: fr.wbs, name: n?.name ?? fr.name,
+      start, finish, baselineStart: bs, baselineFinish: bf,
+      durationDays: durDays, complete: n?.complete ?? fr.complete ?? 0
+    };
+    this.ganttTooltipX = x;
+    this.ganttTooltipY = y;
+    this.ganttTooltipOpen = true;
+    this.cdr.detectChanges(); // важно: событие пришло извне зоны
+  });
+}
+
+private hideGanttTooltip() {
+  if (!this.ganttTooltipOpen) return;
+  this.ngZone.run(() => {
+    this.ganttTooltipOpen = false;
+    this.cdr.detectChanges();
+  });
+}
+
+private updateTooltipFromLast() {
+  if (!this.ganttTooltipOpen) return;
+  const wrap = this.ganttWrapperRef.nativeElement;
+  const wrect = wrap.getBoundingClientRect();
+  const x = (this.lastGanttClientX - wrect.left) + wrap.scrollLeft;
+  const y = (this.lastGanttClientY - wrect.top)  + wrap.scrollTop;
+  if (!this.ganttTooltipOpen) {
+    // если ещё не открыт — применяем задержку
+    const hit = this.hitGanttBarAt(x, y);
+    if (hit != null) this.scheduleTooltipOpen(this.lastGanttClientX, this.lastGanttClientY, hit.rowIndex);
+    else this.hideTooltipNow();
+    return;
+  }
+  
+  // если уже открыт — обновляем позицию сразу (без задержки)
+  const hit = this.hitGanttBarAt(x, y);
+  if (hit != null) this.openGanttTooltipAt(this.lastGanttClientX, this.lastGanttClientY, hit.rowIndex);
+  else this.hideTooltipNow();
+}
+
+private tooltipDelayMs = 220;                  // подправь как надо (150–300)
+private tooltipTimer: any = null;
+private pendingTooltipRow: number | null = null;
+private pendingTooltipClientX = 0;
+private pendingTooltipClientY = 0;
+
+private scheduleTooltipOpen(clientX: number, clientY: number, rowIndex: number) {
+  this.cancelTooltipTimer();
+  this.pendingTooltipRow = rowIndex;
+  this.pendingTooltipClientX = clientX;
+  this.pendingTooltipClientY = clientY;
+
+  this.tooltipTimer = setTimeout(() => {
+    // всё ещё не тащим/линуем и курсор над тем же баром?
+    if (this.linkMode === 'none' && this.ganttDragMode === 'none' && this.pendingTooltipRow != null) {
+      this.openGanttTooltipAt(this.pendingTooltipClientX, this.pendingTooltipClientY, this.pendingTooltipRow);
+    }
+    this.tooltipTimer = null;
+  }, this.tooltipDelayMs);
+}
+
+private cancelTooltipTimer() {
+  if (this.tooltipTimer != null) {
+    clearTimeout(this.tooltipTimer);
+    this.tooltipTimer = null;
+  }
+  this.pendingTooltipRow = null;
+}
+
+private hideTooltipNow() {
+  this.cancelTooltipTimer();
+  this.hideGanttTooltip();
+}
+  
 
   private hitGanttBarAt(x: number, y: number) {
     return hitGanttBarAt(this.buildGeomState(), x, y, this.ganttResizeHandlePx);
@@ -750,12 +854,13 @@ private insertSiblingAt(targetRow: number, where: 'before'|'after') {
       const onGanttMouseMove = (e: MouseEvent) => this.onGanttMouseMoveBound(e);
       const onGanttMouseDown = (e: MouseEvent) => this.onGanttMouseDown(e);
       const onGanttMouseUp   = (e: MouseEvent) => this.onGanttMouseUpBound(e);
-      const onGanttMouseLeave = () => this.resetGanttCursor();
+      const onGanttMouseLeave = () => { this.resetGanttCursor(); this.hideTooltipNow(); };
     
       ganttCanvas.addEventListener('mousemove', onGanttMouseMove, { passive: true });
       ganttCanvas.addEventListener('mousedown', onGanttMouseDown);
       ganttCanvas.addEventListener('mouseup',   onGanttMouseUp,   { passive: true });
       ganttCanvas.addEventListener('mouseleave', onGanttMouseLeave, { passive: true });
+      
     
       // 2) Глобальные события на время Drag/Link — чтобы удерживать операцию вне канваса
       const onWinMove = (e: MouseEvent) => this.onGanttMouseMoveBound(e);
@@ -880,6 +985,7 @@ private insertSiblingAt(targetRow: number, where: 'before'|'after') {
       cancelAnimationFrame(this.renderRafId);
       this.renderRafId = null;
     }
+    this.cancelTooltipTimer();
   }
 
   @HostListener('window:resize')
@@ -1212,7 +1318,7 @@ private onGanttMouseDown(ev: MouseEvent) {
   const { x, y } = this.toGanttContentCoords(ev);
   this.lastGanttClientX = ev.clientX;
   this.lastGanttClientY = ev.clientY;
-
+  this.hideTooltipNow();
   const rowIndex = Math.floor(y / this.rowHeight);
   if (rowIndex >= 0 && rowIndex < this.flatRows.length) {
     this.ngZone.run(() => this.setSelectedRowByIndex(rowIndex));
@@ -1271,6 +1377,15 @@ private onGanttMouseMove(ev: MouseEvent) {
   // Эти строки ОБЯЗАТЕЛЬНЫ для синхронизации со скроллом
   this.lastGanttClientX = ev.clientX;
   this.lastGanttClientY = ev.clientY;
+  if (this.linkMode === 'drag' || this.ganttDragMode !== 'none') {
+    this.hideGanttTooltip();
+  } else {
+    const { x, y } = this.toGanttContentCoords(ev);
+    const hit = this.hitGanttBarAt(x, y);
+    if (hit) this.openGanttTooltipAt(ev.clientX, ev.clientY, hit.rowIndex);
+    else this.hideTooltipNow();
+    
+  }
  // --- протяжка зависимости ---
  if (this.linkMode === 'drag') {
   const { x, y } = this.toGanttContentCoords(ev);
@@ -1333,6 +1448,7 @@ private onGanttMouseMove(ev: MouseEvent) {
 }
 
 private onGanttMouseUp(_ev: MouseEvent) {
+    this.hideGanttTooltip();
     // завершение протяжки зависимости
     if (this.linkMode === 'drag') {
       if (this.linkHoverTargetRow != null && this.linkSourceRow >= 0) {

@@ -1,0 +1,31 @@
+<div class="gantt-tooltip"
+     [style.transform]="'translate3d(' + x + 'px,' + y + 'px,0)'"
+     [style.opacity]="open ? '1' : '0'"
+     [attr.aria-hidden]="!open">
+
+  @if (data) {
+    @let d = data;
+
+    <div class="name">
+      @if (d.wbs) { <span class="muted">{{ d.wbs }} — </span> }
+      {{ d.name }}
+    </div>
+
+    <div class="row">
+      <span class="label">Start:</span> {{ d.start || '-' }}&nbsp;&nbsp;
+      <span class="label">Finish:</span> {{ d.finish || '-' }}
+    </div>
+
+    @if (d.baselineStart && d.baselineFinish) {
+        <div class="row">
+            <span class="label">Baseline Start:</span> {{ d.baselineStart || '-' }}&nbsp;&nbsp;
+            <span class="label">Baseline Finish:</span> {{ d.baselineFinish || '-' }}
+        </div>
+    }
+
+    <div class="row">
+      <span class="label">Duration:</span> {{ d.durationDays }} дн.&nbsp;&nbsp;
+      <span class="label">Complete:</span> {{ d.complete ?? 0 }}%
+    </div>
+  }
+</div>
