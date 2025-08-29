@@ -48,10 +48,12 @@ import {
   xToMs
 } from './gantt-geometry';
 
+import { TableContextMenuComponent } from './table-context-menu/table-context-menu.component';
+
 @Component({
   selector: 'gantt-canvas',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TableContextMenuComponent],
   templateUrl: './gantt-canvas.component.html',
   styleUrls: ['./gantt-canvas.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -117,7 +119,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   private ngZone = inject(NgZone);
 
   private onTableScrollBound = () => this.onTableScroll();
-private onGanttScrollBound = () => this.onGanttScroll();
+  private onGanttScrollBound = () => this.onGanttScroll();
 
   private rebuildColorMap() {
     const next = { ...this.colorMap };
@@ -398,37 +400,39 @@ private onGanttScrollBound = () => this.onGanttScroll();
   }
 
 
-// синхронизаторы
-private onTableScroll() {
-  if (this.syncingScroll) return;
-  this.syncingScroll = true;
 
-  const bw = this.bodyWrapperRef.nativeElement;
-  if (this.showGantt) this.ganttWrapperRef.nativeElement.scrollTop = bw.scrollTop;
 
-  this.syncHeaderToBodyScroll();   // шапка таблицы
-  this.renderBody();               // виртуальное тело таблицы
-  this.renderGanttBody();          // тело гантта (вертикально тот же scrollTop)
-  this.updateGanttCursorFromLast();
+  // синхронизаторы
+  private onTableScroll() {
+    if (this.syncingScroll) return;
+    this.syncingScroll = true;
 
-  this.syncingScroll = false;
-}
+    const bw = this.bodyWrapperRef.nativeElement;
+    if (this.showGantt) this.ganttWrapperRef.nativeElement.scrollTop = bw.scrollTop;
 
-private onGanttScroll() {
-  if (this.syncingScroll) return;
-  this.syncingScroll = true;
+    this.syncHeaderToBodyScroll();   // шапка таблицы
+    this.renderBody();               // виртуальное тело таблицы
+    this.renderGanttBody();          // тело гантта (вертикально тот же scrollTop)
+    this.updateGanttCursorFromLast();
+    this.closeTableMenu();
+    this.syncingScroll = false;
+  }
 
-  const gw = this.ganttWrapperRef.nativeElement;
-  this.bodyWrapperRef.nativeElement.scrollTop = gw.scrollTop;
+  private onGanttScroll() {
+    if (this.syncingScroll) return;
+    this.syncingScroll = true;
 
-  this.syncGanttHeaderToScroll();  // шапка гантта (по X)
-  this.renderGanttBody();          // виртуальное тело гантта
-  this.renderBody();               // таблицу тоже перерисуем для верности
+    const gw = this.ganttWrapperRef.nativeElement;
+    this.bodyWrapperRef.nativeElement.scrollTop = gw.scrollTop;
 
-  this.updateGanttCursorFromLast();
+    this.syncGanttHeaderToScroll();  // шапка гантта (по X)
+    this.renderGanttBody();          // виртуальное тело гантта
+    this.renderBody();               // таблицу тоже перерисуем для верности
 
-  this.syncingScroll = false;
-}
+    this.updateGanttCursorFromLast();
+    this.closeTableMenu();
+    this.syncingScroll = false;
+  }
 
   private hitGanttBarAt(x: number, y: number) {
     return hitGanttBarAt(this.buildGeomState(), x, y, this.ganttResizeHandlePx);
@@ -454,6 +458,177 @@ private onGanttScroll() {
 
   private onGanttMouseMoveBound = (e: MouseEvent) => this.onGanttMouseMove(e);
   private onGanttMouseUpBound   = (e: MouseEvent) => this.onGanttMouseUp(e);
+
+  // ── Context menu (таблица) ──
+  public tableMenuOpen = false;
+  public tableMenuX = 0;     // ВЬЮПОРТНЫЕ координаты внутри bodyWrapper
+  public tableMenuY = 0;
+  private tableMenuRow = -1;
+
+
+
+  public closeTableMenu() {
+    if (!this.tableMenuOpen) return;
+    this.tableMenuOpen = false;
+    this.tableMenuRow = -1;
+    this.cdr.markForCheck();
+  }
+
+  private clamp(v: number, min: number, max: number) {
+    return Math.max(min, Math.min(v, max));
+  }
+  
+  private openTableMenuAt(xView: number, yView: number) {
+    const wrap = this.bodyWrapperRef.nativeElement;
+  
+    // желаемая позиция в координатах КОНТЕНТА контейнера
+    const xRaw = xView + wrap.scrollLeft;
+    const yRaw = yView + wrap.scrollTop;
+  
+    const PAD  = 6, estW = 220, estH = 160;
+  
+    // кламп ВНУТРИ ВИДИМОЙ ОБЛАСТИ (scrollLeft/Top .. + clientWidth/Height)
+    const xMin = wrap.scrollLeft + PAD;
+    const xMax = wrap.scrollLeft + wrap.clientWidth  - estW - PAD;
+    const yMin = wrap.scrollTop  + PAD;
+    const yMax = wrap.scrollTop  + wrap.clientHeight - estH - PAD;
+  
+    this.tableMenuX = this.clamp(xRaw, xMin, xMax);
+    this.tableMenuY = this.clamp(yRaw, yMin, yMax);
+    this.tableMenuOpen = true;
+    this.cdr.markForCheck();
+  }
+  
+
+  public onMenuInsertBefore() {
+    if (this.tableMenuRow >= 0) this.insertSiblingAt(this.tableMenuRow, 'before');
+    this.closeTableMenu();
+  }
+  public onMenuInsertAfter() {
+    if (this.tableMenuRow >= 0) this.insertSiblingAt(this.tableMenuRow, 'after');
+    this.closeTableMenu();
+  }
+
+  // генератор простых id
+private genId(): string {
+  return 'n_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+}
+
+// создать новый узел-сосед на базе целевой строки
+private createNodeNear(rowIndex: number): Node {
+  const base = this.flatRows[rowIndex];
+  const node = this.nodeIndex.get(base.id);
+  // копируем разумные поля; если нужно — подставьте свои дефолты
+  const start = node?.start ?? base.start;
+  const finish = node?.finish ?? base.finish;
+  return {
+    id: this.genId(),
+    name: 'New task',
+    start: start ?? msToIso(Date.now()),
+    finish: finish ?? msToIso(Date.now() + 5 * MS_PER_DAY),
+    owner: '',
+    complete: 0,
+    children: []
+  } as Node;
+}
+
+// ===== helper: генерация id и ре-id всего поддерева =====
+private makeId(): string {
+  return 'n_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+}
+private reidTree(node: Node, markCopyOnRoot = false, isRoot = true): void {
+  if (isRoot && markCopyOnRoot && (node as any).name) {
+    (node as any).name = String((node as any).name) + ' (копия)';
+  }
+  node.id = this.makeId();
+  if (node.children?.length) {
+    for (const ch of node.children) this.reidTree(ch, false, false);
+  }
+}
+private collectIds(node: Node, out: string[] = []): string[] {
+  out.push(node.id);
+  if (node.children?.length) for (const ch of node.children) this.collectIds(ch, out);
+  return out;
+}
+
+// ===== действия меню =====
+public onMenuDeleteRow(): void {
+  if (this.tableMenuRow < 0 || this.tableMenuRow >= this.flatRows.length) {
+    this.closeTableMenu(); return;
+  }
+  const id = this.flatRows[this.tableMenuRow].id;
+  const found = findParentListAndIndex(this.workingData, id);
+  if (!found) { this.closeTableMenu(); return; }
+
+  const { parentList, index } = found;
+  const [removed] = parentList.splice(index, 1);
+
+  // подчистим collapsed от удалённых id
+  if (removed) {
+    const ids = this.collectIds(removed);
+    for (const rid of ids) this.collapsed.delete(rid);
+  }
+
+  this.afterStructureChange();
+  this.closeTableMenu();
+}
+
+public onMenuDuplicateRow(): void {
+  if (this.tableMenuRow < 0 || this.tableMenuRow >= this.flatRows.length) {
+    this.closeTableMenu(); return;
+  }
+  const id = this.flatRows[this.tableMenuRow].id;
+  const found = findParentListAndIndex(this.workingData, id);
+  if (!found) { this.closeTableMenu(); return; }
+
+  const { parentList, index } = found;
+  const original = parentList[index];
+  if (!original) { this.closeTableMenu(); return; }
+
+  // глубокий клон и новые id для всех узлов поддерева
+  const dup: Node = deepClone([original])[0];
+  this.reidTree(dup, true);
+
+  // если исходный был свернут — можно сделать тот же статус у дубликата
+  if (original.children?.length && this.collapsed.has(original.id)) {
+    this.collapsed.add(dup.id);
+  }
+
+  parentList.splice(index + 1, 0, dup);
+
+  this.afterStructureChange();
+  this.closeTableMenu();
+}
+
+/** централизованная пост-обработка после изменений структуры */
+private afterStructureChange(): void {
+  this.prepareData();
+  this.recalcAllSummaryDates();
+  this.computeGanttRange();
+  this.resizeAllCanvases();
+  this.updateVirtualSpacers();
+  this.syncHeaderToBodyScroll();
+  this.syncGanttHeaderToScroll();
+  this.renderAll();
+}
+
+// вставка «до/после» целевой строки
+private insertSiblingAt(targetRow: number, where: 'before'|'after') {
+  if (targetRow < 0 || targetRow >= this.flatRows.length) return;
+  const targetId = this.flatRows[targetRow].id;
+
+  const loc = findParentListAndIndex(this.workingData, targetId);
+  if (!loc) return;
+
+  const { parentList, index } = loc;
+  const insertIndex = where === 'before' ? index : index + 1;
+
+  const newNode = this.createNodeNear(targetRow);
+  parentList.splice(insertIndex, 0, newNode);
+
+  // обновляем представления
+  this.afterStructureChange()
+}
 
   // ────────────────── Lifecycle ──────────────────
   ngAfterViewInit(): void {
@@ -490,14 +665,14 @@ private onGanttScroll() {
 
 
     // Hover/колонки/и т.п. при колесе мыши внутри таблицы
-const onWheel = () => {
-  const wrap = this.bodyWrapperRef.nativeElement;
-  const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-  const contentX = this.lastClientX - rect.left + wrap.scrollLeft; // <— фикс
-  this.updateHoverFromContentX(contentX);
-  this.syncHeaderToBodyScroll();
-  this.renderAll();
-};
+    const onWheel = () => {
+      const wrap = this.bodyWrapperRef.nativeElement;
+      const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+      const contentX = this.lastClientX - rect.left + wrap.scrollLeft; // <— фикс
+      this.updateHoverFromContentX(contentX);
+      this.syncHeaderToBodyScroll();
+      this.renderAll();
+    };
     bodyWrapper.addEventListener('wheel', onWheel, { passive: true });
     this.destroyRef.onDestroy(() => bodyWrapper.removeEventListener('wheel', onWheel));
 
@@ -567,6 +742,41 @@ const onWheel = () => {
     });
 
     });
+
+    const tableOverlay = this.canvasRef.nativeElement;
+    const bodyWrapper  = this.bodyWrapperRef.nativeElement;
+
+    const onCtxMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // ВЬЮПОРТНЫЕ координаты внутри bodyWrapper (без scrollTop!)
+      const wrect = bodyWrapper.getBoundingClientRect();
+      const xView = e.clientX - wrect.left;
+      const yView = e.clientY - wrect.top;
+
+      // Отдельно считаем индекс строки — уже в КОНТЕНТНЫХ координатах
+      const contentY = yView + bodyWrapper.scrollTop;
+      const rowIndex = Math.floor(contentY / this.rowHeight);
+
+      this.ngZone.run(() => {
+        this.tableMenuRow = (rowIndex >= 0 && rowIndex < this.flatRows.length) ? rowIndex : -1;
+        this.openTableMenuAt(xView, yView);
+      });
+    };
+
+    const closeMenuOnScroll = () => {
+      if (this.tableMenuOpen) this.ngZone.run(() => this.closeTableMenu());
+    };
+    bodyWrapper.addEventListener('scroll', closeMenuOnScroll, { passive: true });
+    this.destroyRef.onDestroy(() =>
+      bodyWrapper.removeEventListener('scroll', closeMenuOnScroll)
+    );
+
+    tableOverlay.addEventListener('contextmenu', onCtxMenu);
+    this.destroyRef.onDestroy(() =>
+      tableOverlay.removeEventListener('contextmenu', onCtxMenu)
+    );
 
     
     this.prepareData();
@@ -1410,36 +1620,35 @@ private scheduleRender() {
     this.zoomBehavior = zoom<HTMLCanvasElement, unknown>()
     .filter(() => false);
     this.d3Canvas.call(this.zoomBehavior as any);
-  
+
+
     // Click (toggle collapse) по телу
-this.d3Canvas.on('click', (event: MouseEvent) => {
-  if (this.isDragging) return;
-  const { x, y } = this.toContentCoordsAbs(event); // <— было toContentCoords (вьюпорт)
-  const rowIndex = Math.floor(y / this.rowHeight);
-  if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
-  const row = this.flatRows[rowIndex];
+    this.d3Canvas.on('click', (event: MouseEvent) => {
+      if (this.isDragging) return;
+      const { x, y } = this.toContentCoordsAbs(event); // <— было toContentCoords (вьюпорт)
+      const rowIndex = Math.floor(y / this.rowHeight);
+      if (rowIndex < 0 || rowIndex >= this.flatRows.length) return;
+      const row = this.flatRows[rowIndex];
 
-  const xToggle = this.colGrip;
-  const triSize = 12;
-  const triX = xToggle + 8 + this.toggleIndentPerLevel * row.level;
-  const triY = rowIndex * this.rowHeight + (this.rowHeight - triSize) / 2;
-  const hitPad = 4;
+      const xToggle = this.colGrip;
+      const triSize = 12;
+      const triX = xToggle + 8 + this.toggleIndentPerLevel * row.level;
+      const triY = rowIndex * this.rowHeight + (this.rowHeight - triSize) / 2;
+      const hitPad = 4;
 
-  const inTriangle =
-    x >= (triX - hitPad) && x <= (triX + triSize + hitPad) &&
-    y >= (triY - hitPad) && y <= (triY + triSize + hitPad);
+      const inTriangle =
+        x >= (triX - hitPad) && x <= (triX + triSize + hitPad) &&
+        y >= (triY - hitPad) && y <= (triY + triSize + hitPad);
 
-  if (row.hasChildren && inTriangle) {
-    if (this.collapsed.has(row.id)) this.collapsed.delete(row.id);
-    else this.collapsed.add(row.id);
-    this.prepareData();
-    this.computeGanttRange();
-    this.resizeAllCanvases();
-    this.renderAll();
-  }
-});
-
-    
+      if (row.hasChildren && inTriangle) {
+        if (this.collapsed.has(row.id)) this.collapsed.delete(row.id);
+        else this.collapsed.add(row.id);
+        this.prepareData();
+        this.computeGanttRange();
+        this.resizeAllCanvases();
+        this.renderAll();
+      }
+    });
   
     // DnD
     this.d3Canvas.on('mousedown', (event: MouseEvent) => this.onMouseDown(event));
@@ -1447,35 +1656,36 @@ this.d3Canvas.on('click', (event: MouseEvent) => {
     window.addEventListener('mouseup', this.onMouseUpBound, { passive: true });
   
     // Hover/resize/grab в теле — ОБНОВЛЕНО
-this.d3Canvas.on('mousemove', (event: MouseEvent) => {
-  this.lastClientX = event.clientX;
+    this.d3Canvas.on('mousemove', (event: MouseEvent) => {
+      this.lastClientX = event.clientX;
 
-  const { x: xContent, y: yContent } = this.toContentCoordsAbs(event); // контент
-  const rowIndex = Math.floor(yContent / this.rowHeight);
+      const { x: xContent, y: yContent } = this.toContentCoordsAbs(event); // контент
+      const rowIndex = Math.floor(yContent / this.rowHeight);
 
-  if (this.isResizingCol) {
-    this.canvasRef.nativeElement.style.cursor = 'col-resize';
-    return;
-  }
-  if (this.isDragging) {
-    this.canvasRef.nativeElement.style.cursor = 'grabbing';
-    return;
-  }
+      if (this.isResizingCol) {
+        this.canvasRef.nativeElement.style.cursor = 'col-resize';
+        return;
+      }
+      if (this.isDragging) {
+        this.canvasRef.nativeElement.style.cursor = 'grabbing';
+        return;
+      }
 
-  if (rowIndex >= 0 && rowIndex < this.flatRows.length) {
-    if (this.isInsideGrip(xContent, yContent, rowIndex)) {
-      this.canvasRef.nativeElement.style.cursor = 'grab';
-      return;
-    }
-    if (this.isInsideToggle(xContent, yContent, rowIndex)) {
-      this.canvasRef.nativeElement.style.cursor = 'pointer';
-      return;
-    }
-  }
+      if (rowIndex >= 0 && rowIndex < this.flatRows.length) {
+        if (this.isInsideGrip(xContent, yContent, rowIndex)) {
+          this.canvasRef.nativeElement.style.cursor = 'grab';
+          return;
+        }
+        if (this.isInsideToggle(xContent, yContent, rowIndex)) {
+          this.canvasRef.nativeElement.style.cursor = 'pointer';
+          return;
+        }
+      }
 
-  this.updateHoverFromContentX(xContent); // <— обязательно content X
-  this.scheduleRender();
-});
+      this.updateHoverFromContentX(xContent); // <— обязательно content X
+      this.scheduleRender();
+    });
+
     // Сброс курсора при уходе мыши — ДОБАВЛЕНО
     this.d3Canvas.on('mouseleave', () => {
       if (!this.isDragging && !this.isResizingCol) {

@@ -42,9 +42,20 @@
         <!-- прокручиваемое тело таблицы -->
         <div #bodyWrapper class="gantt-body-wrapper">
           <canvas #canvas class="gantt-body-overlay"></canvas>
-          <div #tableSpacer class="gantt-spacer"></div>
-          <!-- overlay-канвас ДОЛЖЕН быть ВНУТРИ wrapper -->
 
+          <!-- overlay-канвас ДОЛЖЕН быть ВНУТРИ wrapper -->
+          <gantt-table-context-menu
+            [open]="tableMenuOpen"
+            [x]="tableMenuX"
+            [y]="tableMenuY"
+            (closed)="closeTableMenu()"
+            (insertBefore)="onMenuInsertBefore()"
+            (insertAfter)="onMenuInsertAfter()"
+            (deleteRow)="onMenuDeleteRow()"
+            (duplicateRow)="onMenuDuplicateRow()"
+          ></gantt-table-context-menu>
+
+          <div #tableSpacer class="gantt-spacer"></div>
         </div>
       </div>
     </div>

@@ -1,0 +1,30 @@
+.table-ctx-menu {
+    position: absolute;
+    z-index: 50; /* выше overlay-canvas */
+    min-width: 180px;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    user-select: none;
+  }
+  
+  .table-ctx-menu button {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    font: 500 13px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  
+  .table-ctx-menu button:hover {
+    background: #f1f5f9;
+  }
+
+  .table-ctx-menu hr { border: 0; height: 1px; background: #e5e7eb; margin: 6px 0; }
+  

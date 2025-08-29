@@ -24,6 +24,7 @@ export class App {
   activityData: Node[] = []
 
   refLines: RefLine[] = [
+    { name: "Current", date: new Date(), color: 'red'}, 
     { name: 'Baseline start', date: '2025-12-01', color: '#ff3b30', dash: [6,4] },
     { name: 'Gate 2',         date: new Date('2026-03-15'), color: 'teal' }
   ];

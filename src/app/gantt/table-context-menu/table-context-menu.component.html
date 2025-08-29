@@ -1,0 +1,16 @@
+@if(open){
+    <div
+    class="table-ctx-menu"
+    [style.left.px]="x"
+    [style.top.px]="y"
+    (contextmenu)="onContextMenu($event)"
+    (click)="$event.stopPropagation()"
+  >
+    <button type="button" (click)="onBefore($event)">Вставить до</button>
+    <button type="button" (click)="onAfter($event)">Вставить после</button>
+    <hr />
+    <button type="button" (click)="onDuplicate($event)">Дублировать</button>
+    <button type="button" (click)="onDelete($event)">Удалить</button>
+  </div>
+  
+}
