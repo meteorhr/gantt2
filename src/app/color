@@ -1,0 +1,6 @@
+  private levelColors1 = [ '#68ABD8', '#AEE08D', '#D69ECF', '#FFDD00', '#FFDD00', '#FAAC02' ];
+  private levelColors2 = [ '#80CDEE', '#CCE4CD', '#C1CBD5', '#FFF59C', '#98DDD8', '#98DDD8' ];
+  private levelColors3 = [ '#0D2F5F', '#3D587E', '#0E537D', '#0173BC', '#00857C', '#4A5364' ];
+  private levelColors4 = [ '#85A8BD', '#85A8BD', '#85A8BD', '#85A8BD', '#85A8BD', '#85A8BD' ];
+  private levelColors5 = [ '#ACCEE9', '#D4F2D1', '#FCE4F3', '#FFF9BF', '#EFE0FD', '#EFE0FD' ];
+  private levelColors6 = [ '#ADDFF8', '#C0E099', '#F6989A', '#E3C833', '#D69ECF', '#F78E55' ];
