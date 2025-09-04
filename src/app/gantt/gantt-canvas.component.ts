@@ -163,14 +163,14 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   ganttScale: GanttScale = 'month-week';
 
   private levelColors = [
-    '#B1E5FD',
-    '#D9EBC5',
-    '#CFD8DC',
-    '#FFFAC1',
-    '#B1DFDB',
-    '#FFE1AF',
-    '#F0F5C1',
-    '#D0D8FF'
+    '#ffc069',
+    '#b37feb',
+    '#ffd666',
+    '#85a5ff',
+    '#fff566',
+    '#69c0ff',
+    '#95de64',
+    '#5cdbd3'
 ];
   
   private toggleIndentPerLevel = 12;
