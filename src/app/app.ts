@@ -3,7 +3,6 @@ import { Node } from './gantt/models/gantt.model';
 import { generateActivityData } from './ generate-activity-data';
 import { GanttCanvasComponent } from './gantt/gantt-canvas.component';
 import { XerLoaderService } from './xer/xer-loader.service';
-import { getTable, parseXER } from './xer/xer-parser';
 import { buildWbsTaskTree } from './xer/task-to-node.adapter';
 
 interface RefLine {
@@ -38,23 +37,75 @@ export class App implements OnInit {
     console.log(g)
     this.activityData = g 
   }
-  async ngOnInit(): Promise<void> {
-    // 1) Загружаем и парсим XER: сервис возвращает XERDocument
-    const doc = await this.xer.loadAndLogFromAssets();
-  
-    // 2) Берём таблицу TASK (без учёта регистра, бросит ошибку если не найдёт)
-    //const taskTable: any = getTable(doc, 'TASK', { required: true });
-  
-    // 3) Выводим в консоль поля и несколько первых строк
-    //console.group('[XER] TASK');
-    //console.log('fields:', taskTable.fields);
-    //console.log('rows:', taskTable.rows.length);
-    //console.log( taskTable.rows)
-    //console.groupEnd();
-    
-    //console.log(buildWbsTaskTree(doc))
+async ngOnInit(): Promise<void> {
+    try {
+      // 1) загрузка и разбор XER (возвращает XERDocument)
+      const doc = await this.xer.loadAndLogFromAssets();
 
-    this.activityData =  buildWbsTaskTree(doc, {baselineSource: "none", debug: false})
+      // 2) строим WBS→TASK дерево (OPC-порядок: сначала задачи, затем WBS)
+      const tree = buildWbsTaskTree(doc, {
+        baselineSource: 'none',
+        debug: false,
+      });
+
+      console.group('[XER] Build summary');
+      console.log('WBS roots:', tree.length);
+      console.log('Tasks total:', countTasks(tree));
+console.log('[XER] tasks with resources:', countTasksWithRes(tree));
+console.log('[XER] sample with resources:', findFirstWithRes(tree));
+      console.groupEnd();
+
+      console.log(tree)
+
+      // 4) отдать в диаграмму
+      this.activityData = tree;
+    } catch (err) {
+      console.error('[XER] Init failed:', err);
+    }
   }
+}
 
+function countTasksWithRes(nodes: Node[]): number {
+  let acc = 0;
+  const walk = (arr: Node[]) => {
+    for (const n of arr) {
+      if (!n.children || n.children.length === 0) {
+        if (Array.isArray(n.resources) && n.resources.length > 0) acc++;
+      } else {
+        walk(n.children);
+      }
+    }
+  };
+  walk(nodes);
+  return acc;
+}
+
+function findFirstWithRes(nodes: Node[]): Node | null {
+  const stack = [...nodes];
+  while (stack.length) {
+    const n = stack.shift()!;
+    if (!n.children || n.children.length === 0) {
+      if (n.resources && n.resources.length) return n;
+    } else {
+      stack.unshift(...n.children);
+    }
+  }
+  return null;
+}
+
+// ——— вспомогательная функция для быстрой сводки ———
+function countTasks(nodes: Node[]): number {
+  let acc = 0;
+  const walk = (arr: Node[]) => {
+    for (const n of arr) {
+      // у WBS есть children, у задач — тоже (но пустые); считаем листья-задачи
+      if (!n.children || n.children.length === 0) {
+        acc += 1;
+      } else {
+        walk(n.children);
+      }
+    }
+  };
+  walk(nodes);
+  return acc;
 }

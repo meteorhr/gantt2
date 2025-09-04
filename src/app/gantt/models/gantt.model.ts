@@ -19,6 +19,7 @@ export interface RefLine {
 }
 
 
+
 export  interface Node {
   id: string;
   task_code?: string;
@@ -31,6 +32,9 @@ export  interface Node {
   dependency?: string[];
   children?: Node[];
   critical?: boolean;
+  resources?: ResourceAssignment[];
+rsrc_names?: string | null;
+  status_code ?: string | null;
 }
 
 export interface FlatRow {
@@ -58,3 +62,34 @@ export interface GanttTooltipData {
   durationDays?: number | null;
   complete?: number | null;
 }
+export interface ResourceAssignment {
+  taskrsrc_id: number;
+  rsrc_id: number | null;
+
+  rsrc_name?: string | null;
+  rsrc_short_name?: string | null;
+  rsrc_type?: string | null;     // RT_Labor / RT_Material / RT_Nonlabor
+
+  role_id?: number | null;
+  role_short_name?: string | null;
+  role_name?: string | null;
+
+  unit_id?: number | null;
+  curr_id?: number | null;
+
+  // нагрузки / трудозатраты
+  target_qty?: number | null;    // Бюджетные ед.
+  remain_qty?: number | null;    // Оставшиеся ед.
+  act_reg_qty?: number | null;   // Факт (обычные часы)
+  act_ot_qty?: number | null;    // Факт (сверхурочные)
+
+  // стоимость
+  cost_per_qty?: number | null;
+  rate_type?: string | null;     // COST_PER_QTY / etc.
+
+  target_cost?: number | null;
+  remain_cost?: number | null;
+  act_reg_cost?: number | null;
+  act_ot_cost?: number | null;
+}
+

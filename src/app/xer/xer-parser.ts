@@ -1,7 +1,7 @@
 // src/app/xer/xer-parser.ts
 // Самодостаточный парсер XER (Primavera P6) для браузера/Angular.
 
-export type XERScalar = string | number | Date | null;
+export type XERScalar = string | number | Date | null | undefined;
 
 export interface XERHeader {
   raw: string[];
