@@ -4,6 +4,7 @@
 
 import { Node } from '../gantt/models/gantt.model';
 import { IsoDate } from '../gantt/models/gantt.types';
+import { TaskRow } from './models/task.model';
 import { XERDocument, XERScalar, getRows } from './xer-parser';
 
 type WbsRow = {
@@ -14,7 +15,7 @@ type WbsRow = {
   seq_num?: number | null;
 };
 
-type TaskRow = {
+type TaskRow1 = {
   task_id: number;
   wbs_id: number | null;
   task_code: string | null;
