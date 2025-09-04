@@ -1,0 +1,201 @@
+ERMHDR	8.2	2017-04-19	Project	admin	Primavera Admin	dbxDatabaseNoName	Project Management	USD
+%T	CURRTYPE
+%F	curr_id	decimal_digit_cnt	curr_symbol	decimal_symbol	digit_group_symbol	pos_curr_fmt_type	neg_curr_fmt_type	curr_type	curr_short_name	group_digit_cnt	base_exch_rate
+%R	1	2	$	.	,	#1.1	(#1.1)	Dollar	USD	3	1
+%R	10	2	$	.	,	#1.1	(#1.1)	Argentine Peso	ARS	3	3.077
+%R	11	2	A$	.	,	#1.1	(#1.1)	Australian Dollar	AUST	3	1.208
+%R	13	2	R$	.	,	#1.1	(#1.1)	Brazilian Real	BRL	3	2.014
+%R	14	2	Ј	.	,	#1.1	(#1.1)	British Pound	U.K.	3	0.501762
+%R	15	2	CA$	.	,	#1.1	(#1.1)	Canadian Dollar	CAD	3	1.10573
+%R	16	2	Y	.	,	#1.1	(#1.1)	Chinese Yuan	CNY	3	7.694
+%R	17	2	Ђ	.	,	#1.1	(#1.1)	EURO	EUR	3	0.739088
+%R	20	2	HK$	.	,	#1.1	(#1.1)	Hong Kong Dollar	HKD	3	7.81967
+%R	21	2	Rs	.	,	#1.1	(#1.1)	Indian Rupee	INR	3	40.67
+%R	23	2	Ґ	.	,	#1.1	(#1.1)	Japanese Yen	JPY	3	120.167
+%R	24	2	K	.	,	#1.1	(#1.1)	Korean Won	KRW	3	924.743
+%R	25	2	N$	.	,	#1.1	(#1.1)	Mexican Peso	MXN	3	10.7938
+%R	26	2	R	.	,	#1.1	(#1.1)	Russian Rouble	RUB	3	25.8085
+%R	28	2	Sk	.	,	#1.1	(#1.1)	Swedish Krona	SEK	3	6.80579
+%R	29	2	kr	.	,	#1.1	(#1.1)	Swiss Franc	CHF	3	1.21864
+%R	30	2	NIS	.	,	#1.1	(#1.1)	Israel Shekel	ILS	3	3.96384
+%T	OBS
+%F	obs_id	parent_obs_id	guid	seq_num	obs_name	obs_descr
+%R	565			0	Enterprise	<HTML><BODY></BODY></HTML>
+%T	ROLES
+%F	role_id	parent_role_id	seq_num	role_name	role_short_name	pobs_id	def_cost_qty_link_flag	cost_qty_type	role_descr	last_checksum
+%R	382		400	Management	Manag		Y	QT_Hour		
+%R	383		500	Development	Dev		Y	QT_Hour		
+%T	PROJECT
+%F	proj_id	fy_start_month_num	rsrc_self_add_flag	allow_complete_flag	rsrc_multi_assign_flag	checkout_flag	project_flag	step_complete_flag	cost_qty_recalc_flag	batch_sum_flag	name_sep_char	def_complete_pct_type	proj_short_name	acct_id	orig_proj_id	source_proj_id	base_type_id	clndr_id	sum_base_proj_id	task_code_base	task_code_step	priority_num	wbs_max_sum_level	strgy_priority_num	last_checksum	critical_drtn_hr_cnt	def_cost_per_qty	last_recalc_date	plan_start_date	plan_end_date	scd_end_date	add_date	last_tasksum_date	fcst_start_date	def_duration_type	task_code_prefix	guid	def_qty_type	add_by_name	web_local_root_path	proj_url	def_rate_type	add_act_remain_flag	act_this_per_link_flag	def_task_type	act_pct_link_flag	critical_path_type	task_code_prefix_flag	def_rollup_dates_flag	use_project_baseline_flag	rem_target_link_flag	reset_planned_flag	allow_neg_act_flag	sum_assign_level	last_fin_dates_id	last_baseline_update_date	cr_external_key	apply_actuals_date	location_id	loaded_scope_level	export_flag	new_fin_dates_id	next_data_date	close_period_flag	sum_refresh_date	trsrcsum_loaded
+%R	421	1	Y	Y	Y	N	Y	N	N	Y	.	CP_Drtn	PR					597		1000	10	10	2	500		0	0.00	2017-03-13 00:00	2017-03-13 00:00		2017-03-31 17:00	2017-03-13 00:00			DT_FixedDUR2	A	4Sj+sgjxgUab2mmQBt7MkQ	QT_Hour	admin			COST_PER_QTY	N	Y	TT_Task	Y	CT_TotFloat	Y	Y	Y	Y	N	N	SL_Taskrsrc						7	Y					
+%T	APPLYACTOPTIONS
+%F	proj_id	respect_duration_type
+%R	421	N
+%T	CALENDAR
+%F	clndr_id	default_flag	clndr_name	proj_id	base_clndr_id	last_chng_date	clndr_type	day_hr_cnt	week_hr_cnt	month_hr_cnt	year_hr_cnt	rsrc_private	clndr_data
+%R	597	Y	Standard 5 Day Workweek			2000-04-26 14:11	CA_Base	8	40	172	2000	N	(0||CalendarData()(    (0||DaysOfWeek()(      (0||1()())      (0||2()(        (0||0(s|08:00|f|12:00)())        (0||1(s|13:00|f|17:00)())))      (0||3()(        (0||0(s|08:00|f|12:00)())        (0||1(s|13:00|f|17:00)())))      (0||4()(        (0||0(s|08:00|f|12:00)())        (0||1(s|13:00|f|17:00)())))      (0||5()(        (0||0(s|08:00|f|12:00)())        (0||1(s|13:00|f|17:00)())))      (0||6()(        (0||0(s|08:00|f|12:00)())        (0||1(s|13:00|f|17:00)())))      (0||7()())))    (0||Exceptions()())))
+%T	SCHEDOPTIONS
+%F	schedoptions_id	proj_id	sched_outer_depend_type	sched_open_critical_flag	sched_lag_early_start_flag	sched_retained_logic	sched_setplantoforecast	sched_float_type	sched_calendar_on_relationship_lag	sched_use_expect_end_flag	sched_progress_override	level_float_thrs_cnt	level_outer_assign_flag	level_outer_assign_priority	level_over_alloc_pct	level_within_float_flag	level_keep_sched_date_flag	level_all_rsrc_flag	sched_use_project_end_date_for_float	enable_multiple_longest_path_calc	limit_multiple_longest_path_calc	max_multiple_longest_path	use_total_float_multiple_longest_paths	key_activity_for_multiple_longest_paths	LevelPriorityList
+%R	1	421	SD_Both	N	Y	Y	N	FT_FF	rcal_Predecessor	Y	N	0	N	5	25	N	Y	Y	Y	N	Y	10	Y		priority_type,ASC
+%T	PROJWBS
+%F	wbs_id	proj_id	obs_id	seq_num	proj_node_flag	sum_data_flag	status_code	wbs_short_name	wbs_name	phase_id	parent_wbs_id	ev_user_pct	ev_etc_user_value	orig_cost	indep_remain_total_cost	ann_dscnt_rate_pct	dscnt_period_type	indep_remain_work_qty	anticip_start_date	anticip_end_date	ev_compute_type	ev_etc_compute_type	guid	tmpl_guid	plan_open_state
+%R	3746	421	565	200	Y	N	WS_Open	PR	Project Training		3730	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	+wKIMjWal0aZo3DG+IxZYQ		
+%R	3747	421	565	0	N	N	WS_Open	Intr	Introduction		3746	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	SxLBLR4kI0C3bQBjjUMGzA		
+%R	3748	421	565	100	N	N	WS_Open	Setups	Type of Setups		3747	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	dappNYZogkGvZ3aNcSA9TA		
+%R	3749	421	565	100	N	N	WS_Open	Sys Req	System Requirements		3746	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	jqfv29tQ+0qMJ5KXirPnCA		
+%R	3750	421	565	200	N	N	WS_Open	Hardw	Hardware Requirements		3749	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	5rkm3r2aJkqFxE2x2F53Xw		
+%R	3751	421	565	300	N	N	WS_Open	Platforrms	Supported Platforms		3749	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	PWTBU4nUu02p1m/XIgxp/w		
+%R	3752	421	565	200	N	N	WS_Open	Main Functions	Main Functions		3746	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	YMibKjvOokOpn5B4gmyMoQ		
+%R	3753	421	565	300	N	N	WS_Open	View	Viewing		3752	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	Q1leuOZU9kKrsb1dywfCvw		
+%R	3754	421	565	400	N	N	WS_Open	Print	Printing		3752	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	tpSqxAs7fUafgBMl8b+8mg		
+%R	3755	421	565	300	N	N	WS_Open	Webinars	Webinars		3746	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	E7CxaxQfVki/keA7BBwOIw		
+%R	3756	421	565	400	N	N	WS_Open	Intro	Introductions		3755	6	0.88	0.00	0.00						EC_Cmp_pct	EE_Rem_hr	dctXWqxQmUal0TtPoCTHVw		
+%T	RSRC
+%F	rsrc_id	parent_rsrc_id	clndr_id	role_id	shift_id	user_id	pobs_id	guid	rsrc_seq_num	email_addr	employee_code	office_phone	other_phone	rsrc_name	rsrc_short_name	rsrc_title_name	def_qty_per_hr	cost_qty_type	ot_factor	active_flag	auto_compute_act_flag	def_cost_qty_link_flag	ot_flag	curr_id	unit_id	rsrc_type	location_id	rsrc_notes	load_tasks_flag	level_flag	last_checksum
+%R	1367		597	383				Sghv1ff1XU66NnItcJCw4g	105					Developer	Dev		1	QT_Hour		Y	Y	Y	N	1		RT_Labor					
+%R	1368	1367	597	383				9zAEaMvEqUuvBUZZO/YkTg	2					Senior Developer	Sen		1	QT_Hour		Y	Y	Y	N	1		RT_Labor					
+%R	1369	1367	597	383				/i34R1lqYEmCd8wC77DxWg	1					Junior Developer	Jun		1	QT_Hour		Y	Y	Y	N	1		RT_Labor					
+%R	1370		597	383				fdCPrGDWCEmoI/pHF6rIDw	205					QA	QA		1	QT_Hour		Y	Y	Y	N	1		RT_Labor					
+%R	1371		597	382				r2Y1LPETC06XrF32vQXCRA	305					Project Manager	Proj Man		1	QT_Hour		Y	Y	Y	N	1		RT_Labor					
+%T	ACTVTYPE
+%F	actv_code_type_id	actv_short_len	seq_num	actv_code_type	proj_id	wbs_id	actv_code_type_scope
+%R	256	7	0	Activity Global Codes			AS_Global
+%T	RSRCRATE
+%F	rsrc_rate_id	rsrc_id	max_qty_per_hr	cost_per_qty	start_date	shift_period_id	cost_per_qty2	cost_per_qty3	cost_per_qty4	cost_per_qty5
+%R	1812	1367	1	0.00	2017-01-01 00:00		0.00	0.00	0.00	0.00
+%R	1813	1368	1	10.00	2017-01-01 00:00		0.00	0.00	0.00	0.00
+%R	1814	1369	1	0.00	2017-01-01 00:00		0.00	0.00	0.00	0.00
+%R	1815	1370	1	0.00	2017-01-01 00:00		0.00	0.00	0.00	0.00
+%R	1816	1371	1	0.00	2017-01-01 00:00		0.00	0.00	0.00	0.00
+%T	RSRCROLE
+%F	rsrc_id	role_id	skill_level	role_short_name	role_name	rsrc_short_name	rsrc_name	rsrc_type	rsrc_role_id
+%R	1367	383	3	Dev	Development	Dev	Developer	RT_Labor	383
+%R	1368	383	3	Dev	Development	Sen	Senior Developer	RT_Labor	383
+%R	1369	383	3	Dev	Development	Jun	Junior Developer	RT_Labor	383
+%R	1370	383	3	Dev	Development	QA	QA	RT_Labor	383
+%R	1371	382	3	Manag	Management	Proj Man	Project Manager	RT_Labor	382
+%T	TASK
+%F	task_id	proj_id	wbs_id	clndr_id	phys_complete_pct	rev_fdbk_flag	lock_plan_flag	auto_compute_act_flag	complete_pct_type	task_type	duration_type	status_code	task_code	task_name	rsrc_id	total_float_hr_cnt	free_float_hr_cnt	remain_drtn_hr_cnt	act_work_qty	remain_work_qty	target_work_qty	target_drtn_hr_cnt	target_equip_qty	act_equip_qty	remain_equip_qty	cstr_date	act_start_date	act_end_date	late_start_date	late_end_date	expect_end_date	early_start_date	early_end_date	restart_date	reend_date	target_start_date	target_end_date	rem_late_start_date	rem_late_end_date	cstr_type	priority_type	suspend_date	resume_date	float_path	float_path_order	guid	tmpl_guid	cstr_date2	cstr_type2	driving_path_flag	act_this_per_work_qty	act_this_per_equip_qty	external_early_start_date	external_late_end_date	create_date	update_date	create_user	update_user	location_id
+%R	35922	421	3747	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1000	Definition for application	1371	75.2	0	16	0	16	16	16	0	0	0				2017-03-24 11:12	2017-03-27 17:00		2017-03-13 08:00	2017-03-14 13:48	2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-24 11:12	2017-03-27 17:00		PT_Normal					pU8A3F+iikSgwMa5VRDxqg				N	0	0			2017-03-13 10:34	2017-04-12 13:37	admin	admin	
+%R	35923	421	3747	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_Active	A1010	Who can use it	1371	75.2	0	12.8	3.2	12.8	16	16	0	0	0		2017-03-14 13:48		2017-03-28 08:00	2017-03-29 17:00		2017-03-14 13:48	2017-03-16 13:48	2017-03-14 13:48	2017-03-16 09:36	2017-03-14 13:48	2017-03-16 13:48	2017-03-28 08:00	2017-03-29 17:00		PT_Normal					CUVJH4Kk0kWn0S+wT2p++g				N	3.2	0			2017-03-13 10:34	2017-04-13 09:47	admin	admin	
+%R	35924	421	3747	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1020	Benefits of using tha application	1371	75.2	0	16	0	16	16	16	0	0	0				2017-03-30 08:00	2017-03-31 17:00		2017-03-16 13:48	2017-03-20 13:48	2017-03-16 13:48	2017-03-20 13:48	2017-03-16 13:48	2017-03-20 13:48	2017-03-30 08:00	2017-03-31 17:00		PT_Normal					VBXTwwY1MUydsrOSzY2Taw				N	0	0			2017-03-13 10:34	2017-04-12 13:37	admin	admin	
+%R	35925	421	3747	597	0	N	N	N	CP_Drtn	TT_FinMile	DT_FixedDrtn	TK_NotStart	A1030	Task Complete		75.2	75.2	0	0	0	0	0	0	0	0				2017-03-31 17:00	2017-03-31 17:00		2017-03-20 13:48	2017-03-20 13:48	2017-03-20 13:48	2017-03-20 13:48	2017-03-20 13:48	2017-03-20 13:48	2017-03-31 17:00	2017-03-31 17:00		PT_Normal					XempF/VoH0it8Hw721ZNDg				N	0	0			2017-03-13 10:34	2017-03-13 15:20	admin	admin	
+%R	35926	421	3748	597	100	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_Complete	A1040	15 Days trial	1369	24	0	0	0	0	48	48	0	0	0		2017-03-13 08:00	2017-03-20 17:00	2017-03-16 08:00	2017-03-23 17:00		2017-03-13 08:00	2017-03-20 17:00	2017-03-13 08:00	2017-03-13 08:00	2017-03-13 08:00	2017-03-20 17:00	2017-03-13 00:00	2017-03-13 00:00		PT_Normal					BUzq4l8z4UCqmvimvQQz1g				N	0	0			2017-03-13 10:34	2017-04-13 09:47	admin	admin	
+%R	35927	421	3748	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1050	30 Days trial	1369	56	32	16	0	16	16	16	0	0	0				2017-03-22 08:00	2017-03-23 17:00		2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-22 08:00	2017-03-23 17:00		PT_Normal					8dyXQsbYUEOVzRIqSlsPJQ				N	0	0			2017-03-13 10:34	2017-03-13 15:20	admin	admin	
+%R	35928	421	3748	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1060	60 Days trial	1368	24	0	16	0	16	16	16	0	0	0				2017-03-24 08:00	2017-03-27 17:00		2017-03-21 08:00	2017-03-22 17:00	2017-03-21 08:00	2017-03-22 17:00	2017-03-21 08:00	2017-03-22 17:00	2017-03-24 08:00	2017-03-27 17:00		PT_Normal					POAN+7YslUiFF91vKt1GhA				N	0	0			2017-03-13 10:35	2017-03-13 15:20	admin	admin	
+%R	35929	421	3748	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1070	Standard	1368	32	32	24	0	24	24	24	0	0	0				2017-03-29 08:00	2017-03-31 17:00		2017-03-23 08:00	2017-03-27 17:00	2017-03-23 08:00	2017-03-27 17:00	2017-03-23 08:00	2017-03-27 17:00	2017-03-29 08:00	2017-03-31 17:00		PT_Normal					xIrRy6W7XEGQvJBeSmOKQw				N	0	0			2017-03-13 10:35	2017-03-13 15:20	admin	admin	
+%R	35930	421	3748	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_Active	A1080	Concurrent	1368	24	24	16	16	16	32	32	0	0	0		2017-03-23 08:00		2017-03-28 08:00	2017-03-31 17:00		2017-03-23 08:00	2017-03-28 17:00	2017-03-23 08:00	2017-03-24 17:00	2017-03-23 08:00	2017-03-28 17:00	2017-03-28 08:00	2017-03-31 17:00		PT_Normal					yEB9OhixG0msL23/trDj6A				N	16	0			2017-03-13 10:35	2017-04-13 09:47	admin	admin	
+%R	35931	421	3748	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1090	Company	1370	80	80	40	0	40	40	40	0	0	0				2017-03-27 08:00	2017-03-31 17:00		2017-03-13 08:00	2017-03-17 17:00	2017-03-13 08:00	2017-03-17 17:00	2017-03-13 08:00	2017-03-17 17:00	2017-03-17 17:00	2017-03-17 17:00		PT_Normal					YYSouHoQgEmDeLwVGRMQng				N	0	0			2017-03-13 10:36	2017-04-12 13:38	admin	admin	
+%R	35932	421	3748	597	0	N	N	N	CP_Drtn	TT_FinMile	DT_FixedDrtn	TK_NotStart	A1100	Task Complete		120	120	0	0	0	0	0	0	0	0				2017-03-31 17:00	2017-03-31 17:00		2017-03-13 08:00	2017-03-13 08:00	2017-03-13 08:00	2017-03-13 08:00	2017-03-13 08:00	2017-03-13 08:00	2017-03-31 17:00	2017-03-31 17:00		PT_Normal					Sow1vRCzMk+NgtO21MCGfQ				N	0	0			2017-03-13 10:36	2017-03-13 15:20	admin	admin	
+%R	35933	421	3750	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1110	i-class processor	1370	72	0	16	0	16	16	16	0	0	0				2017-03-24 08:00	2017-03-27 17:00		2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-24 08:00	2017-03-27 17:00		PT_Normal					ZJgDE6Hei0akJ/AImGjXWA				N	0	0			2017-03-13 10:36	2017-03-13 15:20	admin	admin	
+%R	35934	421	3750	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1120	512 MB of RAM	1368	72	0	8	0	8	8	8	0	0	0				2017-03-28 08:00	2017-03-28 17:00		2017-03-15 08:00	2017-03-15 17:00	2017-03-15 08:00	2017-03-15 17:00	2017-03-15 08:00	2017-03-15 17:00	2017-03-28 08:00	2017-03-28 17:00		PT_Normal					ijZXNRiGAkW3paNmAoRiZA				N	0	0			2017-03-13 10:36	2017-03-13 15:20	admin	admin	
+%R	35935	421	3750	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1130	Disk space: 100 MB	1369	72	0	24	0	24	24	24	0	0	0				2017-03-29 08:00	2017-03-31 17:00		2017-03-16 08:00	2017-03-20 17:00	2017-03-16 08:00	2017-03-20 17:00	2017-03-16 08:00	2017-03-20 17:00	2017-03-29 08:00	2017-03-31 17:00		PT_Normal					r/ELf1HSJ0qT4yKuY8uK6g				N	0	0			2017-03-13 10:37	2017-03-13 15:20	admin	admin	
+%R	35936	421	3750	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1140	Super VGa	1367	80	8	16	0	16	16	16	0	0	0				2017-03-30 08:00	2017-03-31 17:00		2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-30 08:00	2017-03-31 17:00		PT_Normal					Ho+6igH+mUWxIHHyAPpnWw				N	0	0			2017-03-13 10:37	2017-03-13 15:20	admin	admin	
+%R	35937	421	3750	597	0	N	N	N	CP_Drtn	TT_FinMile	DT_FixedDrtn	TK_NotStart	A1150	Task Complete		72	72	0	0	0	0	0	0	0	0				2017-03-31 17:00	2017-03-31 17:00		2017-03-20 17:00	2017-03-20 17:00	2017-03-20 17:00	2017-03-20 17:00	2017-03-20 17:00	2017-03-20 17:00	2017-03-31 17:00	2017-03-31 17:00		PT_Normal					CiTv4GtTIE2Phmv+72FgKA				N	0	0			2017-03-13 10:37	2017-03-13 15:20	admin	admin	
+%R	35938	421	3751	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1160	Microsoft Windows 10	1369	72	0	16	0	16	16	16	0	0	0				2017-03-24 08:00	2017-03-27 17:00		2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-24 08:00	2017-03-27 17:00		PT_Normal					Lf+36ATnIUu40RnWpwo38w				N	0	0			2017-03-13 10:37	2017-03-13 15:20	admin	admin	
+%R	35939	421	3751	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1170	Microsoft Windows 8.1	1367	72	0	24	0	24	24	24	0	0	0				2017-03-24 08:00	2017-03-28 17:00		2017-03-13 08:00	2017-03-15 17:00	2017-03-13 08:00	2017-03-15 17:00	2017-03-13 08:00	2017-03-15 17:00	2017-03-24 08:00	2017-03-28 17:00		PT_Normal					6u6v0JDoCUS1DYq9/H88Bw				N	0	0			2017-03-13 10:37	2017-03-13 15:20	admin	admin	
+%R	35940	421	3751	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1180	Microsoft Windows 8	1367	72	0	16	0	16	16	16	0	0	0				2017-03-29 08:00	2017-03-30 17:00		2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-29 08:00	2017-03-30 17:00		PT_Normal					wrLvKQbiEkennOZpLsyI4g				N	0	0			2017-03-13 10:37	2017-03-13 15:20	admin	admin	
+%R	35941	421	3751	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1190	Microsoft Windows 7	1370	72	0	8	0	8	8	8	0	0	0				2017-03-31 08:00	2017-03-31 17:00		2017-03-20 08:00	2017-03-20 17:00	2017-03-20 08:00	2017-03-20 17:00	2017-03-20 08:00	2017-03-20 17:00	2017-03-31 08:00	2017-03-31 17:00		PT_Normal					YFgja2YrSkWi/wHuDIgMqQ				N	0	0			2017-03-13 10:37	2017-03-13 15:20	admin	admin	
+%R	35942	421	3751	597	0	N	N	N	CP_Drtn	TT_FinMile	DT_FixedDrtn	TK_NotStart	A1200	Task Complete		72	72	0	0	0	0	0	0	0	0				2017-03-31 17:00	2017-03-31 17:00		2017-03-20 17:00	2017-03-20 17:00	2017-03-20 17:00	2017-03-20 17:00	2017-03-20 17:00	2017-03-20 17:00	2017-03-31 17:00	2017-03-31 17:00		PT_Normal					UP4II+qjHk6ddvo8+9GClg				N	0	0			2017-03-13 10:38	2017-03-13 15:20	admin	admin	
+%R	35943	421	3754	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1210	Print Preview	1370	72	0	16	0	16	16	16	0	0	0				2017-03-24 08:00	2017-03-27 17:00		2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-24 08:00	2017-03-27 17:00		PT_Normal					e7N9nF2RK0uuJGa3XlnPEw				N	0	0			2017-03-13 10:38	2017-03-13 15:20	admin	admin	
+%R	35944	421	3754	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1220	Print Page Setup	1370	72	0	16	0	16	16	16	0	0	0				2017-03-28 08:00	2017-03-29 17:00		2017-03-15 08:00	2017-03-16 17:00	2017-03-15 08:00	2017-03-16 17:00	2017-03-15 08:00	2017-03-16 17:00	2017-03-28 08:00	2017-03-29 17:00		PT_Normal					VE0xKTPF6EaBGC/nSbgvLw				N	0	0			2017-03-13 10:38	2017-03-13 15:20	admin	admin	
+%R	35945	421	3754	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1230	Print	1370	72	72	16	0	16	16	16	0	0	0				2017-03-30 08:00	2017-03-31 17:00		2017-03-17 08:00	2017-03-20 17:00	2017-03-17 08:00	2017-03-20 17:00	2017-03-17 08:00	2017-03-20 17:00	2017-03-30 08:00	2017-03-31 17:00		PT_Normal					kwqGUoQv8ke8IBEhzfTnOw				N	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35946	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1240	Filte Type	1367	0	0	16	0	16	16	16	0	0	0				2017-03-13 08:00	2017-03-14 17:00		2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00		PT_Normal					LSvhEYbkG0SOB2w3L1/KSQ				Y	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35947	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1250	Importing	1367	0	0	16	0	16	16	16	0	0	0				2017-03-15 08:00	2017-03-16 17:00		2017-03-15 08:00	2017-03-16 17:00	2017-03-15 08:00	2017-03-16 17:00	2017-03-15 08:00	2017-03-16 17:00	2017-03-15 08:00	2017-03-16 17:00		PT_Normal					k10wJR4I1k+fjxQ6QEP4Vw				Y	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35948	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1260	Exporting	1367	0	0	16	0	16	16	16	0	0	0				2017-03-17 08:00	2017-03-20 17:00		2017-03-17 08:00	2017-03-20 17:00	2017-03-17 08:00	2017-03-20 17:00	2017-03-17 08:00	2017-03-20 17:00	2017-03-17 08:00	2017-03-20 17:00		PT_Normal					mB21WQ2H8kuzsiHvgG80iA				Y	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35949	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1270	Views	1368	0	0	24	0	24	24	24	0	0	0				2017-03-21 08:00	2017-03-23 17:00		2017-03-21 08:00	2017-03-23 17:00	2017-03-21 08:00	2017-03-23 17:00	2017-03-21 08:00	2017-03-23 17:00	2017-03-21 08:00	2017-03-23 17:00		PT_Normal					SmIDobcabEalprv7ZYmJmw				Y	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35950	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1280	Tables	1368	0	0	8	0	8	8	8	0	0	0				2017-03-24 08:00	2017-03-24 17:00		2017-03-24 08:00	2017-03-24 17:00	2017-03-24 08:00	2017-03-24 17:00	2017-03-24 08:00	2017-03-24 17:00	2017-03-24 08:00	2017-03-24 17:00		PT_Normal					PcD6Bl3hL0G5n+6nqjikaA				Y	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35951	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1290	Reports	1368	24	24	24	0	24	24	24	0	0	0				2017-03-29 08:00	2017-03-31 17:00		2017-03-24 08:00	2017-03-28 17:00	2017-03-24 08:00	2017-03-28 17:00	2017-03-24 08:00	2017-03-28 17:00	2017-03-29 08:00	2017-03-31 17:00		PT_Normal					G9g2/W4eD0WecHUlQphp3w				N	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35952	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1300	Filters	1367	8	8	8	0	8	8	8	0	0	0				2017-03-27 08:00	2017-03-27 17:00		2017-03-24 08:00	2017-03-24 17:00	2017-03-24 08:00	2017-03-24 17:00	2017-03-24 08:00	2017-03-24 17:00	2017-03-27 08:00	2017-03-27 17:00		PT_Normal					/l8IONTW8E2NxCZxyD79hQ				N	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35953	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1310	Groups	1367	0	0	8	0	8	8	8	0	0	0				2017-03-27 08:00	2017-03-27 17:00		2017-03-27 08:00	2017-03-27 17:00	2017-03-27 08:00	2017-03-27 17:00	2017-03-27 08:00	2017-03-27 17:00	2017-03-27 08:00	2017-03-27 17:00		PT_Normal					cKUECbgp50yM05RIIvnFCA				Y	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35954	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1320	Formatting	1370	16	16	16	0	16	16	16	0	0	0				2017-03-30 08:00	2017-03-31 17:00		2017-03-28 08:00	2017-03-29 17:00	2017-03-28 08:00	2017-03-29 17:00	2017-03-28 08:00	2017-03-29 17:00	2017-03-30 08:00	2017-03-31 17:00		PT_Normal					XcxPUrRu6E24amsL/rmb/A				N	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35955	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1330	Analyzing	1370	0	0	32	0	32	32	32	0	0	0				2017-03-28 08:00	2017-03-31 17:00		2017-03-28 08:00	2017-03-31 17:00	2017-03-28 08:00	2017-03-31 17:00	2017-03-28 08:00	2017-03-31 17:00	2017-03-28 08:00	2017-03-31 17:00		PT_Normal					3xRM926OlkmKculSMP9k7g				Y	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35956	421	3753	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1340	Outline	1370	16	0	32	0	32	32	32	0	0	0				2017-03-28 08:00	2017-03-31 17:00		2017-03-24 08:00	2017-03-29 17:00	2017-03-24 08:00	2017-03-29 17:00	2017-03-24 08:00	2017-03-29 17:00	2017-03-28 08:00	2017-03-31 17:00		PT_Normal					sekig+0Q90mkFUQ7tQuZ0w				N	0	0			2017-03-13 10:39	2017-03-13 15:20	admin	admin	
+%R	35957	421	3753	597	0	N	N	N	CP_Drtn	TT_FinMile	DT_FixedDrtn	TK_NotStart	A1350	Task Complete		16	16	0	0	0	0	0	0	0	0				2017-03-31 17:00	2017-03-31 17:00		2017-03-29 17:00	2017-03-29 17:00	2017-03-29 17:00	2017-03-29 17:00	2017-03-29 17:00	2017-03-29 17:00	2017-03-31 17:00	2017-03-31 17:00		PT_Normal					SZ8kBLIQ50GxV63j5+3FDQ				N	0	0			2017-03-13 10:40	2017-03-13 15:20	admin	admin	
+%R	35958	421	3756	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1360	Main Part	1371	48	0	24	0	24	24	24	0	0	0				2017-03-21 08:00	2017-03-23 17:00		2017-03-13 08:00	2017-03-15 17:00	2017-03-13 08:00	2017-03-15 17:00	2017-03-13 08:00	2017-03-15 17:00	2017-03-21 08:00	2017-03-23 17:00		PT_Normal					tFTeeMZrUkOoaIBUfZknDw				N	0	0			2017-03-13 10:40	2017-03-13 15:20	admin	admin	
+%R	35959	421	3756	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1370	Conclusion	1371	48	0	16	0	16	16	16	0	0	0				2017-03-24 08:00	2017-03-27 17:00		2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-24 08:00	2017-03-27 17:00		PT_Normal					TH2SzCt1gEGlpNsvx+2vjA				N	0	0			2017-03-13 10:40	2017-03-13 15:20	admin	admin	
+%R	35960	421	3756	597	0	N	N	N	CP_Drtn	TT_Task	DT_FixedDUR2	TK_NotStart	A1380	Training	1371	48	0	32	0	32	32	32	0	0	0				2017-03-28 08:00	2017-03-31 17:00		2017-03-20 08:00	2017-03-23 17:00	2017-03-20 08:00	2017-03-23 17:00	2017-03-20 08:00	2017-03-23 17:00	2017-03-28 08:00	2017-03-31 17:00		PT_Normal					w2Rx6aMGdUmQCcf297JHHg				N	0	0			2017-03-13 10:40	2017-03-13 15:20	admin	admin	
+%R	35961	421	3756	597	0	N	N	N	CP_Drtn	TT_FinMile	DT_FixedDrtn	TK_NotStart	A1390	Task Complete		48	48	0	0	0	0	0	0	0	0				2017-03-31 17:00	2017-03-31 17:00		2017-03-23 17:00	2017-03-23 17:00	2017-03-23 17:00	2017-03-23 17:00	2017-03-23 17:00	2017-03-23 17:00	2017-03-31 17:00	2017-03-31 17:00		PT_Normal					ERzJskve2k67eVksnxbC0A				N	0	0			2017-03-13 10:40	2017-03-13 15:20	admin	admin	
+%T	ACTVCODE
+%F	actv_code_id	parent_actv_code_id	actv_code_type_id	actv_code_name	short_name	seq_num	color
+%R	3185	3184	256	Global Codes - First Level	1	0	0000FF
+%R	3186	3185	256	Second Level A	A	0	0000FF
+%R	3184		256	Activity Global Codes	AGS 1	0	0000FF
+%T	TASKPRED
+%F	task_pred_id	task_id	pred_task_id	proj_id	pred_proj_id	pred_type	lag_hr_cnt	float_path	aref	arls
+%R	1363	35923	35922	421	421	PR_FS	0		2017-03-14 17:00	2017-03-28 08:00
+%R	1364	35924	35923	421	421	PR_FS	0		2017-03-16 09:36	2017-03-30 08:00
+%R	1365	35925	35924	421	421	PR_FS	0		2017-03-20 13:48	2017-03-31 17:00
+%R	1366	35928	35926	421	421	PR_FS	0		2017-03-20 17:00	2017-03-24 08:00
+%R	1367	35928	35927	421	421	PR_FS	0		2017-03-14 17:00	2017-03-24 08:00
+%R	1368	35929	35928	421	421	PR_FS	0		2017-03-22 17:00	2017-03-29 08:00
+%R	1369	35930	35928	421	421	PR_FS	0		2017-03-22 17:00	2017-03-28 08:00
+%R	1370	35934	35933	421	421	PR_FS	0		2017-03-14 17:00	2017-03-28 08:00
+%R	1371	35935	35934	421	421	PR_FS	0		2017-03-15 17:00	2017-03-29 08:00
+%R	1372	35936	35934	421	421	PR_FS	0		2017-03-15 17:00	2017-03-30 08:00
+%R	1373	35937	35935	421	421	PR_FS	0		2017-03-20 17:00	2017-03-31 17:00
+%R	1374	35937	35936	421	421	PR_FS	0		2017-03-17 17:00	2017-03-31 17:00
+%R	1375	35939	35938	421	421	PR_SS	0		2017-03-13 08:00	2017-03-22 08:00
+%R	1376	35940	35939	421	421	PR_FS	0		2017-03-15 17:00	2017-03-29 08:00
+%R	1377	35941	35940	421	421	PR_FS	0		2017-03-17 17:00	2017-03-31 08:00
+%R	1378	35942	35941	421	421	PR_FS	0		2017-03-20 17:00	2017-03-31 17:00
+%R	1379	35947	35946	421	421	PR_FS	0		2017-03-14 17:00	2017-03-15 08:00
+%R	1380	35948	35947	421	421	PR_FS	0		2017-03-16 17:00	2017-03-17 08:00
+%R	1381	35949	35948	421	421	PR_FS	0		2017-03-20 17:00	2017-03-21 08:00
+%R	1382	35950	35949	421	421	PR_FS	0		2017-03-23 17:00	2017-03-24 08:00
+%R	1383	35951	35949	421	421	PR_FS	0		2017-03-23 17:00	2017-03-29 08:00
+%R	1384	35952	35949	421	421	PR_FS	0		2017-03-23 17:00	2017-03-27 08:00
+%R	1385	35953	35949	421	421	PR_FS	0		2017-03-23 17:00	2017-03-27 08:00
+%R	1386	35953	35950	421	421	PR_FS	0		2017-03-24 17:00	2017-03-27 08:00
+%R	1387	35954	35953	421	421	PR_FS	0		2017-03-27 17:00	2017-03-30 08:00
+%R	1388	35955	35949	421	421	PR_FS	0		2017-03-23 17:00	2017-03-28 08:00
+%R	1389	35955	35950	421	421	PR_FS	0		2017-03-24 17:00	2017-03-28 08:00
+%R	1390	35955	35952	421	421	PR_FS	0		2017-03-24 17:00	2017-03-28 08:00
+%R	1391	35955	35953	421	421	PR_FS	0		2017-03-27 17:00	2017-03-28 08:00
+%R	1392	35956	35949	421	421	PR_FS	0		2017-03-23 17:00	2017-03-28 08:00
+%R	1393	35957	35956	421	421	PR_FS	0		2017-03-29 17:00	2017-03-31 17:00
+%R	1394	35945	35944	421	421	PR_FS	0		2017-03-16 17:00	2017-03-30 08:00
+%R	1395	35944	35943	421	421	PR_FS	0		2017-03-14 17:00	2017-03-28 08:00
+%R	1396	35959	35958	421	421	PR_FS	0		2017-03-15 17:00	2017-03-24 08:00
+%R	1397	35960	35959	421	421	PR_FS	0		2017-03-17 17:00	2017-03-28 08:00
+%R	1398	35961	35960	421	421	PR_FS	0		2017-03-23 17:00	2017-03-31 17:00
+%T	TASKRSRC
+%F	taskrsrc_id	task_id	proj_id	cost_qty_link_flag	role_id	acct_id	rsrc_id	pobs_id	skill_level	remain_qty	target_qty	remain_qty_per_hr	target_lag_drtn_hr_cnt	target_qty_per_hr	act_ot_qty	act_reg_qty	relag_drtn_hr_cnt	ot_factor	cost_per_qty	target_cost	act_reg_cost	act_ot_cost	remain_cost	act_start_date	act_end_date	restart_date	reend_date	target_start_date	target_end_date	rem_late_start_date	rem_late_end_date	rollup_dates_flag	target_crv	remain_crv	actual_crv	ts_pend_act_end_flag	guid	rate_type	act_this_per_cost	act_this_per_qty	curv_id	rsrc_type	cost_per_qty_source_type	create_user	create_date	has_rsrchours	taskrsrc_sum_id
+%R	6715	35922	421	Y	382		1371		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-24 11:12	2017-03-27 17:00	Y				N	6XijeUXj5kqLFiypaWVXhQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:44		
+%R	6716	35923	421	Y	382		1371		3	12.8	16	1	0	1	0	3.2	0		0.00	0.00	0.00	0.00	0.00	2017-03-14 13:48		2017-03-14 13:48	2017-03-16 09:36	2017-03-14 13:48	2017-03-16 13:48	2017-03-28 08:00	2017-03-29 17:00	Y				N	IMR2H9/GBE6v5AEqvtTRXA	COST_PER_QTY	0.00	3.2		RT_Labor	ST_Rsrc	admin	2017-03-13 13:44		
+%R	6717	35924	421	Y	382		1371		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-16 13:48	2017-03-20 13:48	2017-03-16 13:48	2017-03-20 13:48	2017-03-30 08:00	2017-03-31 17:00	Y				N	awJZiNYn0kmPmltxQpTWBA	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:44		
+%R	6718	35926	421	Y	383		1369		3	0	48	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00	2017-03-13 08:00	2017-03-20 17:00	2017-03-13 08:00	2017-03-13 08:00	2017-03-13 08:00	2017-03-20 17:00	2017-03-13 00:00	2017-03-13 00:00	Y				N	5mdVgcP8fUuDOWcgbFNWtA	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:44		
+%R	6719	35927	421	Y	383		1369		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-22 08:00	2017-03-23 17:00	Y				N	SAjde9HDQ0ehSJfRZciEBQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:44		
+%R	6720	35929	421	Y	383		1368		3	24	24	1	0	1	0	0	0		0.00	240.00	0.00	0.00	240.00			2017-03-23 08:00	2017-03-27 17:00	2017-03-23 08:00	2017-03-27 17:00	2017-03-29 08:00	2017-03-31 17:00	Y				N	FJgyXeOuVUKiBBHfBIeh/A	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:44		
+%R	6721	35928	421	Y	383		1368		3	16	16	1	0	1	0	0	0		0.00	160.00	0.00	0.00	160.00			2017-03-21 08:00	2017-03-22 17:00	2017-03-21 08:00	2017-03-22 17:00	2017-03-24 08:00	2017-03-27 17:00	Y				N	Et64a3kX60CAOXIiBTW0Iw	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:45		
+%R	6722	35930	421	Y	383		1368		3	16	32	1	0	1	0	16	0		0.00	320.00	160.00	0.00	160.00	2017-03-23 08:00		2017-03-23 08:00	2017-03-24 17:00	2017-03-23 08:00	2017-03-28 17:00	2017-03-28 08:00	2017-03-31 17:00	Y				N	AkNLLmtoVUS2EBuq/gqztQ	COST_PER_QTY	160.00	16		RT_Labor	ST_Rsrc	admin	2017-03-13 13:45		
+%R	6723	35931	421	Y	383		1370		3	40	40	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-17 17:00	2017-03-13 08:00	2017-03-17 17:00	2017-03-17 17:00	2017-03-17 17:00	Y				N	9QloZowDeUSDSMwThi9JpQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:45		
+%R	6724	35933	421	Y	383		1370		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-24 08:00	2017-03-27 17:00	Y				N	lYxbn5Mw+EudVsNWpAz08w	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:45		
+%R	6725	35934	421	Y	383		1368		3	8	8	1	0	1	0	0	0		0.00	80.00	0.00	0.00	80.00			2017-03-15 08:00	2017-03-15 17:00	2017-03-15 08:00	2017-03-15 17:00	2017-03-28 08:00	2017-03-28 17:00	Y				N	VOIBMdmQQ0ucRTKKo+X5fQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:45		
+%R	6726	35935	421	Y	383		1369		3	24	24	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-16 08:00	2017-03-20 17:00	2017-03-16 08:00	2017-03-20 17:00	2017-03-29 08:00	2017-03-31 17:00	Y				N	198USNn0R0azcTJaO6Z3Iw	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:45		
+%R	6728	35936	421	Y	383		1367		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-30 08:00	2017-03-31 17:00	Y				N	6QO10sNzEEuFcdJNNKtmGQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:45		
+%R	6729	35938	421	Y	383		1369		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-24 08:00	2017-03-27 17:00	Y				N	jv8WqvIxjkOfeGUBHIjxFQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6730	35939	421	Y	383		1367		3	24	24	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-15 17:00	2017-03-13 08:00	2017-03-15 17:00	2017-03-24 08:00	2017-03-28 17:00	Y				N	p/u03yJ+OkiR97efZRNE4Q	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6731	35940	421	Y	383		1367		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-29 08:00	2017-03-30 17:00	Y				N	FH9tsupH0UmYcLHyccYA4A	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6732	35941	421	Y	383		1370		3	8	8	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-20 08:00	2017-03-20 17:00	2017-03-20 08:00	2017-03-20 17:00	2017-03-31 08:00	2017-03-31 17:00	Y				N	t18uh90SckmVvW6265kKwA	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6733	35958	421	Y	382		1371		3	24	24	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-15 17:00	2017-03-13 08:00	2017-03-15 17:00	2017-03-21 08:00	2017-03-23 17:00	Y				N	qWbENrhCCEW8tIdU5GNxSQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6734	35959	421	Y	382		1371		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-16 08:00	2017-03-17 17:00	2017-03-16 08:00	2017-03-17 17:00	2017-03-24 08:00	2017-03-27 17:00	Y				N	wPl3yfdZTUm4Yz4n/RCp/A	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6735	35960	421	Y	382		1371		3	32	32	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-20 08:00	2017-03-23 17:00	2017-03-20 08:00	2017-03-23 17:00	2017-03-28 08:00	2017-03-31 17:00	Y				N	j+bFJOOz1UKu/YIdsccWnA	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6736	35943	421	Y	383		1370		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-24 08:00	2017-03-27 17:00	Y				N	RbBYePNrLkeN6b1Pz+I6uA	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6737	35944	421	Y	383		1370		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-15 08:00	2017-03-16 17:00	2017-03-15 08:00	2017-03-16 17:00	2017-03-28 08:00	2017-03-29 17:00	Y				N	d5nh6jqyREas4UzlwlwfyQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6738	35945	421	Y	383		1370		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-17 08:00	2017-03-20 17:00	2017-03-17 08:00	2017-03-20 17:00	2017-03-30 08:00	2017-03-31 17:00	Y				N	BGvfiIW+uE6EmnNE5cngIQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6739	35946	421	Y	383		1367		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	2017-03-13 08:00	2017-03-14 17:00	Y				N	sldn5dzyAUGWnc0ads6Thg	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6740	35947	421	Y	383		1367		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-15 08:00	2017-03-16 17:00	2017-03-15 08:00	2017-03-16 17:00	2017-03-15 08:00	2017-03-16 17:00	Y				N	R8bSrqylMUWK3CwnTtCZ9g	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6741	35948	421	Y	383		1367		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-17 08:00	2017-03-20 17:00	2017-03-17 08:00	2017-03-20 17:00	2017-03-17 08:00	2017-03-20 17:00	Y				N	Nhe0bofxh0aj9jiZXteq4w	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6742	35949	421	Y	383		1368		3	24	24	1	0	1	0	0	0		0.00	240.00	0.00	0.00	240.00			2017-03-21 08:00	2017-03-23 17:00	2017-03-21 08:00	2017-03-23 17:00	2017-03-21 08:00	2017-03-23 17:00	Y				N	GbNYy7qjZ0uKaKUjakKXHg	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6743	35950	421	Y	383		1368		3	8	8	1	0	1	0	0	0		0.00	80.00	0.00	0.00	80.00			2017-03-24 08:00	2017-03-24 17:00	2017-03-24 08:00	2017-03-24 17:00	2017-03-24 08:00	2017-03-24 17:00	Y				N	AR46Q4sjeE6Phnj+Ai5FDg	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6744	35951	421	Y	383		1368		3	24	24	1	0	1	0	0	0		0.00	240.00	0.00	0.00	240.00			2017-03-24 08:00	2017-03-28 17:00	2017-03-24 08:00	2017-03-28 17:00	2017-03-29 08:00	2017-03-31 17:00	Y				N	6tkYe0JkLkuSOax0jHuMMQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6745	35952	421	Y	383		1367		3	8	8	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-24 08:00	2017-03-24 17:00	2017-03-24 08:00	2017-03-24 17:00	2017-03-27 08:00	2017-03-27 17:00	Y				N	vqdtwZ0i8ECij5a5044fJA	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6746	35953	421	Y	383		1367		3	8	8	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-27 08:00	2017-03-27 17:00	2017-03-27 08:00	2017-03-27 17:00	2017-03-27 08:00	2017-03-27 17:00	Y				N	iW55dUvKZUuQA49J0Qlbhw	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:46		
+%R	6747	35954	421	Y	383		1370		3	16	16	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-28 08:00	2017-03-29 17:00	2017-03-28 08:00	2017-03-29 17:00	2017-03-30 08:00	2017-03-31 17:00	Y				N	gZfcSlYWxUmWkzHCNKvbDA	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:47		
+%R	6748	35955	421	Y	383		1370		3	32	32	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-28 08:00	2017-03-31 17:00	2017-03-28 08:00	2017-03-31 17:00	2017-03-28 08:00	2017-03-31 17:00	Y				N	kTk+N62EhEqUgtjHhiyDPA	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:47		
+%R	6749	35956	421	Y	383		1370		3	32	32	1	0	1	0	0	0		0.00	0.00	0.00	0.00	0.00			2017-03-24 08:00	2017-03-29 17:00	2017-03-24 08:00	2017-03-29 17:00	2017-03-28 08:00	2017-03-31 17:00	Y				N	QB2/A705kUiEctCDFXDgqQ	COST_PER_QTY	0.00	0		RT_Labor	ST_Rsrc	admin	2017-03-13 13:47		
+%T	TASKACTV
+%F	task_id	actv_code_type_id	actv_code_id	proj_id
+%R	35922	256	3186	421
+%E
