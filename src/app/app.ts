@@ -1,7 +1,10 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { Node } from './gantt/models/gantt.model';
 import { generateActivityData } from './ generate-activity-data';
 import { GanttCanvasComponent } from './gantt/gantt-canvas.component';
+import { XerLoaderService } from './xer/xer-loader.service';
+import { getTable, parseXER } from './xer/xer-parser';
+import { buildWbsTaskTree } from './xer/task-to-node.adapter';
 
 interface RefLine {
   name: string;
@@ -18,8 +21,9 @@ interface RefLine {
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App {
+export class App implements OnInit {
   protected readonly title = signal('gantt2');
+  private readonly xer = inject(XerLoaderService);
 
   activityData: Node[] = []
 
@@ -30,95 +34,27 @@ export class App {
   ];
 
   constructor(){
-    const g =  generateActivityData(10000, { seed: 20250826, rootsCount: 5, criticalProbability: true  });
+    const g =  generateActivityData(100, { seed: 20250826, rootsCount: 5, criticalProbability: true  });
     console.log(g)
     this.activityData = g 
   }
-
- 
-
-
+  async ngOnInit(): Promise<void> {
+    // 1) Загружаем и парсим XER: сервис возвращает XERDocument
+    const doc = await this.xer.loadAndLogFromAssets();
   
-  test: Node[] =  [
-    {
-      "id": "n1",
-      "name": "Проект",
-      "start": "2025-09-01",
-      "finish": "2026-06-30",
-      "complete": 10,
-      "children": [
-        {
-          "id": "n1.1",
-          "name": "Инициация",
-          "start": "2025-09-01",
-          "finish": "2025-10-15",
-          "complete": 10,
-          "children": [
-            {
-              "id": "n1.1.1",
-              "name": "Формирование WBS",
-              "start": "2025-09-01",
-              "complete": 10,
-              "finish": "2025-09-07",
-              "baselineStart": "2025-09-01",
-              "baselineFinish": "2025-09-05"
-              
-            },
-            {
-              "id": "n1.1.2",
-              "name": "ФЭМ и CAR",
-              "start": "2025-09-05",
-              "complete": 10,
-              "finish": "2025-10-10",
-              "dependency": [
-                "n1.1.1"
-              ],
+    // 2) Берём таблицу TASK (без учёта регистра, бросит ошибку если не найдёт)
+    //const taskTable: any = getTable(doc, 'TASK', { required: true });
+  
+    // 3) Выводим в консоль поля и несколько первых строк
+    //console.group('[XER] TASK');
+    //console.log('fields:', taskTable.fields);
+    //console.log('rows:', taskTable.rows.length);
+    //console.log( taskTable.rows)
+    //console.groupEnd();
+    
+    //console.log(buildWbsTaskTree(doc))
 
-              
-            }
-          ],
-          
-            "baselineStart": "2025-09-01",
-            "baselineFinish": "2025-10-15"
-          
-        },
-        {
-          "id": "n1.2",
-          "name": "Проектирование и Закуп",
-          "start": "2025-10-16",
-          "finish": "2026-02-28",
-          "children": [
-            {
-              "id": "n1.2.1",
-              "complete": 10,
-              "name": "P&ID и ТЗ",
-              "start": "2025-10-16",
-              "finish": "2025-12-01",
-              "baselineStart": "2025-10-16",
-               "baselineFinish": "2025-12-01"
-              
-            },
-            {
-              "id": "n1.2.2",
-              "complete": 10,
-              "name": "Тендер и Контракты",
-              "start": "2025-12-02",
-              "finish": "2026-02-28",
-             "baselineStart": "2025-12-02",
-              "baselineFinish": "2026-02-28"
-              
-            }
-          ],
-          "baselineStart": "2025-10-16",
-          "baselineFinish": "2026-02-28"
-          
-        }
-      ],
-      "baselineStart": "2025-09-01",
-       "baselineFinish": "2026-06-30"
-      
-    }
-  ]
-
+    this.activityData =  buildWbsTaskTree(doc, {baselineSource: "none", debug: false})
+  }
 
 }
