@@ -185,7 +185,7 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   // ===== Динамические столбцы (после Grip+Toggle) =====
   private nodeIndex = new Map<string, Node>();
   private columns: ColumnDef[] = [
-    { key: 'wbs',    title: 'WBS',    width: 120, minWidth: 60 },
+    { key: 'task_code',    title: 'WBS',    width: 120, minWidth: 60 },
     { key: 'name',   title: 'Name',   width: 420, minWidth: 120 },
     { key: 'start',  title: 'Start',  width: 120, minWidth: 80 },
     { key: 'finish', title: 'Finish', width: 120, minWidth: 80 },
@@ -2550,22 +2550,38 @@ private updateGanttDragFromScroll() {
 
 private updateVirtualSpacers() {
   // ---- Таблица ----
-  const tableSpacer = this.tableSpacerRef.nativeElement;
+  const tableWrapper = this.bodyWrapperRef.nativeElement;
+  const tableSpacer  = this.tableSpacerRef.nativeElement;
+
   const tableContentWidth =
     this.colGrip + this.colToggle + this.columns.reduce((s, c) => s + c.width, 0);
-  const tableContentHeight = this.flatRows.length * this.rowHeight; // только тело
+
+  // Полная высота контента по строкам
+  const rowsH = this.flatRows.length * this.rowHeight;
+
+  // Высота "липкого" overlay = высоте вьюпорта прокрутки
+  const overlayH = tableWrapper.clientHeight;
+
+  // Чтобы scrollHeight == rowsH, spacer = rowsH - overlayH (не меньше 0)
+  const spacerH = Math.max(0, rowsH - overlayH);
+
   tableSpacer.style.width  = `${Math.max(this.hostRef.nativeElement.clientWidth, tableContentWidth)}px`;
-  tableSpacer.style.height = `${tableContentHeight}px`;
+  tableSpacer.style.height = `${spacerH}px`;
 
   // ---- Гантт ----
   if (this.showGantt) {
+    const ganttWrapper = this.ganttWrapperRef.nativeElement;
+
     const totalDays = Math.max(1, Math.ceil((this.ganttEndMs - this.ganttStartMs) / MS_PER_DAY));
     const ganttContentWidth = totalDays * this.ganttPxPerDay;
-    const ganttContentHeight = this.flatRows.length * this.rowHeight;
+    const ganttRowsH = this.flatRows.length * this.rowHeight;
+
+    const ganttOverlayH = ganttWrapper.clientHeight;
+    const ganttSpacerH  = Math.max(0, ganttRowsH - ganttOverlayH);
 
     const ganttSpacer = this.ganttSpacerRef.nativeElement;
     ganttSpacer.style.width  = `${Math.max(this.ganttHostRef.nativeElement.clientWidth, ganttContentWidth)}px`;
-    ganttSpacer.style.height = `${ganttContentHeight}px`;
+    ganttSpacer.style.height = `${ganttSpacerH}px`;
   }
 }
 

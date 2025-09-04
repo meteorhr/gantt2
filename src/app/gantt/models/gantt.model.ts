@@ -21,6 +21,7 @@ export interface RefLine {
 
 export  interface Node {
   id: string;
+  task_code?: string;
   name: string;
   start: IsoDate;
   finish: IsoDate;
