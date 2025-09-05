@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { Node } from './gantt/models/gantt.model';
+import { ColumnDef, Node } from './gantt/models/gantt.model';
 import { generateActivityData } from './ generate-activity-data';
 import { GanttCanvasComponent } from './gantt/gantt-canvas.component';
 import { XerLoaderService } from './xer/xer-loader.service';
@@ -31,6 +31,24 @@ export class App implements OnInit {
     { name: 'Baseline start', date: '2025-12-01', color: '#ff3b30', dash: [6,4] },
     { name: 'Gate 2',         date: new Date('2026-03-15'), color: 'teal' }
   ];
+
+  public columns: ColumnDef[] = [
+    { key: 'task_code',  title: 'Task Code',    width: 120, minWidth: 60 },
+    { key: 'task_type', title: 'Task Type', width: 60, minWidth: 60},
+    { key: 'name',   title: 'Task',   width: 420, minWidth: 120 },
+
+    
+    { key: 'start',  title: 'Start',  width: 120, minWidth: 80 },
+    { key: 'finish', title: 'Finish', width: 120, minWidth: 80 },
+    { key: 'status_code', title: 'Status', width: 100, minWidth: 80 },
+    //{ key: 'baselineStart',  title: 'B.Start',  width: 120, minWidth: 80 },
+    //{ key: 'baselineFinish', title: 'B.Finish', width: 120, minWidth: 80 },
+    //{ key: 'owner', title: 'Owner', width: 140, minWidth: 80 },
+    { key: 'rsrc_names', title: 'Resources', width: 140, minWidth: 80 },
+  ];
+
+  
+
 
   constructor(){
     const g =  generateActivityData(100, { seed: 20250826, rootsCount: 5, criticalProbability: true  });

@@ -184,16 +184,9 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // ===== Динамические столбцы (после Grip+Toggle) =====
   private nodeIndex = new Map<string, Node>();
-  private columns: ColumnDef[] = [
+  @Input() columns: ColumnDef[] = [
     { key: 'task_code',    title: 'WBS',    width: 120, minWidth: 60 },
     { key: 'name',   title: 'Name',   width: 420, minWidth: 120 },
-    { key: 'start',  title: 'Start',  width: 120, minWidth: 80 },
-    { key: 'finish', title: 'Finish', width: 120, minWidth: 80 },
-    { key: 'status_code', title: 'Status', width: 100, minWidth: 80 },
-    { key: 'baselineStart',  title: 'B.Start',  width: 120, minWidth: 80 },
-    { key: 'baselineFinish', title: 'B.Finish', width: 120, minWidth: 80 },
-    { key: 'owner', title: 'Owner', width: 140, minWidth: 80 },
-    { key: 'rsrc_names', title: 'Resources', width: 140, minWidth: 80 },
   ];
 
   // ===== D3 (для таблицы) =====

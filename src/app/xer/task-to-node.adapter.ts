@@ -123,7 +123,13 @@
       const taskNode: Node = {
         id: String(t.task_id),
         task_code: t.task_code ?? undefined,
-        // status_code: t.status_code ?? null, // <- оставьте только если это поле есть в Node
+        task_type: t.task_type ?? null,
+        complete_pct_type: t.complete_pct_type ?? null,
+        duration_type: t.duration_type ?? null,
+        priority_type: t.priority_type ?? null,
+        float_path: t.float_path ?? null,
+        float_path_order: t.float_path_order ?? null,
+        status_code: t.status_code ?? null, // <- оставьте только если это поле есть в Node
         name: t.task_name ?? t.task_code ?? `Task ${t.task_id}`,
         start: startISO,
         finish: finishISO,
