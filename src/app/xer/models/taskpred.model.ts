@@ -3,12 +3,7 @@
 // Комментарии: "P6 EPPM Field  →  P6 EPPM Column Name (XER)"
 // Важно: без undefined — только string | number | Date | null (XERScalar)
 
-import { XERScalar } from '../xer-parser';
-
-export interface XERRowBase {
-  [key: string]: XERScalar; // string | number | Date | null
-}
-
+import { XERRowBase } from './base.model';
 export interface TaskPredRow extends XERRowBase {
   /** Unique ID → task_pred_id */
   task_pred_id: number;

@@ -6,7 +6,7 @@
   import { IsoDate } from '../gantt/models/gantt.types';
   import { TaskRow } from './models/task.model';
   import { TaskPredRow } from './models/taskpred.model';
-  import { WbsRow } from './models/wbs.model';
+  import { PROJWBSRow as WbsRow } from './models/index';
   import { buildResourceIndex } from './resources.adapter';
   import { XERDocument, XERScalar, getRows } from './xer-parser';
 

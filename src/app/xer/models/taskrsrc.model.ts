@@ -1,5 +1,5 @@
-import { XERScalar } from '../xer-parser';
-export interface XERRowBase { [k: string]: XERScalar; }
+
+import { XERRowBase } from './base.model';
 
 export interface TASKRSRCRow extends XERRowBase {
   taskrsrc_id: number;

@@ -2,12 +2,7 @@
 // Совместимо с Record<string, XERScalar> из xer-parser.
 // Все поля без "?" (никаких undefined), пустые значения — null.
 
-import { XERScalar } from '../xer-parser';
-export type P6YesNo = 'Y' | 'N' | null;
-
-export interface XERRowBase {
-  [key: string]: XERScalar; // string | number | Date | null
-}
+import { XERRowBase, P6YesNo } from './base.model';
 
 export interface TaskRow extends XERRowBase {
   // Идентификаторы/общие

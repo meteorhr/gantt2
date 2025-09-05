@@ -1,32 +1,48 @@
-import { XERScalar } from '../xer-parser';
+// src/app/xer/models/rsrc.model.ts
+import { XERRowBase } from './base.model';
 
-export interface XERRowBase { [k: string]: XERScalar; }
-
+/** RSRC — Resources */
 export interface RSRCRow extends XERRowBase {
-  rsrc_id: number;
-  parent_rsrc_id: number | null;
-  clndr_id: number | null;
-  role_id: number | null;
-  user_id: number | null;
-  pobs_id: number | null;
-  guid: string | null;
-  rsrc_seq_num: number | null;
-  email_addr: string | null;
-  employee_code: string | null;
-  office_phone: string | null;
-  other_phone: string | null;
-  rsrc_name: string | null;
-  rsrc_short_name: string | null;
-  rsrc_title_name: string | null;
-  def_qty_per_hr: number | null;
-  cost_qty_type: string | null;
-  ot_factor: number | null;
-  active_flag: string | null;
-  auto_compute_act_flag: string | null;
-  def_cost_qty_link_flag: string | null;
-  ot_flag: string | null;
-  curr_id: number | null;
-  unit_id: number | null;
-  rsrc_type: string | null; // RT_Labor / RT_Material / RT_Nonlabor
-  location_id: number | null;
+
+  /** Unique ID */                 rsrc_id: number;
+
+  /** Resource ID */               rsrc_short_name?: string | null;
+  /** Resource Name */             rsrc_name?: string | null;
+  /** Title */                     rsrc_title_name?: string | null;
+  /** Resource Type */             rsrc_type?: string | null;
+
+  /** Parent Resource */           parent_rsrc_id?: number | null;
+  /** Primary Role */              role_id?: number | null;
+
+  /** Calendar */                  clndr_id?: number | null;
+  /** Currency Name */             curr_id?: number | null;
+  /** Unit of Measure */           unit_id?: number | null;
+  /** Shift */                     shift_id?: number | null;
+  /** Location */                  location_id?: number | null;
+
+  /** Default Units / Time */      def_qty_per_hr?: number | null;
+  /** Price Time Units */          cost_qty_type?: string | null;
+  /** Calculate costs from units */def_cost_qty_link_flag?: string | number | null;
+
+  /** Overtime Allowed */          ot_flag?: string | number | null;
+  /** Overtime Factor */           ot_factor?: number | null;
+
+  /** Active */                    active_flag?: string | number | null;
+  /** Auto Compute Actuals */      auto_compute_act_flag?: string | number | null;
+  /** Uses timesheets */           timesheet_flag?: string | number | null;
+
+  /** Email Address */             email_addr?: string | null;
+  /** Office Phone */              office_phone?: string | null;
+  /** Other Phone */               other_phone?: string | null;
+
+  /** Employee ID */               employee_code?: string | null;
+  /** User Login Name */           user_id?: string | null;
+
+  /** Sort Order */                rsrc_seq_num?: number | null;
+
+  /** Global Unique ID */          guid?: string | null;
+  /** Resource Notes */            rsrc_notes?: string | null;
+
+  /** Not-Started View Window */   xfer_notstart_day_cnt?: number | null;
+  /** Completed View Window */     xfer_complete_day_cnt?: number | null;
 }

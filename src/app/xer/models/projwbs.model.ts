@@ -1,18 +1,8 @@
-// src/app/xer/models/wbs.model.ts
-// PROJWBS (WBS) — XER Import/Export Data Map Guide (Project)
-// Комментарии: "P6 EPPM Field  →  P6 EPPM Column Name (XER)".
-// ВАЖНО: никаких undefined — только string | number | Date | null,
-// чтобы удовлетворять индекс-сигнатуре XER: [key: string]: XERScalar.
+// PROJWBS (WBS)
 
-import { XERScalar } from '../xer-parser';
+import { XERRowBase, P6YesNo } from './base.model';
 
-export type P6YesNo = 'Y' | 'N' | null;
-
-export interface XERRowBase {
-  [key: string]: XERScalar; // string | number | Date | null
-}
-
-export interface WbsRow extends XERRowBase {
+export interface PROJWBSRow extends XERRowBase {
   /** Unique ID → wbs_id */
   wbs_id: number;
 
