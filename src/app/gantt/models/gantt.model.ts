@@ -22,7 +22,15 @@ export interface RefLine {
 
 export  interface Node {
   id: string;
-  task_code?: string;
+  task_code?: string | null;
+  task_name?: string | null;
+  task_type?: string | null;
+  complete_pct_type?: string | null;
+  duration_type?: string | null;
+  status_code?: string | null;
+  priority_type?: string | null;
+  float_path?: string | null;
+  float_path_order?: number | null;
   name: string;
   start: IsoDate;
   finish: IsoDate;
@@ -33,8 +41,7 @@ export  interface Node {
   children?: Node[];
   critical?: boolean;
   resources?: ResourceAssignment[];
-rsrc_names?: string | null;
-  status_code ?: string | null;
+  rsrc_names?: string | null;
 }
 
 export interface FlatRow {

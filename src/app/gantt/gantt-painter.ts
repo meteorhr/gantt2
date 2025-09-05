@@ -277,6 +277,18 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
     ctx.stroke();
   }
   // Хелпер скругления
+
+  function diamondPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) {
+    // size — длина стороны квадрата до поворота; ромб будет вписан в квадрат size×size.
+    const h = Math.floor(size / 2); // половина диагонали по вертикали/горизонтали после поворота
+    ctx.beginPath();
+    ctx.moveTo(cx,      cy - h); // верхняя вершина
+    ctx.lineTo(cx + h,  cy);     // правая
+    ctx.lineTo(cx,      cy + h); // нижняя
+    ctx.lineTo(cx - h,  cy);     // левая
+    ctx.closePath();
+  }
+
   const rr = (x: number, y: number, w: number, h: number, r: number) => {
     const rad = Math.min(r, h / 2, w / 2);
     ctx.beginPath();
@@ -378,7 +390,60 @@ export function renderGanttBody(canvas: HTMLCanvasElement, st: GanttPaintState):
       const actualColor = isCritical ? st.colorOf('criticalpatch') : st.colorOf('actual');
       const actualBase  = st.rgba(actualColor, 0.35);
 
-      if (hasBaseline) {
+      const tt = node?.task_type ?? 'TT_Task';
+      const isMilestone = tt === 'TT_FinMile';
+
+      if (isMilestone) {
+        // ---- РИСУЕМ КВАДРАТНЫЙ МИЛСТОН НА ФИНИШЕ ----
+        // Размер квадрата: 60% высоты строки, но не больше дорожки task
+        const msSize = Math.min(Math.floor(st.rowHeight * 0.6), trackH + 4);
+        const half   = Math.floor(msSize / 2);
+
+        const yTopSq = rowTop + Math.floor((st.rowHeight - msSize) / 2);
+        const yBotSq = yTopSq + msSize;
+
+
+
+  // Центр по вертикали — середина строки; по горизонтали — finish
+  const cy = rowTop + Math.floor(st.rowHeight / 2);
+  const axCenter = x1b; // actual на фактическом финише
+
+  if (hasBaseline) {
+    const baselineColor = st.colorOf('baseline');
+    const bf  = new Date(bFinishStr! + 'T00:00:00').getTime();
+    const bx1 = Math.round(msToX(st, bf)); // центр baseline-ромба
+
+    ctx.save();
+    diamondPath(ctx, bx1, cy, msSize);
+    ctx.fillStyle = st.rgba(baselineColor, 1);
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+
+  // actual — верхним слоем
+  ctx.save();
+  // Подложка как у баров: полупрозрачная
+  diamondPath(ctx, axCenter, cy, msSize);
+  ctx.fillStyle = actualBase;
+  ctx.fill();
+
+  // Внутренняя «начинка» более насыщенная, чтобы читалась обводка
+  const inset = 2;
+  diamondPath(ctx, axCenter, cy, Math.max(4, msSize - inset * 2));
+  ctx.fillStyle = actualColor;
+  ctx.fill();
+
+  // Обводка
+  diamondPath(ctx, axCenter, cy, msSize);
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+      } else if (hasBaseline) {
         const baselineColor = st.colorOf('baseline');
         ctx.save();
         rr(bx0, rowTop + pad + trackH + gap, bw, trackH, 1);
@@ -514,6 +579,22 @@ function barPixelsForRowIndex(st: GanttPaintState, i: number) {
     const yBot = Math.round(yMid + st.summaryThick / 2) + 0.5;
     return { x0, x1, yTop, yMid, yBot };
   }
+
+    // --- НОВОЕ: ветка для milestone ---
+    const tt = node?.task_type ?? 'TT_Task';
+    const isMilestone = tt === 'TT_FinMile';
+    if (isMilestone) {
+      // Квадрат центрируем по ФИНИШУ
+      const msSize = Math.min(Math.floor(st.rowHeight * 0.6),
+                              Math.max(4, Math.floor((st.rowHeight - st.taskPad * 2 - st.taskGap) / 2)) + 4);
+      const yTopSq = rowTop + Math.floor((st.rowHeight - msSize) / 2);
+      const yBotSq = yTopSq + msSize;
+      const yMid   = (yTopSq + yBotSq) / 2;
+  
+      const x = x1; // финиш
+      // Возвращаем нулевую ширину по X, чтобы хэндлы/стрелки брали «край» в точке финиша
+      return { x0: x, x1: x, yTop: yTopSq, yMid, yBot: yBotSq };
+    }
 
   const pad = st.taskPad;
   const gap = st.taskGap;
