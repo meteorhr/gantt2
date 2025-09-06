@@ -145,6 +145,8 @@ export class GanttCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
+  private _resizeObs?: ResizeObserver;
+  private _intersectObs?: IntersectionObserver;
 
   private onTableScrollBound = () => this.onTableScroll();
   private onGanttScrollBound = () => this.onGanttScroll();
@@ -961,6 +963,23 @@ private insertSiblingAt(targetRow: number, where: 'before'|'after') {
     this.syncHeaderToBodyScroll();
     this.syncGanttHeaderToScroll();
 
+    // Observe size changes of hosts to keep canvas sizes in sync
+try {
+  this._resizeObs = new ResizeObserver(() => {
+    if (this._initialized) this.reflow();
+  });
+  this._resizeObs.observe(this.hostRef.nativeElement);
+  if (this.showGantt) this._resizeObs.observe(this.ganttHostRef.nativeElement);
+} catch { /* noop for older browsers */ }
+
+// Observe visibility (e.g., switching tabs) to trigger first paint
+try {
+  this._intersectObs = new IntersectionObserver((entries) => {
+    const isVisible = entries.some(e => e.isIntersecting);
+    if (isVisible && this._initialized) this.reflow();
+  }, { root: null, threshold: 0.01 });
+  this._intersectObs.observe(this.hostRef.nativeElement);
+} catch { /* noop */ }
     this._initialized = true;
   }
 
@@ -1009,6 +1028,11 @@ private insertSiblingAt(targetRow: number, where: 'before'|'after') {
       this.renderRafId = null;
     }
     this.cancelTooltipTimer();
+
+    this._resizeObs?.disconnect();
+    this._intersectObs?.disconnect();
+    this._resizeObs = undefined;
+    this._intersectObs = undefined;
   }
 
   @HostListener('window:resize')
@@ -1076,6 +1100,15 @@ private insertSiblingAt(targetRow: number, where: 'before'|'after') {
     this.syncGanttHeaderToScroll();
     this.renderAll();
   }
+  public reflow(): void {
+  if (!this._initialized) return;
+  this.resizeAllCanvases();
+  this.updateVirtualSpacers();
+  this.applyOverlaySafeInsets();
+  this.syncHeaderToBodyScroll();
+  this.syncGanttHeaderToScroll();
+  this.renderAll();
+}
 
   public toggleGantt(): void {
     if (this.showGantt) {
