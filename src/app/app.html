@@ -4,9 +4,8 @@
 
 <mat-tab-group (selectedTabChange)="onTabChange($event)"  mat-stretch-tabs="false" mat-align-tabs="start">
   <!-- Tab 1: XER info (derived from available inputs) -->
-  <mat-tab label="XER Info">
+  <mat-tab label="{{ 'xer_summary' | transloco }}">
     <div style="padding:16px; max-width: 880px;">
-      <h3 style="margin: 0 0 12px 0;">XER Summary</h3>
       <table mat-table [dataSource]="xerSummaryArray" class="mat-elevation-z1" style="width:100%; margin-bottom: 16px;">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef style="width: 200px;">Name</th>
@@ -26,7 +25,7 @@
   </mat-tab>
 
   <!-- Tab 2: Gantt -->
-  <mat-tab label="Gantt">
+  <mat-tab label="{{ 'activities_gantt' | transloco }}">
     <div style="padding: 8px;">
 
         <gantt-canvas

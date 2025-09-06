@@ -44,8 +44,23 @@ export class App implements OnInit {
     { key: 'task_code',  title: 'Task Code',    width: 120, minWidth: 60 },
     { key: 'task_type_label', title: 'Task Type', width: 60, minWidth: 60},
     { key: 'name',   title: 'Task',   width: 420, minWidth: 120 },
-    { key: 'start',  title: 'Start',  width: 120, minWidth: 80 },
-    { key: 'finish', title: 'Finish', width: 120, minWidth: 80 },
+    { key: 'complete_pct_type_label', title: '%', width: 60, minWidth: 40, align: 'right' },
+
+    { key: 'duration_type_label', title: 'Duration', width: 80, minWidth: 60, align: 'right' },
+
+    { key: 'start',  title: 'Act. Start',  width: 120, minWidth: 80 },
+    { key: 'finish', title: 'Act. Finish', width: 120, minWidth: 80 },
+
+    { key: 'earlyStart',  title: 'Ear. Start',  width: 120, minWidth: 80 },
+    { key: 'earlyFinish', title: 'Ear. Finish', width: 120, minWidth: 80 },
+
+    { key: 'lateStart',  title: 'Late Start',  width: 120, minWidth: 80 },
+    { key: 'lateFinish', title: 'Late Finish', width: 120, minWidth: 80 },
+
+    { key: 'expectEnd', title: 'Expect End', width: 120, minWidth: 80 },
+
+  
+
     { key: 'status_code_label', title: 'Status', width: 100, minWidth: 80 },
     { key: 'rsrc_names', title: 'Resources', width: 140, minWidth: 80 },
   ];

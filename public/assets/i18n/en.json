@@ -1,4 +1,6 @@
 {
+    "activities_gantt": "Activities",
+    "xer_summary": "XER Summary",
     "task": {
     "task_type": {
       "TT_Task": "Task",

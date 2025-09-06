@@ -91,22 +91,31 @@ export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node
   // (4) TASK → Node
   const tasks = getRows<TaskRow>(doc, 'TASK', { required: true });
   for (const t of tasks) {
-    const startAny =
-      pickDate(t, 'early_start_date') ??
-      pickDate(t, 'target_start_date') ??
-      pickDate(t, 'act_start_date') ??
-      pickDate(t, 'late_start_date') ??
-      pickDate(t, 'expect_end_date');
+    // Collect all date sources
+    const actStart     = toIsoDateOrUndef(pickDate(t, 'act_start_date'));
+    const actFinish    = toIsoDateOrUndef(pickDate(t, 'act_end_date'));
 
-    const finishAny =
-      pickDate(t, 'early_end_date') ??
-      pickDate(t, 'target_end_date') ??
-      pickDate(t, 'act_end_date') ??
-      pickDate(t, 'late_end_date') ??
-      pickDate(t, 'expect_end_date');
+    const targetStart  = toIsoDateOrUndef(pickDate(t, 'target_start_date'));
+    const targetFinish = toIsoDateOrUndef(pickDate(t, 'target_end_date'));
 
-    const startISO  = toIsoDateOrNull(startAny)  ?? toIsoDateOrNull(finishAny);
-    const finishISO = toIsoDateOrNull(finishAny) ?? toIsoDateOrNull(startAny);
+    const earlyStart   = toIsoDateOrUndef(pickDate(t, 'early_start_date'));
+    const earlyFinish  = toIsoDateOrUndef(pickDate(t, 'early_end_date'));
+
+    const lateStart    = toIsoDateOrUndef(pickDate(t, 'late_start_date'));
+    const lateFinish   = toIsoDateOrUndef(pickDate(t, 'late_end_date'));
+
+    const expectEnd    = toIsoDateOrUndef(pickDate(t, 'expect_end_date'));
+
+    // Agreed convention:
+    // - Actual dates are stored in Node.start / Node.finish when available
+    // - Target dates are stored in Node.baselineStart / Node.baselineFinish
+    // - If actual is missing, fall back to target → early → late → expect
+    const startISO: IsoDate | null =
+      actStart ?? targetStart ?? earlyStart ?? lateStart ?? toIsoDateOrNull(pickDate(t, 'expect_end_date'));
+
+    const finishISO: IsoDate | null =
+      actFinish ?? targetFinish ?? earlyFinish ?? lateFinish ?? expectEnd ?? toIsoDateOrNull(pickDate(t, 'expect_end_date'));
+
     if (!startISO || !finishISO) continue;
 
     const baselineStart =
@@ -173,6 +182,13 @@ export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node
       duration_type_label,
       priority_type_label,
       status_code_label,
+
+      // Detailed date set
+      earlyStart,
+      earlyFinish,
+      lateStart,
+      lateFinish,
+      expectEnd,
 
       name: t.task_name ?? t.task_code ?? `Task ${t.task_id}`,
       start: startISO,

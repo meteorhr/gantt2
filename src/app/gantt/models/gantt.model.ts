@@ -24,30 +24,57 @@ export  interface Node {
   id: string;
   task_code?: string | null;
   task_name?: string | null;
+
   task_type?: string | null;
+  task_type_label?: string | null;
+  task_type_i18n?: string | null;
+
   complete_pct_type?: string | null;
+  complete_pct_type_label?: string | null;
+  complete_pct_type_i18n?: string | null;
+
   duration_type?: string | null;
+  duration_type_label?: string | null;
+  duration_type_i18n?: string | null;
+
   status_code?: string | null;
+  status_code_label?: string | null;
+  status_code_i18n?: string | null;
+  
   priority_type?: string | null;
+  priority_type_label?: string | null;
+  priority_type_i18n?: string | null;
+  
   float_path?: string | null;
   float_path_order?: number | null;
 
-        task_type_label?: string | null;
-      complete_pct_type_label?: string | null;
-      duration_type_label?: string | null;
-      priority_type_label?: string | null;
-      status_code_label?: string | null;
+  
+  
+  
+  
+  
 
-  task_type_i18n?: string | null;
-      complete_pct_type_i18n?: string | null;
-      duration_type_i18n?: string | null;
-      priority_type_i18n?: string | null;
-      status_code_i18n?: string | null;
+  
+  
+      
+      
+     
   name: string;
   start: IsoDate;
   finish: IsoDate;
   baselineStart?: IsoDate;
   baselineFinish?: IsoDate;
+  /**
+   * Full date set from XER.
+   * Note: "target" dates are mapped to baselineStart/baselineFinish.
+   * "actual" dates are represented by start/finish below (no extra fields).
+   */
+  earlyStart?: IsoDate | null;
+  earlyFinish?: IsoDate | null;
+  lateStart?: IsoDate | null;
+  lateFinish?: IsoDate | null;
+  /** Some XERs provide only expected end; keep as optional. */
+  expectEnd?: IsoDate | null;
   complete?: number;
   dependency?: string[];
   children?: Node[];
