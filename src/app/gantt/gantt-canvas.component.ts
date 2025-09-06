@@ -16,6 +16,11 @@ import {
   NgZone
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatSliderModule } from '@angular/material/slider';
+import { MatSelectChange, MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { select, Selection } from 'd3-selection';
 import { zoom, ZoomBehavior, ZoomTransform } from 'd3-zoom';
 import { BarColor, ColumnDef, FlatRow, RefLine, Node, GanttTooltipData } from './models/gantt.model';
@@ -36,9 +41,8 @@ import {
 import { renderTableBody, renderTableHeader, TablePaintState } from './table-painter';
 import { GanttPaintState, renderGanttHeader as paintGanttHeader, renderGanttBody as paintGanttBody } from './gantt-painter';
 import {
-  GanttGeometryState,
-  msToX, 
-  barPixelsForRowIndex,
+  GanttGeometryState, 
+  barPixelsForRowIndex as geomBarPixelsForRowIndex,
   hitGanttBarAt,
   barRevealRowAt,
   rightHandleCenter,
@@ -51,11 +55,28 @@ import {
 import { TableContextMenuComponent } from './table-context-menu/table-context-menu.component';
 
 import { GanttTooltipComponent } from './tooltip/gantt-tooltip.component';
+import { FormsModule } from '@angular/forms';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'gantt-canvas',
   standalone: true,
-  imports: [CommonModule, TableContextMenuComponent, GanttTooltipComponent],
+  imports: [
+    CommonModule, 
+    TableContextMenuComponent, 
+    GanttTooltipComponent,
+    FormsModule,
+    MatButtonModule,
+    MatSliderModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatMenuModule,
+    MatToolbarModule,
+    MatTooltipModule
+  ],
   templateUrl: './gantt-canvas.component.html',
   styleUrls: ['./gantt-canvas.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1018,21 +1039,20 @@ private insertSiblingAt(targetRow: number, where: 'before'|'after') {
       document.body.style.cursor = '';
     }
 
-  onScaleChange(e: Event) {
-    this.ganttScale = (e.target as HTMLSelectElement).value as GanttScale;
+  onScaleChange(e: MatSelectChange) {
+    this.ganttScale = e.value as GanttScale;
     this.resizeGanttCanvases();
     this.updateVirtualSpacers();
     this.renderGanttHeader();
     this.renderGanttBody();
   }
 
-  onTimescaleInput(e: Event) {
-    const v = Number((e.target as HTMLInputElement).value || 14);
-    this.setTimescale(v, 'center');
-  }
+  // Removed onSliderValueChange: now handled in template via ngModelChange
+
 
   bumpScale(step: number) {
-    this.setTimescale(this.ganttPxPerDay + step, 'center');
+    const next = Math.min(50, this.ganttPxPerDay + step);
+    this.setTimescale(next, 'center');
   }
 
   public expandAll(): void {
@@ -1515,7 +1535,7 @@ private commitGanttDates(rowId: string, startMs: number, finishMs: number) {
 }
   
   /** Устанавливает px/день и сохраняет якорь (центр/лево/право) на том же времени */
-  private setTimescale(pxPerDay: number, anchor: 'center'|'left'|'right') {
+  public setTimescale(pxPerDay: number, anchor: 'center'|'left'|'right') {
     const wrapper = this.ganttWrapperRef.nativeElement;
   
     // 1) вычисляем "якорную" дату (по текущему скроллу и старому масштабу)
@@ -2297,88 +2317,6 @@ private renderGanttBody() {
   paintGanttBody(canvas, state);
 }
 
-// Синхронизация complete при изменениях (не обязательно)
-// Если вы где-то обновляете node.complete и хотите сразу видеть это в таблице без полного prepareData(), можно добавить маленькую синхронизацию (по аналогии с датами):
-
-
-private drawLinkPreviewAndHandles(ctx: CanvasRenderingContext2D) {
- 
-  // при hover над баром (не во время протяжки связи) показываем ТОЛЬКО правый кружок
-  if (this.linkMode === 'none' && this.hoverBarRow != null) {
-    const row = this.hoverBarRow;
-    const p   = this.barPixelsForRowIndex(row);
-
-    // какой край сейчас занят ресайзом — этот кружок скрываем
-    //const hideLeft  = this.hoverGanttHitMode === 'resize-start';
-    const hideRight = this.hoverGanttHitMode === 'resize-finish';
-
-    //if (!hideLeft) {
-    //  const lc = this.leftHandleCenter(row);   // уже с выносом за бар
-    //  this.drawHandleWithStem(ctx, p.x0, lc.x, lc.y, 'left',  false);
-    //}
-    if (!hideRight) {
-      const rc = this.rightHandleCenter(row);  // уже с выносом за бар
-      this.drawHandleWithStem(ctx, p.x1, rc.x, rc.y, 'right', false);
-    }
-  }
-
-  // во время протяжки — рисуем пунктир и кружки источника/цели
-  if (this.linkMode === 'drag' && this.linkSourceRow >= 0) {
-    const src = this.barPixelsForRowIndex(this.linkSourceRow);
-    const rc  = this.rightHandleCenter(this.linkSourceRow);
-    const sx1 = src.x1, sy = src.yMid;
-
-    this.drawHandleWithStem(ctx, src.x1, rc.x, rc.y, 'right', true);
-
-    
-    
-
-    ctx.save();
-    ctx.setLineDash([6,4]);
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.5;
-    if (this.linkHoverTargetRow != null) {
-      const t  = this.barPixelsForRowIndex(this.linkHoverTargetRow);
-      const lc = this.leftHandleCenter(this.linkHoverTargetRow);
-      // ортогональный предпросмотр «классического» маршрута до левого края цели
-      const tx0 = t.x0, ty = t.yMid;
-      const padH = 10, padV = 8;
-      const targetBelow = this.linkHoverTargetRow > this.linkSourceRow;
-      const yClear = targetBelow ? (t.yTop - padV) : (t.yBot + padV);
-      const xL = tx0 - padH;
-
-      // минимальный выход вправо от sx1
-      const gap = tx0 - sx1;
-      const entryLen = tx0 - xL;         // = padH
-      const exitLen = Math.max(0, Math.min(gap - entryLen, gap));
-      const xExit = sx1 + exitLen;
-
-      ctx.beginPath();
-      ctx.moveTo(sx1 + 0.5, sy + 0.5);
-      ctx.lineTo(xExit + 0.5, sy + 0.5);
-      ctx.lineTo(xExit + 0.5, yClear + 0.5);
-      ctx.lineTo(xL + 0.5,  yClear + 0.5);
-      ctx.lineTo(xL + 0.5,  ty + 0.5);
-      ctx.lineTo(tx0 + 0.5, ty + 0.5);
-      ctx.stroke();
-
-      // кружок цели слева (подсветка)
-      //this.drawHandle(ctx, lc.x, lc.y, 'left', true);
-      this.drawHandleWithStem(ctx, t.x0, lc.x, lc.y, 'left', true);
-    } else {
-      // свободная протяжка: короткий выход → вертикаль к мыши → горизонталь к мыши
-      const xExit = sx1 + 8;
-      ctx.beginPath();
-      ctx.moveTo(sx1 + 0.5, sy + 0.5);
-      ctx.lineTo(xExit + 0.5, sy + 0.5);
-      ctx.lineTo(xExit + 0.5, this.linkMouseY + 0.5);
-      ctx.lineTo(this.linkMouseX + 0.5, this.linkMouseY + 0.5);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-}
-
 // ── Внутри класса, рядом с визуальными параметрами ──
 private summaryThick = 6;   // толщина summary-бара по центру строки
 private taskPad = 4;        // внешний отступ сверху/снизу для дорожек task
@@ -2392,83 +2330,8 @@ private get taskTrackH(): number {
   private barPixelsForRowIndex(i: number): {
     x0: number; x1: number; yTop: number; yMid: number; yBot: number
   } {
-    const row  = this.flatRows[i];
-    const node = this.nodeIndex.get(row.id);
-  
-    // фактические даты → пиксели
-    const startStr  = node?.start  ?? row.start;
-    const finishStr = node?.finish ?? row.finish;
-    const s  = new Date(startStr  + 'T00:00:00').getTime();
-    const f  = new Date(finishStr + 'T00:00:00').getTime();
-    const x0 = Math.round(((s - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
-    const x1 = Math.round(((f - this.ganttStartMs) / MS_PER_DAY) * this.ganttPxPerDay);
-  
-    const rowTop = i * this.rowHeight;
-  
-    // summary: толщина по центру строки
-    if (row.hasChildren) {
-      const yMid = rowTop + this.rowHeight / 2;
-      const yTop = Math.round(yMid - this.summaryThick / 2) + 0.5;
-      const yBot = Math.round(yMid + this.summaryThick / 2) + 0.5;
-      return { x0, x1, yTop, yMid, yBot };
-    }
-  
-    // task: если есть baseline — центруем по верхнему actual-треку
-    const bStartStr  = node?.baselineStart ?? row.baselineStart;
-    const bFinishStr = node?.baselineFinish ?? row.baselineFinish;
-    const hasBaseline = !!(bStartStr && bFinishStr);
-  
-    if (hasBaseline) {
-      const yTop = rowTop + this.taskPad;            // верхняя дорожка: actual
-      const yBot = yTop + this.taskTrackH;
-      const yMid = yTop + this.taskTrackH / 2;
-      return { x0, x1, yTop, yMid, yBot };
-    }
-  
-    // task без baseline — прямоугольник как раньше (6 px отступ сверху/снизу)
-    const yTop = rowTop + 6;
-    const yBot = rowTop + this.rowHeight - 6;
-    const yMid = (yTop + yBot) / 2;
-    return { x0, x1, yTop, yMid, yBot };
-  }
-
-  /** Small filled triangle arrowhead at (x,y) pointing given direction */
-  private drawArrowhead(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    dir: 'left' | 'right' | 'up' | 'down',
-    color: string
-  ) {
-    const sz = 5;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    switch (dir) {
-      case 'right':
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - sz, y - sz * 0.75);
-        ctx.lineTo(x - sz, y + sz * 0.75);
-        break;
-      case 'left':
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + sz, y - sz * 0.75);
-        ctx.lineTo(x + sz, y + sz * 0.75);
-        break;
-      case 'down':
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - sz * 0.75, y - sz);
-        ctx.lineTo(x + sz * 0.75, y - sz);
-        break;
-      case 'up':
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - sz * 0.75, y + sz);
-        ctx.lineTo(x + sz * 0.75, y + sz);
-        break;
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    // Delegate to shared geometry so milestone/handles logic stays in one place
+    return geomBarPixelsForRowIndex(this.buildGeomState(), i);
   }
 
   // -------------------- Data Generation --------------------
@@ -2580,17 +2443,6 @@ private updateVirtualSpacers() {
   }
 }
 
-private revealRow(i: number) {
-  const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
-  const targetTop = i * this.rowHeight;
-  const wrappers = [this.bodyWrapperRef.nativeElement, this.ganttWrapperRef?.nativeElement].filter(Boolean) as HTMLElement[];
-
-  for (const w of wrappers) {
-    const maxTop = w.scrollHeight - w.clientHeight;
-    const newTop = clamp(targetTop - Math.floor((w.clientHeight - this.rowHeight)/2), 0, maxTop);
-    w.scrollTop = newTop;
-  }
-}
 
 }

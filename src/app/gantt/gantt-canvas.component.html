@@ -3,29 +3,66 @@
 <!-- ВЕРХНИЙ TOOLBAR -->
 <div class="page-toolbar">
   <div class="proj-ops">
-    <button type="button" (click)="expandAll()" title="Expand all">Expand all</button>
-    <button type="button" (click)="collapseAll()" title="Collapse all">Collapse all</button>
+    <button mat-icon-button type="button" (click)="expandAll()" matTooltip="Expand all" aria-label="Expand all">
+      <mat-icon>unfold_more</mat-icon>
+    </button>
+    <button mat-icon-button type="button" (click)="collapseAll()" matTooltip="Collapse all" aria-label="Collapse all">
+      <mat-icon>unfold_less</mat-icon>
+    </button>
   </div>
 
   <div class="gantt-toolbar">
     @if(showGantt){
       <div class="zoom">
-        <button type="button" (click)="bumpScale(-1)" title="Zoom out">−</button>
-        <input type="range" min="4" max="60" step="1" [value]="ganttPxPerDay" (input)="onTimescaleInput($event)" />
-        <button type="button" (click)="bumpScale(1)" title="Zoom in">+</button>
-        <button type="button" (click)="zoomToFit()" title="Zoom to fit all tasks">Fit</button>
-        <span class="zoom-label">Timescale</span>
+         <span class="zoom-label">Timescale</span>
+        <button mat-icon-button (click)="bumpScale(-1)" matTooltip="Zoom out" aria-label="Zoom out">
+           <mat-icon>remove</mat-icon>
+        </button>
+        <mat-slider
+          class="example-margin"
+          [min]="1"
+          [max]="50"
+          [step]="1"
+          [discrete]="true"
+          [showTickMarks]="false"
+          aria-label="Timescale"
+        >
+          <input
+            matSliderThumb
+            [(ngModel)]="ganttPxPerDay"
+            (ngModelChange)="setTimescale($event, 'center')"
+            #slider
+          />
+        </mat-slider>
+        <button mat-icon-button type="button" (click)="bumpScale(1)" matTooltip="Zoom in" aria-label="Zoom in">
+          <mat-icon>add</mat-icon>
+        </button>
+        <button mat-icon-button type="button" (click)="zoomToFit()" matTooltip="Fit to tasks" aria-label="Fit to tasks">
+          <mat-icon>fit_screen</mat-icon>
+        </button>
+       
       </div>
-      <select [value]="ganttScale" (change)="onScaleChange($event)">
-        <option value="week-day">week | day</option>
-        <option value="month-week">month | week</option>
-        <option value="quarter-month">quarter | month</option>
-        <option value="year-month">year | month</option>
-        <option value="year-quarter">year | quarter</option>
-      </select>
+      <button mat-icon-button [matMenuTriggerFor]="ganttSettingsMenu" aria-label="Settings" matTooltip="Settings">
+        <mat-icon>settings</mat-icon>
+      </button>
+      <mat-menu #ganttSettingsMenu="matMenu">
+        <div class="menu-section" style="padding: 8px 12px; max-width: 260px;" (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()">
+          <div style="font-weight:600; margin-bottom:8px;">Gantt Settings</div>
+          <mat-form-field appearance="fill" style="width:100%;">
+            <mat-label>Scale</mat-label>
+            <mat-select [value]="ganttScale" (selectionChange)="onScaleChange($event)">
+              <mat-option [value]="'week-day'">week | day</mat-option>
+              <mat-option [value]="'month-week'">month | week</mat-option>
+              <mat-option [value]="'quarter-month'">quarter | month</mat-option>
+              <mat-option [value]="'year-month'">year | month</mat-option>
+              <mat-option [value]="'year-quarter'">year | quarter</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </mat-menu>
     }
-    <button type="button" (click)="toggleGantt()">
-      {{ showGantt ? 'Скрыть Gantt' : 'Показать Gantt' }}
+    <button mat-icon-button type="button" (click)="toggleGantt()" [matTooltip]="showGantt ? 'Hide Gantt' : 'Show Gantt'" aria-label="Toggle Gantt">
+      <mat-icon>{{ showGantt ? 'visibility_off' : 'visibility' }}</mat-icon>
     </button>
   </div>
 </div>

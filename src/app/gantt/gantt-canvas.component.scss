@@ -29,20 +29,7 @@
   gap: 8px;
   flex-wrap: wrap;
 }
-.page-toolbar button,
-.page-toolbar select{
-  border: 1px solid #cfd6e4;
-  background: #fff;
-  padding: 0 8px;
-  height: 26px;
-  border-radius: 4px;
-  line-height: 1;
-  cursor: pointer;
-}
-.page-toolbar button:hover{
-  background: #f8fafc;
-  border-color: #b8c2d1;
-}
+
 .page-toolbar .zoom{
   display: flex;
   align-items: center;
