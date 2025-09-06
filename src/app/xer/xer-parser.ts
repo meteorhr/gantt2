@@ -147,6 +147,39 @@ export function summarize(doc: XERDocument): string {
   return out.join("\n");
 }
 
+export interface XERSummaryItem {
+  name: string;
+  i18n: string;           // ключ для заголовка
+  value: string;          // текстовое значение (для хедера остаётся как есть)
+  i18nValue?: string;     // ключ шаблона значения (для таблиц)
+  params?: Record<string, unknown>; // параметры для i18n шаблона
+}
+
+export function summarizeArray(doc: XERDocument): XERSummaryItem[] {
+  const arr: XERSummaryItem[] = [];
+  if (doc.header) {
+    arr.push({ name: 'version', i18n: 'summarize.version', value: doc.header.productVersion ?? '' });
+    arr.push({ name: 'exportDate', i18n: 'summarize.exportDate', value: doc.header.exportDate ?? '' });
+    arr.push({ name: 'context', i18n: 'summarize.context', value: doc.header.projectOrContext ?? '' });
+    arr.push({ name: 'user', i18n: 'summarize.user', value: `${doc.header.userLogin ?? ''} (${doc.header.userFullNameOrRole ?? ''})` });
+    arr.push({ name: 'db', i18n: 'summarize.db', value: doc.header.database ?? '' });
+    arr.push({ name: 'module', i18n: 'summarize.module', value: doc.header.moduleName ?? '' });
+    arr.push({ name: 'baseCurrency', i18n: 'summarize.baseCurrency', value: doc.header.baseCurrency ?? '' });
+  }
+
+  for (const t of Object.values(doc.tables)) {
+    arr.push({
+      name: t.name,
+      i18n: 'summarize.table.' + t.name,
+      value: '',
+      i18nValue: 'summarize.table.count',
+      params: { rows: t.rows.length, fields: t.fields.length },
+    });
+  }
+
+  return arr;
+}
+
 /* ------------------------------------------------------------------ */
 /*                УДОБНЫЕ ХЕЛПЕРЫ ДЛЯ ПОЛУЧЕНИЯ ТАБЛИЦ                */
 /* ------------------------------------------------------------------ */

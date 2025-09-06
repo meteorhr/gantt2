@@ -1,0 +1,143 @@
+{
+    "task": {
+    "task_type": {
+      "TT_Task": "Task",
+      "TT_Rsrc": "Resource Dependent",
+      "TT_LOE": "Level of Effort",
+      "TT_WBS": "WBS Summary",
+      "TT_Mile": "Start Milestone",
+      "TT_StartMile": "Start Milestone",
+      "TT_FinMile": "Finish Milestone",
+      "TT_Hammock": "Hammock",
+      "TT_Tmpl": "Template Activity"
+    },
+
+    "status_code": {
+      "TK_NotStart": "Not Started",
+      "TK_Active": "In Progress",
+      "TK_Suspend": "Suspended",
+      "TK_Complete": "Completed",
+      "TK_Inactive": "Inactive"
+    },
+
+    "duration_type": {
+      "DT_FixedDUR2": "Fixed Duration",
+      "DT_FixedDUR": "Fixed Duration",
+      "DT_FixedDrtn": "Fixed Duration",
+      "DT_FixedUnits": "Fixed Units",
+      "DT_FixedUnitsTime": "Fixed Units/Time",
+      "DT_FixedWork": "Fixed Work",
+      "DT_None": "None"
+    },
+
+    "complete_pct_type": {
+      "CP_Drtn": "Duration % Complete",
+      "CP_Units": "Units % Complete",
+      "CP_Phys": "Physical % Complete"
+    },
+
+    "priority_type": {
+      "PT_VeryLow": "Very Low",
+      "PT_Low": "Low",
+      "PT_Normal": "Normal",
+      "PT_High": "High",
+      "PT_VeryHigh": "Very High",
+      "PT_Top": "Top"
+    }
+  },
+  "summarize": {
+    "version": "Version",
+    "exportDate": "Export date",
+    "context": "Context",
+    "user": "User",
+    "db": "Database",
+    "module": "Module",
+    "baseCurrency": "Base currency",
+    "table": {
+        "count": "{{rows}} rows, {{fields}} fields",
+        "rowsFields": "{{rows}} rows, {{fields}} fields",
+        "ACCOUNT": "Cost Accounts",
+        "ACTVCODE": "Activity Code Values",
+        "ACTVTYPE": "Activity Types",
+        "APPLYACTOPTIONS": "Apply Actual Options",
+        "ASSIGNMENT": "Assignment Code Assignments",
+        "ASGNMNTCATTYPE": "Assignment Codes",
+        "ASGNMNTCATVAL": "Assignment Code Values",
+        "BUDGCHNG": "Budget Changes",
+        "CALENDAR": "Calendars",
+        "COSTTYPE": "Expense Categories",
+        "CURRTYPE": "Currency Types",
+        "DOCCATG": "Document Categories",
+        "DOCSTAT": "Document Statuses",
+        "DOCUMENT": "Work Products and Documents",
+        "FINDATES": "Financial Periods",
+        "FUNDSRC": "Funding Sources",
+        "ISSUHIST": "Notification History",
+        "MEMOTYPE": "Notebook Topics",
+        "OBS": "OBS",
+        "PCATTYPE": "Project Codes",
+        "PCATVAL": "Project Code Values",
+        "PHASE": "Phase",
+        "PROJCOST": "Project Expenses",
+        "PROJECT":"Projects",
+        "PROJEST": "Estimate History",
+        "PROJFUND": "Project Funding Assignments",
+        "PROJISSU": "Issues",
+        "PROJPCAT": "Project Code Assignments",
+        "PROJTHRS": "Thresholds",
+        "PROJWBS": "WBS",
+        "PRORISK": "Risks",
+        "RCATTYPE": "Resource Codes",
+        "RCATVAL": "Resource Code Values",
+        "RISKTYPE": "Risk Types",
+        "ROLECATTYPE": "Role Codes",
+        "ROLECATVAL": "Role Code Values",
+        "ROLELIMIT": "Role Limits",
+        "ROLERATE": "Role Rates",
+        "ROLERCAT": "Role Code Assignments",
+        "ROLES": "Roles",
+        "RSRC": "Resources",
+        "RSRCCURV": "Resource Curves",
+        "RSRCCURVDATA": "Resource Curve Data",
+        "RSRCLEVELLIST": "Resource Level List",
+        "RSRCRATE": "Resource Rates",
+        "RSRCRCAT": "Resource Code Assignments",
+        "RSRCROLE": "Resource Role Assignments",
+        "SCHEDOPTIONS": "Schedule Options",
+        "SHIFT": "Shift Names",
+        "SHIFTPER": "Shifts",
+        "TASK": "Activities",
+        "TASKACTV": "Activity Code Assignments",
+        "TASKDOC": "Document Assignments",
+        "TASKFDBK": "Activity Feedback",
+        "TASKFIN": "Activity Past Period Actuals",
+        "TASKMEMO": "Activity Notebook",
+        "TASKNOTE": "Activity Notes to Resources",
+        "TASKPRED": "Activity Relationships",
+        "TASKPROC": "Activity Steps",
+        "TASKRSRC": "Activity Resource Assignments",
+        "TASKUSER": "Activity Owners",
+        "THRSPARM": "Threshold Parameters",
+        "TRSRCFIN": "Activity Resource Assignment Past Period Actuals",
+        "UDFTYPE": "User Defined Fields",
+        "UDFVALUE": "User Defined Field Values",
+        "UMEASURE": "Units of Measure",
+        "WBSBUDG": "Spending and Benefit Plans",
+        "WBSMEMO": "EPS, Project and WBS Notebook",
+        "WBSRSRC_QTY": "WBS Resource Quantities",
+        "WBSSTEP": "WBS Milestones"
+    }
+  },
+  
+
+
+
+  "links": {
+    "predType": {
+      "FS": "Finish to Start",
+      "SS": "Start to Start",
+      "FF": "Finish to Finish",
+      "SF": "Start to Finish"
+    }
+  }
+}

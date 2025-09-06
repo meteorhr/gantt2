@@ -31,6 +31,18 @@ export  interface Node {
   priority_type?: string | null;
   float_path?: string | null;
   float_path_order?: number | null;
+
+        task_type_label?: string | null;
+      complete_pct_type_label?: string | null;
+      duration_type_label?: string | null;
+      priority_type_label?: string | null;
+      status_code_label?: string | null;
+
+  task_type_i18n?: string | null;
+      complete_pct_type_i18n?: string | null;
+      duration_type_i18n?: string | null;
+      priority_type_i18n?: string | null;
+      status_code_i18n?: string | null;
   name: string;
   start: IsoDate;
   finish: IsoDate;
