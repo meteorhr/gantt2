@@ -5,6 +5,13 @@
 import { FlatRow, Node } from './models/gantt.model';
 import { MS_PER_DAY } from './utils/date-utils';
 
+// Half of the milestone diamond diagonal in px (must match painter)
+function msHalfPx(rowHeight: number, taskPad: number, taskGap: number) {
+  const trackH = Math.max(4, Math.floor((rowHeight - taskPad * 2 - taskGap) / 2));
+  const msSize = Math.min(Math.floor(rowHeight * 0.6), trackH + 4);
+  return Math.floor(msSize / 2);
+}
+
 export type GanttHitMode = 'move' | 'resize-start' | 'resize-finish';
 
 export interface BarPixels {
@@ -114,6 +121,22 @@ export function hitGanttBarAt(
   const yBotRow = yTopRow + st.rowHeight;
   if (y < yTopRow || y > yBotRow) return null;
 
+  // --- MILESTONE: запрещаем resize, оставляем только move ---
+  const row = st.flatRows[rowIndex];
+  const node = st.nodeIndex.get(row.id);
+  const tt = node?.task_type ?? 'TT_Task';
+  const isMilestone = tt === 'TT_FinMile';
+
+  if (isMilestone) {
+    // Для нулевой ширины даём «толстую» зону нажатия вокруг x1
+    const tol = Math.max(resizeHandlePx, 6); // допуск по X
+    if (Math.abs(x - p.x1) <= tol) {
+      return { rowIndex, mode: 'move' }; // только перемещение
+    }
+    return null; // никаких resize-start/finish
+  }
+
+  // --- Обычные задачи ---
   const h = resizeHandlePx;
   if (Math.abs(x - p.x0) <= h) return { rowIndex, mode: 'resize-start' };
   if (Math.abs(x - p.x1) <= h) return { rowIndex, mode: 'resize-finish' };
@@ -140,7 +163,10 @@ export function barRevealRowAt(st: GanttGeometryState, x: number, y: number): nu
   const yBot = yTop + st.rowHeight;
   if (y < yTop || y > yBot) return null;
 
-  return x >= p.x0 - ext && x <= p.x1 + ext ? i : null;
+  const nodeR = st.nodeIndex.get(st.flatRows[i].id);
+  const isMsR = (nodeR?.task_type ?? 'TT_Task') === 'TT_FinMile';
+  const extra = isMsR ? msHalfPx(st.rowHeight, st.taskPad, st.taskGap) : 0;
+  return x >= (p.x0 - ext - extra) && x <= (p.x1 + ext + extra) ? i : null;
 }
 
 /* ==============================
@@ -149,14 +175,20 @@ export function barRevealRowAt(st: GanttGeometryState, x: number, y: number): nu
 
 export function rightHandleCenter(st: GanttGeometryState, i: number) {
   const p = barPixelsForRowIndex(st, i);
+  const node = st.nodeIndex.get(st.flatRows[i].id);
+  const isMs = (node?.task_type ?? 'TT_Task') === 'TT_FinMile';
   const offset = st.linkHandleR + st.linkHandleGap;
-  return { x: p.x1 + offset, y: p.yMid };
+  const extra = isMs ? msHalfPx(st.rowHeight, st.taskPad, st.taskGap) : 0;
+  return { x: p.x1 + offset + extra, y: p.yMid };
 }
 
 export function leftHandleCenter(st: GanttGeometryState, i: number) {
   const p = barPixelsForRowIndex(st, i);
+  const node = st.nodeIndex.get(st.flatRows[i].id);
+  const isMs = (node?.task_type ?? 'TT_Task') === 'TT_FinMile';
   const offset = st.linkHandleR + st.linkHandleGap;
-  return { x: p.x0 - offset, y: p.yMid };
+  const extra = isMs ? msHalfPx(st.rowHeight, st.taskPad, st.taskGap) : 0;
+  return { x: p.x0 - offset - extra, y: p.yMid };
 }
 
 /* ==============================
@@ -175,10 +207,13 @@ export function barRightHandleHit(st: GanttGeometryState, x: number, y: number):
   if (i < 0 || i >= st.flatRows.length) return null;
 
   const p = barPixelsForRowIndex(st, i);
+  const node = st.nodeIndex.get(st.flatRows[i].id);
+  const isMs = (node?.task_type ?? 'TT_Task') === 'TT_FinMile';
+  const extra = isMs ? msHalfPx(st.rowHeight, st.taskPad, st.taskGap) : 0;
   const { x: cx, y: cy } = rightHandleCenter(st, i);
 
-  // курсор должен быть правее края бара (чтобы не мешать resize-finish)
-  if (x <= p.x1 + st.linkHandleGap * 0.5) return null;
+  // курсор должен быть правее края бара (с учётом смещения ромба)
+  if (x <= p.x1 + extra + st.linkHandleGap * 0.5) return null;
 
   return isInCircle(x, y, cx, cy, st.linkHandleR + 6 /* hitTol */) ? i : null;
 }
@@ -189,10 +224,13 @@ export function barLeftHandleHit(st: GanttGeometryState, x: number, y: number): 
   if (i < 0 || i >= st.flatRows.length) return null;
 
   const p = barPixelsForRowIndex(st, i);
+  const node = st.nodeIndex.get(st.flatRows[i].id);
+  const isMs = (node?.task_type ?? 'TT_Task') === 'TT_FinMile';
+  const extra = isMs ? msHalfPx(st.rowHeight, st.taskPad, st.taskGap) : 0;
   const { x: cx, y: cy } = leftHandleCenter(st, i);
 
-  // курсор должен быть левее края бара (чтобы не мешать resize-start)
-  if (x >= p.x0 - st.linkHandleGap * 0.5) return null;
+  // курсор должен быть левее края бара (с учётом смещения ромба)
+  if (x >= p.x0 - extra - st.linkHandleGap * 0.5) return null;
 
   return isInCircle(x, y, cx, cy, st.linkHandleR + 6 /* hitTol */) ? i : null;
 }

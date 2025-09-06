@@ -721,11 +721,21 @@ function drawDependencies(ctx: CanvasRenderingContext2D, st: GanttPaintState) {
   const padV = 8;
   const stubExit = 4;
 
+  const msHalf = (() => {
+    // Должно совпадать с размером ромба из renderGanttBody
+    const trackH = Math.max(4, Math.floor((st.rowHeight - st.taskPad * 2 - st.taskGap) / 2));
+    const msSize = Math.min(Math.floor(st.rowHeight * 0.6), trackH + 4);
+    return Math.floor(msSize / 2); // половина диагонали/смещения по X до вершины
+  })();
+
   for (let toIdx = 0; toIdx < st.flatRows.length; toIdx++) {
     const targetRow = st.flatRows[toIdx];
     const targetNode = st.nodeIndex.get(targetRow.id);
     const deps = targetNode?.dependency || [];
+    const targetTT = targetNode?.task_type ?? 'TT_Task';
+    const targetIsMilestone = targetTT === 'TT_FinMile';
     if (!deps.length) continue;
+
 
     const t = barPixelsForRowIndex(st, toIdx);
     const tx0 = t.x0, tyTop = t.yTop, tyMid = t.yMid, tyBot = t.yBot;
@@ -740,65 +750,69 @@ function drawDependencies(ctx: CanvasRenderingContext2D, st: GanttPaintState) {
 
       const fromRow = st.flatRows[fromIdx];
       const fromNode = st.nodeIndex.get(fromRow.id);
+      const fromTT = fromNode?.task_type ?? 'TT_Task';
+      const fromIsMilestone = fromTT === 'TT_FinMile';
+
       const fromFinishMs = new Date((fromNode?.finish ?? fromRow.finish) + 'T00:00:00').getTime();
       const targetStartMs = new Date((targetNode?.start ?? targetRow.start) + 'T00:00:00').getTime();
 
       const targetBelow = toIdx > fromIdx;
       const yClear = targetBelow ? (tyTop - padV) : (tyBot + padV);
       const xL = tx0 - padH;
+      const tx0Adj = targetIsMilestone ? (tx0 - msHalf) : tx0;      // вход в ЛЕВУЮ вершину ромба
+      const xLAdj = targetIsMilestone ? (xL - msHalf) : xL;         // полка с учётом вершины
+      const sx1Adj = fromIsMilestone ? (sx1 + msHalf) : sx1;        // выход из ПРАВОЙ вершины ромба
 
       ctx.strokeStyle = color;
 
       if (fromFinishMs >= targetStartMs) {
         // короткий маршрут
-        const exitX = sx1 + stubExit;
+        const exitX = sx1Adj + stubExit;
         ctx.beginPath();
-        ctx.moveTo(sx1 + 0.5, syMid + 0.5);
-        ctx.lineTo(exitX + 0.5, syMid + 0.5);
-        ctx.lineTo(exitX + 0.5, yClear + 0.5);
-        ctx.lineTo(xL + 0.5,   yClear + 0.5);
+        ctx.moveTo(sx1Adj + 0.5, syMid + 0.5);
+        ctx.lineTo(exitX + 0.5,  syMid + 0.5);
+        ctx.lineTo(exitX + 0.5,  yClear + 0.5);
+        ctx.lineTo(xLAdj + 0.5,   yClear + 0.5); 
         ctx.stroke();
+
       } else {
         // классический маршрут
-        const gap = tx0 - sx1;
-        const entryLen = padH;              // tx0 - xL
+        const gap = tx0Adj - sx1Adj;
+        const entryLen = padH;              // tx0Adj - xLAdj
         const exitLen = Math.max(0, Math.min(gap - entryLen, gap));
-        const xExit = sx1 + exitLen;
+        const xExit = sx1Adj + exitLen;
 
         ctx.beginPath();
-        ctx.moveTo(sx1 + 0.5, syMid + 0.5);
-        ctx.lineTo(xExit + 0.5, syMid + 0.5);
-        ctx.lineTo(xExit + 0.5, yClear + 0.5);
-        ctx.lineTo(xL + 0.5,    yClear + 0.5);
+        ctx.moveTo(sx1Adj + 0.5, syMid + 0.5);
+        ctx.lineTo(xExit + 0.5,  syMid + 0.5);
+        ctx.lineTo(xExit + 0.5,  yClear + 0.5);
+        ctx.lineTo(xLAdj + 0.5,    yClear + 0.5);
         ctx.stroke();
 
         // вниз/вверх к центру цели
         ctx.beginPath();
-        ctx.moveTo(xL + 0.5, yClear + 0.5);
-        ctx.lineTo(xL + 0.5, tyMid  + 0.5);
+        ctx.moveTo(xLAdj + 0.5, yClear + 0.5);
+        ctx.lineTo(xLAdj + 0.5, tyMid  + 0.5);
         ctx.stroke();
 
         // вправо и вход в левую грань цели
         ctx.beginPath();
-        ctx.moveTo(xL + 0.5, tyMid + 0.5);
-        ctx.lineTo(tx0 + 0.5, tyMid + 0.5);
+        ctx.moveTo(xLAdj + 0.5, tyMid + 0.5);
+        ctx.lineTo(tx0Adj + 0.5, tyMid + 0.5);
         ctx.stroke();
-
-        drawArrowhead(ctx, tx0 + 0.5, tyMid + 0.5, 'right', color);
+        drawArrowhead(ctx, tx0Adj + 0.5, tyMid + 0.5, 'right', color);
       }
 
       // на всякий случай дублируем «вертикаль → вправо»
       ctx.beginPath();
-      ctx.moveTo(xL + 0.5, yClear + 0.5);
-      ctx.lineTo(xL + 0.5, tyMid  + 0.5);
+      ctx.moveTo(xLAdj + 0.5, yClear + 0.5);
+      ctx.lineTo(xLAdj + 0.5, tyMid  + 0.5);
       ctx.stroke();
-
       ctx.beginPath();
-      ctx.moveTo(xL + 0.5, tyMid + 0.5);
-      ctx.lineTo(tx0 + 0.5, tyMid + 0.5);
+      ctx.moveTo(xLAdj + 0.5, tyMid + 0.5);
+      ctx.lineTo(tx0Adj + 0.5, tyMid + 0.5);
       ctx.stroke();
-
-      drawArrowhead(ctx, tx0 + 0.5, tyMid + 0.5, 'right', color);
+      drawArrowhead(ctx, tx0Adj + 0.5, tyMid + 0.5, 'right', color);
     }
   }
 
@@ -814,7 +828,19 @@ function drawLinkPreviewAndHandles(ctx: CanvasRenderingContext2D, st: GanttPaint
     const hideRight = st.hoverGanttHitMode === 'resize-finish';
     if (!hideRight) {
       const rc = rightHandleCenter(st, row);
-      drawHandleWithStem(ctx, st, p.x1, rc.x, rc.y, 'right', false);
+      // Если ховер по milestone — смещаем стержень и кружок к правой вершине ромба
+      const node = st.nodeIndex.get(st.flatRows[row].id);
+      const isMs = (node?.task_type ?? 'TT_Task') === 'TT_FinMile';
+      const msHalf = (() => {
+        const trackH = Math.max(4, Math.floor((st.rowHeight - st.taskPad * 2 - st.taskGap) / 2));
+        const msSize = Math.min(Math.floor(st.rowHeight * 0.6), trackH + 4);
+        return Math.floor(msSize / 2);
+      })();
+
+      const barEdgeX = isMs ? (p.x1 + msHalf) : p.x1; // стержень из правой вершины ромба
+      const rcX      = isMs ? (rc.x + msHalf) : rc.x;  // кружок тоже смещаем вправо на msHalf
+
+      drawHandleWithStem(ctx, st, barEdgeX, rcX, rc.y, 'right', false);
     }
   }
 
@@ -822,8 +848,18 @@ function drawLinkPreviewAndHandles(ctx: CanvasRenderingContext2D, st: GanttPaint
   if (st.linkMode === 'drag' && st.linkSourceRow >= 0) {
     const src = barPixelsForRowIndex(st, st.linkSourceRow);
     const rc  = rightHandleCenter(st, st.linkSourceRow);
+    // Источник: если milestone, выходим из правой вершины ромба
+    const srcNode = st.nodeIndex.get(st.flatRows[st.linkSourceRow].id);
+    const srcIsMs = (srcNode?.task_type ?? 'TT_Task') === 'TT_FinMile';
+    const msHalfDragSrc = (() => {
+      const trackH = Math.max(4, Math.floor((st.rowHeight - st.taskPad * 2 - st.taskGap) / 2));
+      const msSize = Math.min(Math.floor(st.rowHeight * 0.6), trackH + 4);
+      return Math.floor(msSize / 2);
+    })();
+    const srcXAnchor = srcIsMs ? (src.x1 + msHalfDragSrc) : src.x1;
+    const rcXAnchor  = srcIsMs ? (rc.x + msHalfDragSrc)   : rc.x;
 
-    drawHandleWithStem(ctx, st, src.x1, rc.x, rc.y, 'right', true);
+    drawHandleWithStem(ctx, st, srcXAnchor, rcXAnchor, rc.y, 'right', true);
 
     ctx.save();
     ctx.setLineDash([6, 4]);
@@ -834,31 +870,41 @@ function drawLinkPreviewAndHandles(ctx: CanvasRenderingContext2D, st: GanttPaint
       const t  = barPixelsForRowIndex(st, st.linkHoverTargetRow);
       const lc = leftHandleCenter(st, st.linkHoverTargetRow);
       const tx0 = t.x0, ty = t.yMid;
+      // Цель: если milestone, входим в левую вершину ромба
+      const targNode = st.nodeIndex.get(st.flatRows[st.linkHoverTargetRow].id);
+      const targIsMs = (targNode?.task_type ?? 'TT_Task') === 'TT_FinMile';
+      const msHalfDragTgt = (() => {
+        const trackH = Math.max(4, Math.floor((st.rowHeight - st.taskPad * 2 - st.taskGap) / 2));
+        const msSize = Math.min(Math.floor(st.rowHeight * 0.6), trackH + 4);
+        return Math.floor(msSize / 2);
+      })();
+      const txEntry = targIsMs ? (tx0 - msHalfDragTgt) : tx0;
+
       const padH = 10, padV = 8;
       const targetBelow = st.linkHoverTargetRow > st.linkSourceRow;
       const yClear = targetBelow ? (t.yTop - padV) : (t.yBot + padV);
-      const xL = tx0 - padH;
+      const xL = txEntry - padH; // полка перед входом с учётом вершины ромба
 
-      const gap = tx0 - src.x1;
+      const gap = txEntry - srcXAnchor;
       const entryLen = padH;
       const exitLen = Math.max(0, Math.min(gap - entryLen, gap));
-      const xExit = src.x1 + exitLen;
+      const xExit = srcXAnchor + exitLen;
 
       ctx.beginPath();
-      ctx.moveTo(src.x1 + 0.5, src.yMid + 0.5);
-      ctx.lineTo(xExit + 0.5,  src.yMid + 0.5);
-      ctx.lineTo(xExit + 0.5,  yClear   + 0.5);
-      ctx.lineTo(xL + 0.5,     yClear   + 0.5);
-      ctx.lineTo(xL + 0.5,     ty       + 0.5);
-      ctx.lineTo(tx0 + 0.5,    ty       + 0.5);
+      ctx.moveTo(srcXAnchor + 0.5, src.yMid + 0.5);
+      ctx.lineTo(xExit + 0.5,      src.yMid + 0.5);
+      ctx.lineTo(xExit + 0.5,      yClear   + 0.5);
+      ctx.lineTo(xL + 0.5,         yClear   + 0.5);
+      ctx.lineTo(xL + 0.5,         ty       + 0.5);
+      ctx.lineTo(txEntry + 0.5,    ty       + 0.5);
       ctx.stroke();
 
-      drawHandleWithStem(ctx, st, t.x0, lc.x, lc.y, 'left', true);
+      drawHandleWithStem(ctx, st, txEntry, lc.x, lc.y, 'left', true);
     } else {
       // свободная протяжка: штырёк вправо → вертикаль → горизонталь к мыши
-      const xExit = src.x1 + 8;
+      const xExit = srcXAnchor + 8;
       ctx.beginPath();
-      ctx.moveTo(src.x1 + 0.5, src.yMid + 0.5);
+      ctx.moveTo(srcXAnchor + 0.5, src.yMid + 0.5);
       ctx.lineTo(xExit + 0.5,  src.yMid + 0.5);
       ctx.lineTo(xExit + 0.5,  st.linkMouseY + 0.5);
       ctx.lineTo(st.linkMouseX + 0.5, st.linkMouseY + 0.5);
