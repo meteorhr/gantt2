@@ -17,7 +17,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-
+import { AnalyticsService } from './firebase/analytics.service';
 
 interface RefLine {
   name: string;
@@ -66,28 +66,27 @@ export class App implements OnInit {
 
   public columns: ColumnDef[] = [
     { key: 'task_code',  title: 'Task Code',    width: 120, minWidth: 60 },
-    { key: 'task_type_label', title: 'Task Type', width: 60, minWidth: 60},
     { key: 'name',   title: 'Task',   width: 420, minWidth: 120 },
-    { key: 'complete_pct_type_label', title: '%', width: 60, minWidth: 40, align: 'right' },
-
-  
 
     { key: 'start',  title: 'Act. Start',  width: 120, minWidth: 80 },
     { key: 'finish', title: 'Act. Finish', width: 120, minWidth: 80 },
-
-    { key: 'earlyStart',  title: 'Ear. Start',  width: 120, minWidth: 80 },
-    { key: 'earlyFinish', title: 'Ear. Finish', width: 120, minWidth: 80 },
-
-    { key: 'lateStart',  title: 'Late Start',  width: 120, minWidth: 80 },
-    { key: 'lateFinish', title: 'Late Finish', width: 120, minWidth: 80 },
-
-    { key: 'expectEnd', title: 'Expect End', width: 120, minWidth: 80 },
-
-  
-
+    { key: 'complete_pct_type_label', title: '%', width: 160, minWidth: 160, align: 'right' },
     { key: 'status_code_label', title: 'Status', width: 100, minWidth: 80 },
     { key: 'rsrc_names', title: 'Resources', width: 140, minWidth: 80 },
+  
+
+
+    //{ key: 'earlyStart',  title: 'Ear. Start',  width: 120, minWidth: 80 },
+    //{ key: 'earlyFinish', title: 'Ear. Finish', width: 120, minWidth: 80 },
+
+    //{ key: 'lateStart',  title: 'Late Start',  width: 120, minWidth: 80 },
+    //{ key: 'lateFinish', title: 'Late Finish', width: 120, minWidth: 80 },
+
+    //{ key: 'expectEnd', title: 'Expect End', width: 120, minWidth: 80 },
+    //{ key: 'task_type_label', title: 'Task Type', width: 60, minWidth: 60},
   ];
+
+  private readonly analytics = inject(AnalyticsService);
 
   constructor(private transloco: TranslocoService) {
     const g =  generateActivityData(100, { seed: 20250826, rootsCount: 5, criticalProbability: true  });
@@ -168,6 +167,7 @@ export class App implements OnInit {
       await this.rebuildForProject(pid);
     
       this.loading.set(false);
+      this.analytics.event('upload_xer', { file_name: file.name });
     } catch (e: any) {
       console.error('[XER] File load failed:', e);
       this.error.set(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить файл.');
@@ -196,6 +196,7 @@ export class App implements OnInit {
       }
       this.selectedProjectId.set(pid);
       await this.rebuildForProject(pid);
+      this.analytics.event('load_demo', { source: 'assets/xer/project.xer' });
     } catch (e: any) {
       console.error('[XER] Demo load failed:', e);
       this.error.set(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить демо-данные.');
@@ -211,6 +212,7 @@ export class App implements OnInit {
     try {
       this.selectedProjectId.set(pid);
       await this.rebuildForProject(pid);
+      this.analytics.event('select_project', { proj_id: pid });
     } finally {
       this.loading.set(false);
     }

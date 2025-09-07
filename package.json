@@ -6,6 +6,7 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "build:prod": "ng build --configuration production",
     "test": "ng test"
   },
   "prettier": {
@@ -23,13 +24,14 @@
   "private": true,
   "dependencies": {
     "@angular/cdk": "^20.2.2",
-    "@angular/common": "^20.2.0",
-    "@angular/compiler": "^20.2.0",
-    "@angular/core": "^20.2.0",
-    "@angular/forms": "^20.2.0",
+    "@angular/common": "^20.2.4",
+    "@angular/compiler": "^20.2.4",
+    "@angular/core": "^20.2.4",
+    "@angular/fire": "^20.0.1",
+    "@angular/forms": "^20.2.4",
     "@angular/material": "^20.2.2",
-    "@angular/platform-browser": "^20.2.0",
-    "@angular/router": "^20.2.0",
+    "@angular/platform-browser": "^20.2.4",
+    "@angular/router": "^20.2.4",
     "@jsverse/transloco": "^7.6.1",
     "d3": "^7.9.0",
     "d3-selection": "^3.0.0",
@@ -42,7 +44,7 @@
   "devDependencies": {
     "@angular/build": "^20.2.2",
     "@angular/cli": "^20.2.2",
-    "@angular/compiler-cli": "^20.2.0",
+    "@angular/compiler-cli": "^20.2.4",
     "@types/d3-selection": "^3.0.11",
     "@types/d3-zoom": "^3.0.8",
     "@types/jasmine": "~5.1.0",

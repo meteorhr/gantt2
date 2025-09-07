@@ -131,15 +131,22 @@
 
   <!-- Tab 2: Gantt -->
   <mat-tab label="{{ 'activities_gantt' | transloco }}">
-    <div style="padding: 8px; height: calc(100vh - 150px);">
+    <div style="padding: 8px; height: calc(100vh - 100px);">
 
-        <gantt-canvas
-          #gantt
-          style="height: calc(100vh - 160px);"
-          [data]="activityData"
-          [refLines]="refLines"
-          [columns]="columns">
-        </gantt-canvas>
+
+  @defer (on viewport; prefetch on idle) {
+    <gantt-canvas
+      #gantt
+      style="height: calc(100vh - 110px);"
+      [data]="activityData"
+      [refLines]="refLines"
+      [columns]="columns">
+    </gantt-canvas>
+  } @placeholder {
+    <div class="mat-body" style="padding:8px;opacity:.7">
+      {{ 'loading' | transloco }}
+    </div>
+  }
     </div>
   </mat-tab>
 </mat-tab-group>

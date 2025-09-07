@@ -37,3 +37,14 @@ body {
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+.pre-container {
+  display: flex;
+  flex-direction: column;           // Располагаем элементы вертикально
+  align-items: center;              // Центрирование по горизонтали
+  justify-content: center;          // Центрирование по вертикали (все элементы группируются по центру)
+  gap: 16px;                        // Отступы между элементами (можно регулировать)
+  padding: 0 20px;                  // Горизонтальные отступы
+  height: 100vh;                    // Высота на весь экран
+}
+

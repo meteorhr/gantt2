@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   id="svg2"
+   width="256"
+   height="256"
+   viewBox="0 0 256 256"
+   sodipodi:docname="rk_logo.ai"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs6">
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath16">
+      <path
+         d="M 0,192 H 192 V 0 H 0 Z"
+         id="path14" />
+    </clipPath>
+  </defs>
+  <sodipodi:namedview
+     id="namedview4"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1" />
+  <g
+     id="g8"
+     inkscape:groupmode="layer"
+     inkscape:label="rk_logo"
+     transform="matrix(1.3333333,0,0,-1.3333333,0,256)">
+    <g
+       id="g10">
+      <g
+         id="g12"
+         clip-path="url(#clipPath16)">
+        <g
+           id="g18"
+           transform="translate(96.4956,189.3076)">
+          <path
+             d="M 0,0 C -23.199,0 -44.395,-8.604 -60.695,-22.799 H 8.928 c 23.093,0 43.078,-21.495 43.917,-22.41 l 3.338,-3.634 H -81.599 c -7.306,-13.44 -11.474,-28.876 -11.474,-45.293 0,-34.12 17.951,-64.004 44.821,-80.509 V -58.3 h 28.79 v -31.6 h 32.568 l 11.691,31.6 h 31.205 c 0,0 -15.373,-40.375 -17.602,-46.226 l 17.783,-47.202 -1.071,-0.989 c -6.967,-6.487 -14.969,-11.49 -23.791,-14.863 l -2.086,-0.8 -16.194,49.361 h -32.684 v -67.13 c 6.337,-1.375 12.902,-2.121 19.643,-2.121 51.409,0 93.082,42.148 93.082,94.134 C 93.082,-42.147 51.409,0 0,0"
+             style="fill:#231f20;fill-opacity:1;fill-rule:nonzero;stroke:none"
+             id="path20" />
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
