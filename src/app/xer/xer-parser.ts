@@ -75,10 +75,11 @@ export function parseXER(input: string, options?: Partial<ParseOptions>): XERDoc
   let currentFields: string[] = [];
 
   for (const rawLine of lines) {
-    if (!rawLine) continue;
+    if (!rawLine || /^\s*$/.test(rawLine)) continue; // пустые/пробельные строки пропускаем
 
-    if (rawLine.startsWith("ERMHDR")) {
-      const parts = rawLine.split(TAB);
+    // ERMHDR (допускаем ведущие пробелы)
+    if (/^\s*ERMHDR/.test(rawLine)) {
+      const parts = rawLine.trimStart().split(TAB);
       doc.header = {
         raw: parts,
         productVersion: parts[1],
@@ -93,25 +94,31 @@ export function parseXER(input: string, options?: Partial<ParseOptions>): XERDoc
       continue;
     }
 
-    if (rawLine.startsWith("%T" + TAB)) {
-      const name = rawLine.substring(3).trim();
+    // %T  — начало таблицы (допускаем ведущие пробелы)
+    const mT = rawLine.match(/^\s*%T\t(.+)$/);
+    if (mT) {
+      const name = mT[1].trim();
       if (!doc.tables[name]) doc.tables[name] = { name, fields: [], rows: [] };
       currentTable = doc.tables[name];
       currentFields = [];
       continue;
     }
 
-    if (rawLine.startsWith("%F" + TAB)) {
+    // %F — список полей (допускаем ведущие пробелы)
+    const mF = rawLine.match(/^\s*%F\t(.+)$/);
+    if (mF) {
       if (!currentTable) throw new Error(`Поля без активной таблицы: ${rawLine}`);
-      currentFields = rawLine.substring(3).split(TAB).map(f => safeFieldName(opt.trimCells ? f.trim() : f));
-      currentTable.fields = currentFields;
+      currentFields = mF[1].split(TAB).map(f => safeFieldName(opt.trimCells ? f.trim() : f));
+      currentTable.fields = currentFields.slice(); // фиксируем список полей
       continue;
     }
 
-    if (rawLine.startsWith("%R" + TAB)) {
+    // %R — запись (допускаем ведущие пробелы)
+    const mR = rawLine.match(/^\s*%R\t(.+)$/);
+    if (mR) {
       if (!currentTable) throw new Error(`Запись без активной таблицы: ${rawLine}`);
       if (currentFields.length === 0) throw new Error(`В "${currentTable.name}" запись до %F.`);
-      const values = rawLine.substring(3).split(TAB);
+      const values = mR[1].split(TAB);
       const row: Record<string, XERScalar> = {};
       const width = Math.min(values.length, currentFields.length);
       for (let i = 0; i < width; i++) row[currentFields[i]] = coerceScalar(values[i], opt);
@@ -120,8 +127,12 @@ export function parseXER(input: string, options?: Partial<ParseOptions>): XERDoc
       continue;
     }
 
-    if (rawLine.startsWith("%E")) break;
+    // %E — конец файла
+    if (/^\s*%E/.test(rawLine)) break;
   }
+
+  // Добавим служебную таблицу SUMMARIZE, основанную на summarizeArray
+  doc.tables['SUMMARIZE'] = buildSummarizeTable(doc);
 
   return doc;
 }
@@ -178,6 +189,21 @@ export function summarizeArray(doc: XERDocument): XERSummaryItem[] {
   }
 
   return arr;
+}
+
+/** Построить XER-таблицу SUMMARIZE из summarizeArray (params сериализуем в JSON-строку) */
+export function buildSummarizeTable(doc: XERDocument): XERTable {
+  const items = summarizeArray(doc);
+  const fields = ['name', 'i18n', 'value', 'i18nValue', 'params'];
+  const rows = items.map(it => ({
+    name: it.name,
+    i18n: it.i18n,
+    value: it.value,
+    i18nValue: it.i18nValue ?? null,
+    // XERScalar не допускает объект → сериализуем
+    params: it.params ? JSON.stringify(it.params) : null,
+  })) as Record<string, XERScalar>[];
+  return { name: 'SUMMARIZE', fields, rows };
 }
 
 /* ------------------------------------------------------------------ */

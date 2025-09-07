@@ -1,4 +1,39 @@
 {
+  "app": {
+    "title": "ScheduleVision",
+    "subtitle":"A clear view of your project"
+  },
+  "intro": {
+    "p1": "My name is Ruslan Khisamov, I am a project manager specializing in capital project management in the mining and metallurgical industry. Oracle Primavera P6 is the industry standard for planning, coordination, and control of complex projects.",
+    "p2": "To view an Oracle Primavera P6 XER file, special software, licenses, and additional configuration are required. This reduces data accessibility and complicates fast managerial decision-making.",
+    "p3": "That is why I am creating ScheduleVision — a free and convenient web tool that allows you to open and analyze projects developed in Primavera P6 anywhere, without additional software. ScheduleVision makes working with schedules more transparent and analytics accessible to every project participant — whether manager, engineer, or contractor.",
+    "p4": "My goal is to contribute to the industry by offering a tool that helps make decisions faster, manage resources more effectively, and improve transparency in project management."
+  },
+  "xer": {
+    "upload": {
+      "title": "Upload XER File",
+      "desc": "Choose an Oracle Primavera P6 XER file for local processing and viewing. All processing is done in your browser, and no data is sent to the server.",
+      "btn": "Select XER File",
+      "btn_aria": "Upload XER file from local device"
+    }
+  },
+  "security": {
+    "title": "Security and Privacy",
+    "lead": "ScheduleVision is designed with a priority on protecting your data:",
+    "items": {
+      "local_only": "Your files are not transmitted to the server — all processing is performed directly in your browser.",
+      "indexeddb": "Data is stored only in the local database (IndexedDB) on your device.",
+      "analytics": "Web files and cookies are used exclusively for visit analytics via Google services and do not affect the content of your projects.",
+      "control": "You have full control of your data: you can delete saved files from your browser’s local database at any time."
+    },
+    "outro": "Thus, working with projects in ScheduleVision is safe, private, and fully under your control."
+  },
+    "xer_upload_title": "Upload XER file",
+  "xer_upload_desc": "To get started, upload a .xer file from your device. The local database will be cleared on page load.",
+  "xer_upload_btn": "Choose .xer file",
+  "xer_reload_file": "Reload .xer file",
+  "xer_upload_hint": "If you want to switch the dataset, reload a .xer file.",
+  "loading": "Loading…",
     "activities_gantt": "Activities",
     "xer_summary": "XER Summary",
     "task": {

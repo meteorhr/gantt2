@@ -4,21 +4,23 @@ import { RSRCROLERow } from './models/rsrcrole.model';
 import { TASKRSRCRow } from './models/taskrsrc.model';
 import { ResourceAssignment } from '../gantt/models/gantt.model';
 import { getRows, XERDocument } from './xer-parser';
+import { XerDexieService } from './xer-dexie.service';
 
-export function buildResourceIndex(doc: XERDocument): Map<number, ResourceAssignment[]> {
+function buildResourceIndexFromLists(
+  rsrcRows: RSRCRow[],
+  roleRows: RSRCROLERow[],
+  tx: TASKRSRCRow[],
+): Map<number, ResourceAssignment[]> {
   const result = new Map<number, ResourceAssignment[]>();
 
-  const rsrcRows = getRows<RSRCRow>(doc, 'RSRC');
   const rsrcById = new Map<number, RSRCRow>();
   for (const r of rsrcRows) if (typeof r.rsrc_id === 'number') rsrcById.set(r.rsrc_id, r);
 
-  const roleRows = getRows<RSRCROLERow>(doc, 'RSRCROLE');
   const roleByRsrc = new Map<number, RSRCROLERow>();
   for (const rr of roleRows) {
     if (typeof rr.rsrc_id === 'number' && !roleByRsrc.has(rr.rsrc_id)) roleByRsrc.set(rr.rsrc_id, rr);
   }
 
-  const tx = getRows<TASKRSRCRow>(doc, 'TASKRSRC');
   for (const a of tx) {
     if (typeof a.task_id !== 'number' || typeof a.taskrsrc_id !== 'number') continue;
 
@@ -71,4 +73,55 @@ export function buildResourceIndex(doc: XERDocument): Map<number, ResourceAssign
   }
 
   return result;
+}
+
+export function buildResourceIndex(doc: XERDocument): Map<number, ResourceAssignment[]> {
+  {
+    const rsrcRows = getRows<RSRCRow>(doc, 'RSRC');
+    const roleRows = getRows<RSRCROLERow>(doc, 'RSRCROLE');
+    const tx       = getRows<TASKRSRCRow>(doc, 'TASKRSRC');
+    return buildResourceIndexFromLists(rsrcRows, roleRows, tx);
+  }
+}
+
+/** Построить индекс назначений напрямую из IndexedDB (все проекты) */
+export async function buildResourceIndexFromIndexedDb(
+  dexie: XerDexieService
+): Promise<Map<number, ResourceAssignment[]>> {
+  const [rsrcRows, roleRows, tx] = await Promise.all([
+    dexie.getRows('RSRC'),
+    dexie.getRows('RSRCROLE'),
+    dexie.getRows('TASKRSRC'),
+  ]);
+  return buildResourceIndexFromLists(
+    rsrcRows as RSRCRow[],
+    roleRows as RSRCROLERow[],
+    tx as TASKRSRCRow[],
+  );
+}
+
+/** Построить индекс назначений для одного проекта по proj_id (фильтруем TASKRSRC по проекту/задачам) */
+export async function buildResourceIndexByProjectFromIndexedDb(
+  dexie: XerDexieService,
+  projectId: number
+): Promise<Map<number, ResourceAssignment[]>> {
+  const pid = Number(projectId);
+  const [rsrcRows, roleRows, txAll, taskAll] = await Promise.all([
+    dexie.getRows('RSRC'),
+    dexie.getRows('RSRCROLE'),
+    dexie.getRows('TASKRSRC'),
+    dexie.getRows('TASK'),
+  ]);
+  const projectTasks = (taskAll as any[]).filter(r => Number(r?.proj_id) === pid);
+  const taskIdSet = new Set<number>(projectTasks.map((t: any) => Number(t?.task_id)));
+
+  const tx = (txAll as any[]).filter(r =>
+    Number(r?.proj_id) === pid || taskIdSet.has(Number(r?.task_id))
+  ) as TASKRSRCRow[];
+
+  return buildResourceIndexFromLists(
+    rsrcRows as RSRCRow[],
+    roleRows as RSRCROLERow[],
+    tx,
+  );
 }

@@ -9,6 +9,7 @@ import { TaskPredRow } from './models/taskpred.model';
 import { PROJWBSRow as WbsRow } from './models/index';
 import { buildResourceIndex } from './resources.adapter';
 import { XERDocument, XERScalar, getRows } from './xer-parser';
+import { XerDexieService } from './xer-dexie.service';
 
 const T_I18N_PREFIX = 'task';
 const codeKey = (section: string, code?: string | null) =>
@@ -456,4 +457,71 @@ function buildRsrcNames(list: ResourceAssignment[]): string | null {
     if (name && !acc.includes(name)) acc.push(name);
   }
   return acc.length ? acc.join(', ') : null;
+}
+
+/** Построить дерево напрямую из IndexedDB (Dexie), не требуя XERDocument извне. */
+export async function buildWbsTaskTreeFromIndexedDb(
+  dexie: XerDexieService,
+  opts?: WbsBuildOptions
+): Promise<Node[]> {
+  const doc = await dexie.getDocument();
+  return buildWbsTaskTree(doc, opts);
+}
+
+/**
+ * Построить дерево WBS→TASK из IndexedDB (Dexie) ТОЛЬКО для указанного проекта.
+ * Фильтрует PROJWBS, TASK, TASKPRED и TASKRSRC по proj_id, остальные справочники (RSRC/ROLE(S)) берёт целиком.
+ */
+export async function buildWbsTaskByProjectTreeFromIndexedDb(
+  dexie: XerDexieService,
+  projectId: number,
+  opts?: WbsBuildOptions
+): Promise<Node[]> {
+  const pid = Number(projectId);
+
+  // --- Считываем необходимые таблицы из Dexie ---
+  const projwbsAll = await dexie.getRows('PROJWBS');
+  const taskAll    = await dexie.getRows('TASK');
+  const predAll    = await dexie.getRows('TASKPRED');
+  const taskrsAll  = await dexie.getRows('TASKRSRC');
+  const rsrcAll    = await dexie.getRows('RSRC');
+  const rsrcRoleAll = await dexie.getRows('RSRCROLE'); // ВАЖНО: нужна для buildResourceIndex
+
+  // --- Фильтры по проекту ---
+  const wbsRows = projwbsAll.filter((r: any) => Number(r?.proj_id) === pid);
+  const tasks   = taskAll.filter((r: any) => Number(r?.proj_id) === pid);
+  const taskIdSet = new Set<number>(tasks.map((t: any) => Number(t?.task_id)));
+
+  // Предшественники: либо помечены proj_id, либо относятся к задачам проекта
+  const taskpred = predAll.filter((r: any) => {
+    const belongsByProj = Number(r?.proj_id) === pid; // если в вашей схеме TASKPRED содержит proj_id
+    const belongsByTask = taskIdSet.has(Number(r?.task_id));
+    return belongsByProj || belongsByTask;
+  });
+
+  // Назначения ресурсов: по proj_id или по task_id множества задач проекта
+  const taskrsrc = taskrsAll.filter((r: any) => {
+    const byProj = Number(r?.proj_id) === pid;
+    const byTask = taskIdSet.has(Number(r?.task_id));
+    return byProj || byTask;
+  });
+
+  // --- Собираем минимальный XERDocument под билдер ---
+  const makeTable = (name: string, rows: any[]) => ({
+    name,
+    fields: rows.length ? Object.keys(rows[0]) : [],
+    rows,
+  });
+
+  const tables: XERDocument['tables'] = {
+    PROJWBS:  makeTable('PROJWBS',  wbsRows),
+    TASK:     makeTable('TASK',     tasks),
+    TASKPRED: makeTable('TASKPRED', taskpred),
+    TASKRSRC: makeTable('TASKRSRC', taskrsrc),
+    RSRC:     makeTable('RSRC',     rsrcAll),
+    RSRCROLE: makeTable('RSRCROLE', rsrcRoleAll), // ← вот это обеспечит подтяжку ролей/ресурсов
+  };
+
+  const doc: XERDocument = { header: null, tables };
+  return buildWbsTaskTree(doc, opts);
 }

@@ -1,11 +1,92 @@
-
-
 <!-- src/app/app.html -->
+@if (!isReady()) {
+<div class="sv-root">
+  <mat-card class="sv-card" appearance="outlined">
+    <mat-card-header class="sv-header">
+      <mat-card-title class="sv-title">{{ 'app.title' | transloco }}</mat-card-title>
+      <mat-card-subtitle class="sv-subtitle">{{ 'app.subtitle' | transloco }}</mat-card-subtitle>
+    </mat-card-header>
 
+    <mat-card-content class="sv-content">
+      <section class="sv-section sv-intro">
+        <p class="sv-p">{{ 'intro.p1' | transloco }}</p>
+        <p class="sv-p">{{ 'intro.p2' | transloco }}</p>
+        <p class="sv-p">{{ 'intro.p3' | transloco }}</p>
+        <p class="sv-p">{{ 'intro.p4' | transloco }}</p>
+      </section>
+
+      <section class="sv-section sv-upload-highlight " aria-labelledby="xer-upload-title">
+        <h4 id="xer-upload-title" class="sv-h4">{{ 'xer.upload.title' | transloco }}</h4>
+        <p class="sv-p">{{ 'xer.upload.desc' | transloco }}</p>
+
+        <input
+          #fileInput
+          type="file"
+          accept=".xer"
+          (change)="onFileSelected($event)"
+          hidden
+          aria-hidden="true"
+        />
+
+        <button
+          mat-stroked-button
+          type="button"
+          class="sv-btn"
+          (click)="fileInput.click()"
+          aria-label="{{ 'xer.upload.btn_aria' | transloco }}"
+        >
+          <mat-icon aria-hidden="true">upload_file</mat-icon>
+          <span>{{ 'xer.upload.btn' | transloco }}</span>
+        </button>
+
+        @if (loading()) {
+          <div class="sv-progress">
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          </div>
+        }
+
+        @if (error()) {
+          <div class="sv-error mat-body">{{ error() }}</div>
+        }
+      </section>
+
+      <section class="sv-section sv-security" aria-labelledby="security-title">
+        <h4 id="security-title" class="sv-h4">{{ 'security.title' | transloco }}</h4>
+        <p class="sv-p">{{ 'security.lead' | transloco }}</p>
+        <ul class="sv-ul">
+          <li class="sv-li">{{ 'security.items.local_only' | transloco }}</li>
+          <li class="sv-li">{{ 'security.items.indexeddb' | transloco }}</li>
+          <li class="sv-li">{{ 'security.items.analytics' | transloco }}</li>
+          <li class="sv-li">{{ 'security.items.control' | transloco }}</li>
+        </ul>
+        <p class="sv-p">{{ 'security.outro' | transloco }}</p>
+      </section>
+    </mat-card-content>
+  </mat-card>
+</div>
+} @else {
 <mat-tab-group (selectedTabChange)="onTabChange($event)"  mat-stretch-tabs="false" mat-align-tabs="start">
   <!-- Tab 1: XER info (derived from available inputs) -->
   <mat-tab label="{{ 'xer_summary' | transloco }}">
     <div style="padding:16px; max-width: 880px;">
+      <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:12px;">
+        <div style="color: rgba(0,0,0,0.6);">
+          {{ 'xer_upload_hint' | transloco }}
+        </div>
+        <div>
+          <input
+            #reloadInput
+            type="file"
+            accept=".xer"
+            (change)="onFileSelected($event)"
+            style="display:none" />
+          <button mat-stroked-button color="primary" type="button" (click)="reloadInput.click()">
+            <mat-icon>upload_file</mat-icon>
+            {{ 'xer_reload_file' | transloco }}
+          </button>
+        </div>
+      </div>
+        <div class="table-wrapper">
       <table mat-table [dataSource]="xerSummaryArray" class="mat-elevation-z1" style="width:100%; margin-bottom: 16px;">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef style="width: 200px;">Name</th>
@@ -18,15 +99,17 @@
           </td>
         </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="['name', 'value']"></tr>
+        <tr mat-header-row *matHeaderRowDef="['name', 'value'];sticky: true"></tr>
         <tr mat-row *matRowDef="let row; columns: ['name', 'value'];"></tr>
       </table>
+        </div>
+
     </div>
   </mat-tab>
 
   <!-- Tab 2: Gantt -->
   <mat-tab label="{{ 'activities_gantt' | transloco }}">
-    <div style="padding: 8px;">
+    <div style="padding: 8px; height: calc(100vh - 150px);">
 
         <gantt-canvas
           #gantt
@@ -37,3 +120,4 @@
     </div>
   </mat-tab>
 </mat-tab-group>
+}

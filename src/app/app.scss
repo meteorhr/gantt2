@@ -2,3 +2,159 @@
     width: 1080px;
     margin: 0 auto;
   }
+
+  .table-wrapper {
+    height: calc(100vh - 150px);
+    min-width: 1160px;
+    max-width: 1460px;
+    overflow: auto;
+    position: relative;
+
+    table {
+
+
+      th, td {
+        padding: 12px;
+        font-size: 14px;
+        
+        p {
+          padding: 0;
+          margin: 0;
+        }
+      }
+
+      th {
+        font-weight: 500;
+        background-color: var(--mat-sys-background);;
+        color: rgba(0, 0, 0, 0.6);
+          position: sticky;
+          top: 0;
+          z-index: 5; /* выше содержимого строк */
+          box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+      }
+          /* На случай mat-table: продублируем для mat header cells */
+          .mat-mdc-header-cell {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+            background-color: var(--mat-sys-background);
+          }
+
+      tr {
+        background-color: #ffffff; // явно белый фон строк
+        &:hover {
+          background-color: var(--mat-sys-background);;
+        }
+      }
+
+    }
+  } 
+
+  :host {
+  display: block;
+}
+
+.sv-root {
+  padding: 32px;
+  display: grid;
+  place-items: center;
+}
+
+.sv-card {
+  width: 100%;
+  max-width: 720px;
+}
+
+.sv-header {
+  padding-bottom: 0;
+}
+
+.sv-title {
+  font-weight: 600;
+}
+
+.sv-subtitle {
+  opacity: 0.85;
+}
+
+.sv-content {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  display: grid;
+  gap: 20px;
+}
+
+.sv-section {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.sv-intro .sv-p + .sv-p {
+  margin-top: 10px;
+}
+
+.sv-h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sv-p {
+  margin: 0 0 10px 0;
+}
+
+.sv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sv-progress {
+  margin-top: 16px;
+}
+
+.sv-error {
+  margin-top: 12px;
+  color: #d32f2f; // Material error tone (MDC red 700 vicinity)
+}
+
+.sv-ul {
+  margin: 0 0 10px 18px;
+  padding: 0;
+}
+
+.sv-li {
+  margin: 4px 0;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+  .sv-root {
+    padding: 16px;
+  }
+  .sv-content {
+    gap: 16px;
+  }
+  .sv-h4 {
+    font-size: 15px;
+  }
+  .sv-section {
+    font-size: 13.5px;
+  }
+}
+
+.sv-upload-highlight {
+  padding: 20px;
+  border-radius: 12px;
+  background-color: #f9fafb; // светлый фон
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); // мягкая тень
+  border: 1px solid #e0e0e0; // тонкая рамка
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px); // лёгкий "подъём"
+  }
+}

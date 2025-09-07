@@ -3,14 +3,19 @@ import { ColumnDef, Node } from './gantt/models/gantt.model';
 import { generateActivityData } from './generate-activity-data';
 import { GanttCanvasComponent } from './gantt/gantt-canvas.component';
 import { XerLoaderService } from './xer/xer-loader.service';
-import { buildWbsTaskTree } from './xer/task-to-node.adapter';
+import { buildWbsTaskByProjectTreeFromIndexedDb } from './xer/task-to-node.adapter';
 import { MatTabChangeEvent, MatTabsModule } from '@angular/material/tabs';
 import { MatListModule } from '@angular/material/list';
-import { summarizeArray } from './xer/xer-parser';
 import { MatTableModule } from '@angular/material/table';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
+import { XerDexieService } from './xer/xer-dexie.service';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatButtonModule } from '@angular/material/button';
+
 interface RefLine {
   name: string;
   date: Date | string;   // можно '2025-12-01' или new Date(...)
@@ -21,14 +26,27 @@ interface RefLine {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [GanttCanvasComponent, MatTabsModule, MatListModule, MatTableModule, TranslocoModule],
+  imports: [
+    GanttCanvasComponent, 
+    MatTabsModule, 
+    MatListModule, 
+    MatIconModule,
+    MatButtonModule,
+    MatCardModule,
+    MatProgressBarModule,
+    MatTableModule, 
+    TranslocoModule],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
 export class App implements OnInit {
-  protected readonly title = signal('gantt2');
+  protected readonly title = signal('ScheduleVision');
   private readonly xer = inject(XerLoaderService);
+  private readonly dexie = inject(XerDexieService);
   public xerSummaryArray: any[] = [];
+  readonly isReady = signal(false);
+readonly loading = signal(false);
+readonly error = signal<string | null>(null);
 
   activityData: Node[] = []
 
@@ -46,7 +64,7 @@ export class App implements OnInit {
     { key: 'name',   title: 'Task',   width: 420, minWidth: 120 },
     { key: 'complete_pct_type_label', title: '%', width: 60, minWidth: 40, align: 'right' },
 
-    { key: 'duration_type_label', title: 'Duration', width: 80, minWidth: 60, align: 'right' },
+  
 
     { key: 'start',  title: 'Act. Start',  width: 120, minWidth: 80 },
     { key: 'finish', title: 'Act. Finish', width: 120, minWidth: 80 },
@@ -82,6 +100,11 @@ export class App implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    await this.dexie.clear();
+    this.isReady.set(false);
+    this.loading.set(false);
+    this.error.set(null);
+
     try {
 
       // 0) гарантируем активный язык и что его json загружен
@@ -92,14 +115,20 @@ export class App implements OnInit {
       await firstValueFrom(this.transloco.selectTranslation(active).pipe(take(1)));
       
       // 1) загрузка и разбор XER (возвращает XERDocument)
-      const doc = await this.xer.loadAndLogFromAssets();
+      await this.xer.loadAndLogFromAssets();
+
+      const project_id = 421;
 
       // 2) строим WBS→TASK дерево (OPC-порядок: сначала задачи, затем WBS)
-      const tree = buildWbsTaskTree(doc, {
-        baselineSource: 'none',
-        translate: (key) => this.transloco.translate(key),
-        debug: false,
-      });
+      const tree = await buildWbsTaskByProjectTreeFromIndexedDb(
+        this.dexie,                       // <-- передаём сервис
+        project_id,
+        {
+          baselineSource: 'none',
+          translate: (key) => this.transloco.translate(key),
+          debug: false,
+        }
+      );
 
       console.group('[XER] Build summary');
       console.log('WBS roots:', tree.length);
@@ -112,13 +141,62 @@ export class App implements OnInit {
 
       // 4) отдать в диаграмму
       this.activityData = tree;
-      this.xerSummaryArray = summarizeArray(doc);
+      const sumRows = await this.dexie.getRows('SUMMARIZE');
+      this.xerSummaryArray = (sumRows as any[]).map(r => ({ ...r, params: r && r.params ? JSON.parse(String(r.params)) : {} }));
       // На случай, если вкладка Gantt уже видима
       setTimeout(() => this.gantt?.reflow());
     } catch (err) {
       console.error('[XER] Init failed:', err);
     }
   }
+
+  async onFileSelected(ev: Event): Promise<void> {
+  const input = ev.target as HTMLInputElement;
+  const file = input?.files && input.files.length ? input.files[0] : null;
+  if (!file) return;
+  this.loading.set(true);
+  this.error.set(null);
+  try {
+    await this.xer.loadFromFile(file);
+
+    const projects = await this.dexie.getRows('PROJECT');
+    if (!projects.length || projects[0]?.proj_id == null) {
+      throw new Error('Таблица PROJECT пуста или proj_id отсутствует.');
+    }
+    const project_id = Number(projects[0].proj_id);
+    if (!Number.isFinite(project_id)) {
+      throw new Error('Некорректный proj_id в таблице PROJECT.');
+    }
+
+    const tree = await buildWbsTaskByProjectTreeFromIndexedDb(
+      this.dexie,
+      project_id,
+      {
+        baselineSource: 'none',
+        translate: (key) => this.transloco.translate(key),
+        debug: false,
+      }
+    );
+    this.activityData = tree;
+
+    const sumRows = await this.dexie.getRows('SUMMARIZE');
+    this.xerSummaryArray = (sumRows as any[]).map(r => ({
+      ...r,
+      params: r && r.params ? JSON.parse(String(r.params)) : {}
+    }));
+
+    this.isReady.set(true);
+    this.loading.set(false);
+    setTimeout(() => this.gantt?.reflow());
+  } catch (e: any) {
+    console.error('[XER] File load failed:', e);
+    this.error.set(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить файл.');
+    this.loading.set(false);
+    this.isReady.set(false);
+  } finally {
+    if (input) input.value = '';
+  }
+}
 }
 
 function countTasksWithRes(nodes: Node[]): number {
@@ -165,3 +243,5 @@ function countTasks(nodes: Node[]): number {
   walk(nodes);
   return acc;
 }
+
+
