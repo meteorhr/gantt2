@@ -32,6 +32,7 @@
           mat-stroked-button
           type="button"
           class="sv-btn"
+          [disabled]="loading()"
           (click)="fileInput.click()"
           aria-label="{{ 'xer.upload.btn_aria' | transloco }}"
         >
@@ -44,6 +45,7 @@
           color="primary"
           type="button"
           class="sv-btn"
+          [disabled]="loading()"
           (click)="onLoadDemoClick()"
           aria-label="{{ 'xer.upload.demo_btn_aria' | transloco }}"
         >
@@ -55,7 +57,7 @@
           <div class="sv-progress">
             <mat-progress-bar mode="indeterminate"></mat-progress-bar>
           </div>
-        }
+        } 
 
         @if (error()) {
           <div class="sv-error mat-body">{{ error() }}</div>
@@ -90,14 +92,21 @@
             #reloadInput
             type="file"
             accept=".xer"
+            
             (change)="onFileSelected($event)"
             style="display:none" />
-          <button mat-stroked-button color="primary" type="button" (click)="reloadInput.click()">
+          <button [disabled]="loading()" mat-stroked-button color="primary" type="button" (click)="reloadInput.click()">
             <mat-icon>upload_file</mat-icon>
             {{ 'xer_reload_file' | transloco }}
           </button>
         </div>
       </div>
+      @if (loading()) {
+          <div class="sv-progress" style="margin-bottom: 8px;margin-top: 8px;">
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          </div>
+      } 
+
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
     <mat-form-field appearance="outline" style="min-width: 280px;">
       <mat-label>Project</mat-label>
