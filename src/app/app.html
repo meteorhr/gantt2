@@ -39,6 +39,18 @@
           <span>{{ 'xer.upload.btn' | transloco }}</span>
         </button>
 
+        <button
+          mat-stroked-button
+          color="primary"
+          type="button"
+          class="sv-btn"
+          (click)="onLoadDemoClick()"
+          aria-label="{{ 'xer.upload.demo_btn_aria' | transloco }}"
+        >
+          <mat-icon aria-hidden="true">dataset</mat-icon>
+          <span>{{ 'xer.upload.demo_btn' | transloco }}</span>
+        </button>
+
         @if (loading()) {
           <div class="sv-progress">
             <mat-progress-bar mode="indeterminate"></mat-progress-bar>
@@ -86,6 +98,16 @@
           </button>
         </div>
       </div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+    <mat-form-field appearance="outline" style="min-width: 280px;">
+      <mat-label>Project</mat-label>
+      <mat-select [value]="selectedProjectId()" (selectionChange)="onProjectChange($event.value)">
+        @for (p of projects(); track p.proj_id) {
+          <mat-option [value]="p.proj_id">{{ p.proj_short_name || ('#' + p.proj_id) }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
         <div class="table-wrapper">
       <table mat-table [dataSource]="xerSummaryArray" class="mat-elevation-z1" style="width:100%; margin-bottom: 16px;">
         <ng-container matColumnDef="name">
@@ -113,6 +135,7 @@
 
         <gantt-canvas
           #gantt
+          style="height: calc(100vh - 160px);"
           [data]="activityData"
           [refLines]="refLines"
           [columns]="columns">

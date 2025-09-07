@@ -14,8 +14,10 @@
       "title": "Upload XER File",
       "desc": "Choose an Oracle Primavera P6 XER file for local processing and viewing. All processing is done in your browser, and no data is sent to the server.",
       "btn": "Select XER File",
-      "btn_aria": "Upload XER file from local device"
-    }
+      "btn_aria": "Upload XER file from local device" ,
+    "demo_btn": "Load demo data",
+    "demo_btn_aria": "Load bundled demo .xer file"
+  }
   },
   "security": {
     "title": "Security and Privacy",

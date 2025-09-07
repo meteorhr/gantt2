@@ -15,6 +15,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+
 
 interface RefLine {
   name: string;
@@ -34,6 +37,7 @@ interface RefLine {
     MatButtonModule,
     MatCardModule,
     MatProgressBarModule,
+    MatFormFieldModule, MatSelectModule,
     MatTableModule, 
     TranslocoModule],
   templateUrl: './app.html',
@@ -44,9 +48,11 @@ export class App implements OnInit {
   private readonly xer = inject(XerLoaderService);
   private readonly dexie = inject(XerDexieService);
   public xerSummaryArray: any[] = [];
+  public projects = signal<any[]>([]);
+  public selectedProjectId = signal<number | null>(null);
   readonly isReady = signal(false);
-readonly loading = signal(false);
-readonly error = signal<string | null>(null);
+  readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
 
   activityData: Node[] = []
 
@@ -113,61 +119,13 @@ readonly error = signal<string | null>(null);
       this.transloco.setActiveLang(active);
       // Дождаться, когда словарь активного языка будет загружен
       await firstValueFrom(this.transloco.selectTranslation(active).pipe(take(1)));
-      
-      // 1) загрузка и разбор XER (возвращает XERDocument)
-      await this.xer.loadAndLogFromAssets();
 
-      const project_id = 421;
-
-      // 2) строим WBS→TASK дерево (OPC-порядок: сначала задачи, затем WBS)
-      const tree = await buildWbsTaskByProjectTreeFromIndexedDb(
-        this.dexie,                       // <-- передаём сервис
-        project_id,
-        {
-          baselineSource: 'none',
-          translate: (key) => this.transloco.translate(key),
-          debug: false,
-        }
-      );
-
-      console.group('[XER] Build summary');
-      console.log('WBS roots:', tree.length);
-      console.log('Tasks total:', countTasks(tree));
-      console.log('[XER] tasks with resources:', countTasksWithRes(tree));
-      console.log('[XER] sample with resources:', findFirstWithRes(tree));
-      console.groupEnd();
-
-      console.log(tree)
-
-      // 4) отдать в диаграмму
-      this.activityData = tree;
-      const sumRows = await this.dexie.getRows('SUMMARIZE');
-      this.xerSummaryArray = (sumRows as any[]).map(r => ({ ...r, params: r && r.params ? JSON.parse(String(r.params)) : {} }));
-      // На случай, если вкладка Gantt уже видима
-      setTimeout(() => this.gantt?.reflow());
     } catch (err) {
       console.error('[XER] Init failed:', err);
     }
   }
 
-  async onFileSelected(ev: Event): Promise<void> {
-  const input = ev.target as HTMLInputElement;
-  const file = input?.files && input.files.length ? input.files[0] : null;
-  if (!file) return;
-  this.loading.set(true);
-  this.error.set(null);
-  try {
-    await this.xer.loadFromFile(file);
-
-    const projects = await this.dexie.getRows('PROJECT');
-    if (!projects.length || projects[0]?.proj_id == null) {
-      throw new Error('Таблица PROJECT пуста или proj_id отсутствует.');
-    }
-    const project_id = Number(projects[0].proj_id);
-    if (!Number.isFinite(project_id)) {
-      throw new Error('Некорректный proj_id в таблице PROJECT.');
-    }
-
+  private async rebuildForProject(project_id: number): Promise<void> {
     const tree = await buildWbsTaskByProjectTreeFromIndexedDb(
       this.dexie,
       project_id,
@@ -178,70 +136,87 @@ readonly error = signal<string | null>(null);
       }
     );
     this.activityData = tree;
-
     const sumRows = await this.dexie.getRows('SUMMARIZE');
     this.xerSummaryArray = (sumRows as any[]).map(r => ({
       ...r,
       params: r && r.params ? JSON.parse(String(r.params)) : {}
     }));
-
     this.isReady.set(true);
-    this.loading.set(false);
     setTimeout(() => this.gantt?.reflow());
-  } catch (e: any) {
-    console.error('[XER] File load failed:', e);
-    this.error.set(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить файл.');
-    this.loading.set(false);
-    this.isReady.set(false);
-  } finally {
-    if (input) input.value = '';
   }
-}
-}
 
-function countTasksWithRes(nodes: Node[]): number {
-  let acc = 0;
-  const walk = (arr: Node[]) => {
-    for (const n of arr) {
-      if (!n.children || n.children.length === 0) {
-        if (Array.isArray(n.resources) && n.resources.length > 0) acc++;
-      } else {
-        walk(n.children);
+  async onFileSelected(ev: Event): Promise<void> {
+    const input = ev.target as HTMLInputElement;
+    const file = input?.files && input.files.length ? input.files[0] : null;
+    if (!file) return;
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      await this.xer.loadFromFile(file);
+
+      const projects = await this.dexie.getRows('PROJECT');
+      const list = (projects as any[]).filter(p => p?.proj_id != null);
+      if (!list.length) {
+        throw new Error('Таблица PROJECT пуста или proj_id отсутствует.');
       }
-    }
-  };
-  walk(nodes);
-  return acc;
-}
-
-function findFirstWithRes(nodes: Node[]): Node | null {
-  const stack = [...nodes];
-  while (stack.length) {
-    const n = stack.shift()!;
-    if (!n.children || n.children.length === 0) {
-      if (n.resources && n.resources.length) return n;
-    } else {
-      stack.unshift(...n.children);
+      this.projects.set(list);
+      const pid = Number(list[0].proj_id);
+      if (!Number.isFinite(pid)) {
+        throw new Error('Некорректный proj_id в таблице PROJECT.');
+      }
+      this.selectedProjectId.set(pid);
+      await this.rebuildForProject(pid);
+    
+      this.loading.set(false);
+    } catch (e: any) {
+      console.error('[XER] File load failed:', e);
+      this.error.set(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить файл.');
+      this.loading.set(false);
+      this.isReady.set(false);
+    } finally {
+      if (input) input.value = '';
     }
   }
-  return null;
+  async onLoadDemoClick(): Promise<void> {
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      await this.dexie.clear();
+      await this.xer.loadAndLogFromAssets();
+
+      const projects = await this.dexie.getRows('PROJECT');
+      const list = (projects as any[]).filter(p => p?.proj_id != null);
+      if (!list.length) {
+        throw new Error('Таблица PROJECT пуста или proj_id отсутствует.');
+      }
+      this.projects.set(list);
+      const pid = Number(list[0].proj_id);
+      if (!Number.isFinite(pid)) {
+        throw new Error('Некорректный proj_id в таблице PROJECT.');
+      }
+      this.selectedProjectId.set(pid);
+      await this.rebuildForProject(pid);
+    } catch (e: any) {
+      console.error('[XER] Demo load failed:', e);
+      this.error.set(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить демо-данные.');
+      this.isReady.set(false);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+  async onProjectChange(projId: number): Promise<void> {
+    const pid = Number(projId);
+    if (!Number.isFinite(pid)) return;
+    this.loading.set(true);
+    try {
+      this.selectedProjectId.set(pid);
+      await this.rebuildForProject(pid);
+    } finally {
+      this.loading.set(false);
+    }
+  }
 }
 
-// ——— вспомогательная функция для быстрой сводки ———
-function countTasks(nodes: Node[]): number {
-  let acc = 0;
-  const walk = (arr: Node[]) => {
-    for (const n of arr) {
-      // у WBS есть children, у задач — тоже (но пустые); считаем листья-задачи
-      if (!n.children || n.children.length === 0) {
-        acc += 1;
-      } else {
-        walk(n.children);
-      }
-    }
-  };
-  walk(nodes);
-  return acc;
-}
+
 
 

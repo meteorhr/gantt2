@@ -3,14 +3,14 @@
     margin: 0 auto;
   }
 
-  .table-wrapper {
-    height: calc(100vh - 150px);
-    min-width: 1160px;
-    max-width: 1460px;
-    overflow: auto;
-    position: relative;
+.table-wrapper {
+  height: calc(100vh - 250px);
+  min-width: 1160px;
+  max-width: 1460px;
+  overflow: auto;
+  position: relative;
 
-    table {
+  table {
 
 
       th, td {
@@ -158,3 +158,6 @@
     transform: translateY(-2px); // лёгкий "подъём"
   }
 }
+.sv-btn-row{display:flex;flex-wrap:wrap;gap:12px}
+.sv-btn+.sv-btn{margin-left:12px}
+@media (max-width:480px){.sv-btn+.sv-btn{margin-left:0}}
