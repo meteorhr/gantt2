@@ -66,6 +66,7 @@
       "DT_FixedUnits": "Fixed Units",
       "DT_FixedUnitsTime": "Fixed Units/Time",
       "DT_FixedWork": "Fixed Work",
+      "DT_FixedRate": "Fixed Rate",
       "DT_None": "None"
     },
 

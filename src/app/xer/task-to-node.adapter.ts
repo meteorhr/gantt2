@@ -17,13 +17,49 @@ const codeKey = (section: string, code?: string | null) =>
 
 type BaselineSource = 'target' | 'early' | 'none';
 
-
 export interface WbsBuildOptions {
   parentOverride?: Record<number, number | null>;
   parentOverrideByName?: Record<string, string | null>;
   baselineSource?: BaselineSource;
   debug?: boolean;
   translate?: (key: string, params?: Record<string, unknown>) => string;
+}
+
+// --- SAFE COMPARE HELPERS (добавить один раз в файле task-to-node.adapter.ts) ---
+function toKeyString(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return v.toISOString();
+  return String(v);
+}
+function toKeyNumber(v: unknown): number {
+  const n = typeof v === 'number' ? v : (typeof v === 'string' ? Number(v) : NaN);
+  return Number.isNaN(n) ? Number.POSITIVE_INFINITY : n;
+}
+const _collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+function cmpStr(a: unknown, b: unknown): number {
+  return _collator.compare(toKeyString(a), toKeyString(b));
+}
+function cmpNum(a: unknown, b: unknown): number {
+  const na = toKeyNumber(a);
+  const nb = toKeyNumber(b);
+  return na - nb;
+}
+function cmpDate(a: unknown, b: unknown): number {
+  const ta = a instanceof Date ? a.getTime()
+    : (typeof a === 'string' ? Date.parse(a) : Number.NaN);
+  const tb = b instanceof Date ? b.getTime()
+    : (typeof b === 'string' ? Date.parse(b) : Number.NaN);
+  const va = Number.isNaN(ta) ? Number.POSITIVE_INFINITY : ta;
+  const vb = Number.isNaN(tb) ? Number.POSITIVE_INFINITY : tb;
+  return va - vb;
+}
+/** Кортежное сравнение: первым отличившимся критерием определяется порядок */
+function cmpTuple(...parts: Array<number>): number {
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] !== 0) return parts[i];
+  }
+  return 0;
 }
 
 export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node[] {
@@ -129,13 +165,13 @@ export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node
       baselineSource === 'early'  ? toIsoDateOrUndef(pickDate(t, 'early_end_date'))  :
       undefined;
 
-    const complete = clamp0to100(numberOrNull(t['phys_complete_pct'])) ?? undefined; // <- индексация скобками, безопасно для XER
+    const complete = clamp0to100(numberOrNull(t['phys_complete_pct'])) ?? undefined; // индексация скобками, безопасно для XER
     const critical = typeof t.total_float_hr_cnt === 'number' ? t.total_float_hr_cnt <= 0 : false;
     const dependency = preds.get(t.task_id) ?? [];
     const resources = resIdx.get(t.task_id) ?? [];
 
     const task_type_code = (t.task_type as string | null) ?? 'TT_Task';
-    const complete_pct_type_code = (t.complete_pct_type as string | null) ?? null; // no strict default
+    const complete_pct_type_code = (t.complete_pct_type as string | null) ?? null;
     const duration_type_code = (t.duration_type as string | null) ?? null;
     const priority_type_code = (t.priority_type as string | null) ?? 'PT_Normal';
     const status_code_code = (t.status_code as string | null) ?? 'TK_NotStart';
@@ -146,7 +182,6 @@ export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node
       if (k === 'DT_FixedDUR2') return 'DT_FixedDrtn';
       return k;
     };
-
 
     const task_type_key = codeKey('task_type', task_type_code);
     const complete_pct_type_key = codeKey('complete_pct_type', complete_pct_type_code);
@@ -163,7 +198,7 @@ export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node
 
     const taskNode: Node = {
       id: String(t.task_id),
-      task_code: t.task_code ?? undefined,
+      task_code: (t.task_code as any) ?? undefined, // может прийти числом из XER — cmpStr обработает
       task_type: task_type_code,
       complete_pct_type: complete_pct_type_code,
       duration_type: duration_type_code,
@@ -191,7 +226,7 @@ export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node
       lateFinish,
       expectEnd,
 
-      name: t.task_name ?? t.task_code ?? `Task ${t.task_id}`,
+      name: (t.task_name as any) ?? (t.task_code as any) ?? `Task ${t.task_id}`,
       start: startISO,
       finish: finishISO,
       baselineStart,
@@ -200,7 +235,7 @@ export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node
       dependency,
       children: [],      // задачам детей не даём
       critical,
-      resources: resources,   // <-- РЕСУРСЫ ТЕПЕРЬ В ДЕРЕВЕ
+      resources: resources,   // ресурсы в дереве
       rsrc_names: buildRsrcNames(resources),
     };
 
@@ -229,7 +264,12 @@ export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node
 
   // (6) корни и финализация
   const rootWbsNodes = [...wbsMap.values()].filter(w => !(w.parentWbsId != null && wbsMap.has(w.parentWbsId)));
-  rootWbsNodes.sort((a, b) => (a.seq - b.seq) || a.name.localeCompare(b.name));
+  rootWbsNodes.sort((a, b) =>
+    cmpTuple(
+      cmpNum(a.seq, b.seq),
+      cmpStr(a.name, b.name)
+    )
+  );
 
   const roots: Node[] = [];
   for (const w of rootWbsNodes) {
@@ -270,9 +310,9 @@ function ensureUnassigned(map: Map<number, WbsNode>): WbsNode {
 }
 
 /** Финализируем WBS в Node.
-// OPC-порядок: СПЕРВА задачи, затем дочерние WBS.
-// Задачи сортируются по task_code (натурально), WBS — по PROJWBS.seq_num.
-*/
+ * OPC-порядок: СПЕРВА задачи, затем дочерние WBS.
+ * Задачи сортируются по task_code (натурально), WBS — по PROJWBS.seq_num.
+ */
 function finalizeWbsAsNode(w: WbsNode): Node | null {
   const wbsKids: WbsNode[] = [];
   const taskKids: Node[] = [];
@@ -285,11 +325,16 @@ function finalizeWbsAsNode(w: WbsNode): Node | null {
     }
   }
 
-  // 1) Задачи: по task_code (A1000, A1010, ...), затем по дате/имени
+  // 1) Задачи: по task_code (натурально), затем по дате/имени/идентификатору
   taskKids.sort(byTaskSortKey);
 
   // 2) WBS-дети: по seq_num, затем по имени; рекурсивная финализация
-  wbsKids.sort((a, b) => (a.seq - b.seq) || a.name.localeCompare(b.name));
+  wbsKids.sort((a, b) =>
+    cmpTuple(
+      cmpNum(a.seq, b.seq),
+      cmpStr(a.name, b.name)
+    )
+  );
   const wbsChildNodes: Node[] = [];
   for (const wk of wbsKids) {
     const n = finalizeWbsAsNode(wk);
@@ -332,16 +377,20 @@ function finalizeWbsAsNode(w: WbsNode): Node | null {
 /* ---------- сортировки и утилиты ---------- */
 
 function byTaskSortKey(a: Node, b: Node): number {
-  const ac = a.task_code ?? '';
-  const bc = b.task_code ?? '';
-  if (ac !== '' || bc !== '') {
-    // Натуральная сортировка A1000 < A1010 < A1020 ...
-    const cmp = ac.localeCompare(bc, undefined, { numeric: true, sensitivity: 'base' });
-    if (cmp !== 0) return cmp;
-  }
-  if (a.start !== b.start) return a.start < b.start ? -1 : 1;
-  if (a.name !== b.name) return a.name.localeCompare(b.name);
-  return a.id.localeCompare(b.id);
+  // 1) task_code — «человеческая» сортировка с цифрами
+  const c1 = cmpStr(a.task_code, b.task_code);
+  if (c1 !== 0) return c1;
+
+  // 2) start — по дате (IsoDate строки «YYYY-MM-DD» корректно парсятся)
+  const c2 = cmpDate(a.start, b.start);
+  if (c2 !== 0) return c2;
+
+  // 3) name — строкой
+  const c3 = cmpStr(a.name, b.name);
+  if (c3 !== 0) return c3;
+
+  // 4) стабильный «добивочный» ключ
+  return cmpStr(a.id, b.id);
 }
 
 function earliestChildStart(children: Node[]): IsoDate | null {
@@ -437,7 +486,7 @@ function maxIso(a: IsoDate | null, b: IsoDate | null): IsoDate | null {
 function debugPrintWbsParents(map: Map<number, WbsNode>) {
   console.group('[XER] PROJWBS parents');
   [...map.values()]
-    .sort((a, b) => (a.seq - b.seq) || a.wbsId - b.wbsId)
+    .sort((a, b) => cmpTuple(cmpNum(a.seq, b.seq), cmpNum(a.wbsId, b.wbsId)))
     .forEach(w => {
       console.log(
         `WBS ${w.wbsId} [${w.shortName}] "${w.name}" -> parent: ${w.parentWbsId ?? 'null'} seq=${w.seq}`

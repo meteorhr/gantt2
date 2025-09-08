@@ -122,7 +122,12 @@ export function parseXER(input: string, options?: Partial<ParseOptions>): XERDoc
       const row: Record<string, XERScalar> = {};
       const width = Math.min(values.length, currentFields.length);
       for (let i = 0; i < width; i++) row[currentFields[i]] = coerceScalar(values[i], opt);
-      for (let i = width; i < currentFields.length; i++) row[currentFields[i]] = null;
+
+      // ВАЖНО: дополняем хвост недостающих значений с учетом keepEmptyAsNull
+      for (let i = width; i < currentFields.length; i++) {
+        row[currentFields[i]] = opt.keepEmptyAsNull ? null : '';
+      }
+
       currentTable.rows.push(row);
       continue;
     }
@@ -198,10 +203,10 @@ export function buildSummarizeTable(doc: XERDocument): XERTable {
   const rows = items.map(it => ({
     name: it.name,
     i18n: it.i18n,
-    value: it.value,
-    i18nValue: it.i18nValue ?? null,
+    value: it.value ?? '',
+    i18nValue: it.i18nValue ?? '',
     // XERScalar не допускает объект → сериализуем
-    params: it.params ? JSON.stringify(it.params) : null,
+    params: it.params ? JSON.stringify(it.params) : '',
   })) as Record<string, XERScalar>[];
   return { name: 'SUMMARIZE', fields, rows };
 }
@@ -272,5 +277,5 @@ export function printTable(
 }
 
 function dateReplacer(_k: string, v: unknown) {
-  return v instanceof Date ? v.toISOString() : v as any;
+  return v instanceof Date ? v.toISOString() : (v as any);
 }
