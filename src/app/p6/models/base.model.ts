@@ -1,6 +1,6 @@
 // Общие базовые типы для XER-моделей
 
-import { XERScalar } from '../xer-parser';
+import { XERScalar } from '../parser';
 
 /** Базовая строка XER-таблицы: любые колонки со значениями XERScalar */
 export interface XERRowBase {

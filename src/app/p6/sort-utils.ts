@@ -1,7 +1,7 @@
 // src/app/xer/sort-utils.ts
 // Безопасные утилиты сортировки для ячеек XER (string | number | Date | null | undefined)
 
-import type { XERScalar } from './xer-parser';
+import type { XERScalar } from './parser';
 
 /** Пустые значения считаем "ниже" непустых */
 function isEmpty(v: XERScalar): boolean {

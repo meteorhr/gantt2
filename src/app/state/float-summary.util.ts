@@ -1,5 +1,5 @@
 // src/app/state/float-summary.util.ts
-import { XerDexieService } from '../xer/xer-dexie.service';
+import { XerDexieService } from '../p6/dexie.service';
 
 export type FloatUnits = 'days' | 'hours';
 

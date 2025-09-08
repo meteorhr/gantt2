@@ -2,7 +2,7 @@
 // ASGNMNTCATVAL — Assignment Code Values
 // P6 EPPM Field → P6 EPPM Column Name
 
-import { XERScalar } from '../xer-parser';
+import { XERScalar } from '../parser';
 
 export interface ASGNMNTCATVALRow extends Record<string, XERScalar> {
   /** Unique Id */

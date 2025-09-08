@@ -1,5 +1,5 @@
 // src/app/utils/evm.util.ts
-import { XerDexieService } from '../xer/xer-dexie.service';
+import { XerDexieService } from '../p6/dexie.service';
 
 export interface CPIvm {
   EV: number | null;   // Earned Value

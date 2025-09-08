@@ -1,7 +1,7 @@
 // src/app/xer/xer-dexie.service.ts
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
-import type { XERDocument } from './xer-parser';
+import type { XERDocument } from './parser';
 
 /**
  * Маппинг ключевых полей для основных P6-таблиц.
@@ -222,6 +222,7 @@ export class XerDexieService {
     const table = this.db.table(tableName) as Table<any, any>;
     return table.toArray();
   }
+  
 
   /** Забрать все сохранённые таблицы и восстановить XERDocument для дальнейшей обработки (buildWbsTaskTree и т.д.) */
   async getDocument(): Promise<XERDocument> {

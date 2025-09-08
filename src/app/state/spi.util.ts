@@ -1,4 +1,4 @@
-import { XerDexieService } from '../xer/xer-dexie.service';
+import { XerDexieService } from '../p6/dexie.service';
 
 export type SpiWeight = 'work' | 'equal';
 

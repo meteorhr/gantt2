@@ -2,7 +2,7 @@
 // SHIFT — Shift Names
 // P6 EPPM Field → P6 EPPM Column Name
 
-import { XERScalar } from '../xer-parser';
+import { XERScalar } from '../parser';
 
 export interface SHIFTRow extends Record<string, XERScalar> {
   /** Unique ID */

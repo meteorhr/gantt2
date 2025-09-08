@@ -3,8 +3,8 @@ import { RSRCRow } from './models/rsrc.model';
 import { RSRCROLERow } from './models/rsrcrole.model';
 import { TASKRSRCRow } from './models/taskrsrc.model';
 import { ResourceAssignment } from '../gantt/models/gantt.model';
-import { getRows, XERDocument } from './xer-parser';
-import { XerDexieService } from './xer-dexie.service';
+import { getRows, XERDocument } from './parser';
+import { XerDexieService } from './dexie.service';
 
 function buildResourceIndexFromLists(
   rsrcRows: RSRCRow[],

@@ -8,8 +8,8 @@ import { TaskRow } from './models/task.model';
 import { TaskPredRow } from './models/taskpred.model';
 import { PROJWBSRow as WbsRow } from './models/index';
 import { buildResourceIndex } from './resources.adapter';
-import { XERDocument, XERScalar, getRows } from './xer-parser';
-import { XerDexieService } from './xer-dexie.service';
+import { XERDocument, XERScalar, getRows } from './parser';
+import { XerDexieService } from './dexie.service';
 
 const T_I18N_PREFIX = 'task';
 const codeKey = (section: string, code?: string | null) =>

@@ -4,9 +4,9 @@ import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
 
-import { XerLoaderService } from '../xer/xer-loader.service';
-import { XerDexieService } from '../xer/xer-dexie.service';
-import { buildWbsTaskByProjectTreeFromIndexedDb } from '../xer/task-to-node.adapter';
+import { XerLoaderService } from '../p6/loader.service';
+import { XerDexieService } from '../p6/dexie.service';
+import { buildWbsTaskByProjectTreeFromIndexedDb } from '../p6/task-to-node.adapter';
 import { Node, ColumnDef } from '../gantt/models/gantt.model';
 import { AnalyticsService } from '../firebase/analytics.service';
 import { floatSummaryForProject } from './float-summary.util';

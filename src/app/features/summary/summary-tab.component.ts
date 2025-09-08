@@ -19,6 +19,7 @@ import { AppStateService } from '../../state/app-state.service';
   styleUrls: ['../../app.scss'],
   template: `
     @if (!wm.isReady()) {
+      
     <div class="sv-root">
     <mat-card class="sv-card" appearance="outlined">
         <mat-card-header class="sv-header">
@@ -26,7 +27,7 @@ import { AppStateService } from '../../state/app-state.service';
         <mat-card-subtitle class="sv-subtitle">{{ 'app.subtitle' | transloco }}</mat-card-subtitle>
         </mat-card-header>
 
-        <mat-card-content class="sv-content">
+        <mat-card-content class="sv-content" style="height: calc(100vh - 200px); overflow-y: auto;">
         <section class="sv-section sv-intro">
             <p class="sv-p">{{ 'intro.p1' | transloco }}</p>
             <p class="sv-p">{{ 'intro.p2' | transloco }}</p>
@@ -41,7 +42,7 @@ import { AppStateService } from '../../state/app-state.service';
             <input
             #fileInput
             type="file"
-            accept=".xer"
+            accept=".xer,.xml"
             (change)="onFileSelected($event)"
             hidden
             aria-hidden="true"
@@ -94,7 +95,19 @@ import { AppStateService } from '../../state/app-state.service';
             </ul>
             <p class="sv-p">{{ 'security.outro' | transloco }}</p>
         </section>
+
         </mat-card-content>
+        <mat-card-actions>
+                      <a
+              mat-stroked-button
+              color="primary"
+              href="mailto:ruslan.khissamov@meteorhr.com"
+              aria-label="Email Ruslan Khissamov"
+            >
+              <mat-icon aria-hidden="true">mail</mat-icon>
+              <span>Ruslan Khisamov</span>
+            </a>
+        </mat-card-actions>
     </mat-card>
     </div>
     } @else {
