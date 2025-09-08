@@ -46,6 +46,7 @@
         },
         "method_label": "Method: {{method}}"
       },
+      "open_table": "Open detailed report",
       "project_dates": "Project dates",
       "start_date": "Start Date",
       "data_date": "Data Date",

@@ -127,11 +127,11 @@ mat-card,
   transition: box-shadow 0.3s ease, transform 0.2s ease;
 }
 
-/* Ховер-эффект (опционально) */
+/* Ховер-эффект (опционально)
 .mat-mdc-card:hover {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
-}
+} */
 
 /* Внутренние отступы 20px */
 .mat-mdc-card .mat-mdc-card-header,

@@ -11,11 +11,7 @@
     } @else {
       @if (wm.dashboard(); as d) {
         <!-- KPIs -->
-        <div class="kpis">
 
-
-
-        </div>
 
         <div class="kpis">
           <mat-card class="kpi-card" appearance="outlined">
@@ -41,9 +37,44 @@
 
         </div>
 
+        <div class="kpis">
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.spi.title' | transloco }}</mat-card-title>
+              <mat-card-subtitle>
+                {{ 'dashboard.spi.as_of' | transloco : { date: (d.spi.asOf || '—') } }}
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <d3js-speedometer [config$]="spi$"></d3js-speedometer>
+            </mat-card-content>
+            <mat-card-actions>
+              <button mat-button (click)="openSpiDialog(d)">
+                {{ 'dashboard.open_table' | transloco }}
+              </button>
+            </mat-card-actions>
+          </mat-card>
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.cpi.title' | transloco }}</mat-card-title>
+              <mat-card-subtitle>
+                {{ 'dashboard.cpi.as_of' | transloco : { date: (d.cpi.asOf || '—') } }}
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <d3js-speedometer [config$]="cpi$"></d3js-speedometer>
+            </mat-card-content>
+            <mat-card-actions>
+              <button mat-button (click)="openCpiDialog(d)">
+                {{ 'dashboard.open_table' | transloco }}
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        </div>
+
         <!-- ТАБЛИЦЫ -->
         <div class="tables">
-
+<!--
           <mat-card class="table-card" appearance="outlined">
             <mat-card-header>
               <mat-card-title>{{ 'dashboard.spi.title' | transloco }}</mat-card-title>
@@ -53,6 +84,8 @@
             </mat-card-header>
           
             <mat-card-content>
+             
+
               <table mat-table [dataSource]="[
                 { k: ('dashboard.spi.rows.ev'  | transloco), v: (d.spi.EV  | number:'1.0-2') },
                 { k: ('dashboard.spi.rows.pv'  | transloco), v: (d.spi.PV  | number:'1.0-2') },
@@ -111,7 +144,7 @@
               </div>
             </mat-card-content>
           </mat-card>
-          
+-->
 
           <!-- Project Dates -->
           <mat-card class="table-card" appearance="outlined">
