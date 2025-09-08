@@ -1,17 +1,14 @@
-// src/app/firebase/analytics.service.ts
+// analytics.service.ts
 import { Injectable, inject } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
+import { Analytics } from '@angular/fire/analytics';
+import { logEvent } from 'firebase/analytics';
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
-  private readonly analytics = inject(Analytics);
+  private readonly analytics = inject(Analytics, { optional: true });
 
-  event(name: string, params?: Record<string, any>): void {
-    try {
-      logEvent(this.analytics, name as any, params);
-    } catch (e) {
-      // Analytics может быть недоступен (например, инкогнито/блокировщик)
-      console.warn('[Analytics] logEvent error:', e);
-    }
+  event(name: string, params?: Record<string, unknown>) {
+    if (!this.analytics) return; // SSR/без Analytics — no-op
+    logEvent(this.analytics, name, params ?? {});
   }
 }

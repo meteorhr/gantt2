@@ -1,0 +1,384 @@
+<div class="dash-viewport">
+  <div class="dash-wrap">
+    <!-- ИНДИКАТОР РАСЧЁТА -->
+    @if (wm.dashLoading()) {
+      <div class="topbar">
+        <div class="grow">
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        </div>
+        <span>{{ 'dashboard.calculating' | transloco }}</span>
+      </div>
+    } @else {
+      @if (wm.dashboard(); as d) {
+        <!-- KPIs -->
+        <div class="kpis">
+
+
+
+        </div>
+
+        <div class="kpis">
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value">{{ d.totalTasks }}</div>
+              <div class="kpi-caption">{{ 'dashboard.total_tasks' | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value">{{ nonEmptyRsrcCount() }}</div>
+              <div class="kpi-caption">{{ 'dashboard.distinct_resources' | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value">{{ d.lastRecalc || '—' }}</div>
+              <div class="kpi-caption">{{ 'dashboard.last_recalc' | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+
+        </div>
+
+        <!-- ТАБЛИЦЫ -->
+        <div class="tables">
+
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.spi.title' | transloco }}</mat-card-title>
+              <mat-card-subtitle>
+                {{ 'dashboard.spi.as_of' | transloco : { date: (d.spi.asOf || '—') } }}
+              </mat-card-subtitle>
+            </mat-card-header>
+          
+            <mat-card-content>
+              <table mat-table [dataSource]="[
+                { k: ('dashboard.spi.rows.ev'  | transloco), v: (d.spi.EV  | number:'1.0-2') },
+                { k: ('dashboard.spi.rows.pv'  | transloco), v: (d.spi.PV  | number:'1.0-2') },
+                { k: ('dashboard.spi.rows.spi' | transloco), v: (d.spi.SPI == null ? '—' : (d.spi.SPI | number:'1.2-2')) }
+              ]">
+                <ng-container matColumnDef="k">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.spi.table.metric' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.k }}</td>
+                </ng-container>
+          
+                <ng-container matColumnDef="v">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.spi.table.amount' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.v }}</td>
+                </ng-container>
+          
+                <tr mat-header-row *matHeaderRowDef="['k','v']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['k','v'];"></tr>
+              </table>
+          
+              <div class="mat-body" style="opacity:.7;margin-top:8px">
+                {{ 'dashboard.spi.method_label' | transloco : { method: d.spi.method } }}
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.cpi.title' | transloco }}</mat-card-title>
+              <mat-card-subtitle>
+                {{ 'dashboard.cpi.as_of' | transloco : { date: (d.cpi.asOf || '—') } }}
+              </mat-card-subtitle>
+            </mat-card-header>
+          
+            <mat-card-content>
+              <table mat-table [dataSource]="[
+                { k: ('dashboard.cpi.rows.ev'  | transloco), v: (d.cpi.EV  == null ? '—' : (d.cpi.EV  | number:'1.0-2')) },
+                { k: ('dashboard.cpi.rows.ac'  | transloco), v: (d.cpi.AC  == null ? '—' : (d.cpi.AC  | number:'1.0-2')) },
+                { k: ('dashboard.cpi.rows.cpi' | transloco), v: (d.cpi.CPI == null ? '—' : (d.cpi.CPI | number:'1.2-2')) }
+              ]">
+                <ng-container matColumnDef="k">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.cpi.table.metric' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.k }}</td>
+                </ng-container>
+          
+                <ng-container matColumnDef="v">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.cpi.table.amount' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.v }}</td>
+                </ng-container>
+          
+                <tr mat-header-row *matHeaderRowDef="['k','v']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['k','v'];"></tr>
+              </table>
+          
+              <div class="mat-body" style="opacity:.7;margin-top:8px">
+                {{ 'dashboard.cpi.method_label' | transloco : { method: d.cpi.method } }}
+              </div>
+            </mat-card-content>
+          </mat-card>
+          
+
+          <!-- Project Dates -->
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.project_dates' | transloco }}</mat-card-title>
+            </mat-card-header>
+          
+            <mat-card-content>
+              <table mat-table [dataSource]="[
+                { label: ('dashboard.start_date'  | transloco), date: (d.planStart  || '—') },
+                { label: ('dashboard.data_date'   | transloco), date: (d.dataDate   || '—') },
+                { label: ('dashboard.end_date'    | transloco), date: (d.planEnd    || '—') },
+                { label: ('dashboard.must_finish' | transloco), date: (d.mustFinish || '—') }
+              ]">
+          
+                <!-- Колонка 'Key' -->
+                <ng-container matColumnDef="label">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.key' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.label }}</td>
+                </ng-container>
+          
+                <!-- Колонка 'Date' -->
+                <ng-container matColumnDef="date">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.date' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.date }}</td>
+                </ng-container>
+          
+                <tr mat-header-row *matHeaderRowDef="['label','date']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['label','date'];"></tr>
+              </table>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Progress -->
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.progress' | transloco }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <table mat-table [dataSource]="[
+                { label: ('dashboard.schedule' | transloco), value: d.progressSchedulePct },
+                { label: ('dashboard.physical' | transloco), value: d.progressPhysicalPct },
+                { label: ('dashboard.cost' | transloco),     value: d.progressCostPct }
+              ]">
+                <ng-container matColumnDef="label">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.value' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.label }}</td>
+                </ng-container>
+                <ng-container matColumnDef="percent">
+                  <th mat-header-cell *matHeaderCellDef>%</th>
+                  <td mat-cell *matCellDef="let r">{{ (r.value ?? 0) | number:'1.0-2' }}%</td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="['label','percent']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['label','percent'];"></tr>
+              </table>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- By Status + TOTAL -->
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.table_by_status' | transloco }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <table mat-table [dataSource]="d.byStatus">
+                <ng-container matColumnDef="value">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.status' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ ('task.status_code.' + r.value) | transloco }}</td>
+                  <td mat-footer-cell *matFooterCellDef>{{ 'dashboard.total' | transloco }}</td>
+                </ng-container>
+                <ng-container matColumnDef="count">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+                  <td mat-footer-cell *matFooterCellDef>{{ d.totalTasks }}</td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+                <tr mat-footer-row *matFooterRowDef="['value','count']"></tr>
+              </table>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- By Task Type -->
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.table_by_task_type' | transloco }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <table mat-table [dataSource]="d.byTaskType">
+                <ng-container matColumnDef="value">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.task' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ ('task.task_type.' + r.value) | transloco }}</td>
+                </ng-container>
+                <ng-container matColumnDef="count">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+              </table>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- By Priority -->
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.table_by_priority' | transloco }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <table mat-table [dataSource]="d.byPriorityType">
+                <ng-container matColumnDef="value">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.priority' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ ('task.priority_type.' + r.value) | transloco }}</td>
+                </ng-container>
+                <ng-container matColumnDef="count">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+              </table>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- By Duration -->
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.table_by_duration_type' | transloco }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <table mat-table [dataSource]="d.byDurationType">
+                <ng-container matColumnDef="value">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.duration' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ ('task.duration_type.' + r.value) | transloco }}</td>
+                </ng-container>
+                <ng-container matColumnDef="count">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+              </table>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- By Resource -->
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'dashboard.table_by_resource' | transloco }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <table mat-table [dataSource]="d.byRsrcId">
+                <ng-container matColumnDef="value">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.resource' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.value }}</td>
+                </ng-container>
+                <ng-container matColumnDef="count">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+              </table>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Cost loading -->
+          <mat-card class="table-card" appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>{{ 'dashboard.cost_loading' | transloco }}</mat-card-title>
+          </mat-card-header>
+
+          <mat-card-content>
+            <table mat-table [dataSource]="[
+            
+              { label: ('dashboard.actual_to_date'   | transloco), amount: d.costActualToDate },
+              { label: ('dashboard.remaining_cost'   | transloco), amount: d.costRemaining },
+              { label: ('dashboard.budgeted_cost'    | transloco), amount: d.costBudgeted },
+              { label: ('dashboard.this_period_cost' | transloco), amount: d.costThisPeriod }
+            ]">
+
+              <ng-container matColumnDef="label">
+                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.cost' | transloco }}</th>
+                <td mat-cell *matCellDef="let r">{{ r.label }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="amount">
+                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.amount' | transloco }}</th>
+                <td mat-cell *matCellDef="let r">  @if (d.baseCurrency) {
+                  {{ r.amount | currency : d.baseCurrency : 'symbol-narrow' : '1.0-2' }}
+                } @else {
+                  {{ r.amount | number:'1.0-2' }}
+                }</td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="['label','amount']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['label','amount'];"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="table-card" appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>{{ 'dashboard.resource_loading' | transloco }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <table mat-table [dataSource]="[
+              { label: ('dashboard.actual_to_date_qty' | transloco), value: d.rsrcQtyActualToDate },
+              { label: ('dashboard.remaining_qty'     | transloco), value: d.rsrcQtyRemaining },
+              { label: ('dashboard.budgeted_qty'     | transloco), value: d.rsrcQtyBudgeted },
+              { label: ('dashboard.this_period_qty'  | transloco), value: d.rsrcQtyThisPeriod }
+            ]">
+              <ng-container matColumnDef="label">
+                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.units' | transloco }}</th>
+                <td mat-cell *matCellDef="let r">{{ r.label }}</td>
+              </ng-container>
+        
+              <ng-container matColumnDef="qty">
+                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.qty' | transloco }}</th>
+                <td mat-cell *matCellDef="let r">{{ (r.value ?? 0) | number:'1.0-2' }}</td>
+              </ng-container>
+        
+              <tr mat-header-row *matHeaderRowDef="['label','qty']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['label','qty'];"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="table-card" appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>{{ 'dashboard.float.title' | transloco }}</mat-card-title>
+          </mat-card-header>
+        
+          <mat-card-content>
+            <table mat-table [dataSource]="[
+              { k: ('dashboard.float.rows.critical'      | transloco), v: d.floatSummary.critical },
+              { k: ('dashboard.float.rows.nearCritical'  | transloco), v: d.floatSummary.nearCritical },
+              { k: ('dashboard.float.rows.normal'        | transloco), v: d.floatSummary.normal },
+              { k: ('dashboard.float.rows.high'          | transloco), v: d.floatSummary.high },
+              { k: ('dashboard.float.rows.longestPath'   | transloco), v: d.floatSummary.longestPath },
+              { k: ('dashboard.float.rows.unknown'       | transloco), v: d.floatSummary.unknown },
+              { k: ('dashboard.float.rows.total'         | transloco), v: d.floatSummary.total }
+            ]">
+              <ng-container matColumnDef="k">
+                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.float.bucket' | transloco }}</th>
+                <td mat-cell *matCellDef="let r">{{ r.k }}</td>
+              </ng-container>
+        
+              <ng-container matColumnDef="v">
+                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.float.count' | transloco }}</th>
+                <td mat-cell *matCellDef="let r">{{ r.v }}</td>
+              </ng-container>
+        
+              <tr mat-header-row *matHeaderRowDef="['k','v']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['k','v'];"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
+        
+        </div>
+      } @else {
+        <div class="topbar">
+          <span>{{ 'dashboard.empty' | transloco }}</span>
+        </div>
+      }
+    }
+  </div>
+</div>

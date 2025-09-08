@@ -47,3 +47,99 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   height: 100vh;                    // Высота на весь экран
 }
 
+
+html, body { margin: 0; overflow: hidden; } /* внешний скролл убираем */
+
+app-root, sv-tabs-shell { display:block; height:100%; }
+
+.page { height:100%; display:flex; flex-direction:column; }
+.page__header { flex:0 0 auto; padding: 0 16px 10px; }
+.page__outlet { flex:1 1 auto; min-height:0; overflow:hidden; }
+
+h3 { margin:0; line-height:1.25; }
+
+h3 {
+  font-weight: 500; padding-bottom: 10px;
+}
+
+.mat-mdc-card,
+mat-card,
+.mdc-card {
+  background-color: #fff !important;
+}
+
+
+
+/* ============= GLOBAL TABLE STYLES ============= */
+
+:root {
+  /* Можно быстро настраивать через переменные */
+  --table-cell-padding: 12px;
+  --table-cell-font-size: 14px;
+  --table-header-bg: var(--mat-sys-background);
+  --table-header-fg: rgba(0, 0, 0, 0.6);
+  --table-row-bg: #ffffff;
+  --table-row-hover-bg: var(--mat-sys-background);
+}
+
+/* Базовая сетка для всех таблиц */
+table,
+.mat-mdc-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Ячейки: паддинги/шрифты */
+table :is(th, td),
+.mat-mdc-table :is(.mat-mdc-header-cell, .mat-mdc-cell) {
+  padding: var(--table-cell-padding);
+  font-size: var(--table-cell-font-size);
+}
+
+/* Убираем отступы у <p> внутри ячеек */
+table :is(th, td) p,
+.mat-mdc-table :is(.mat-mdc-header-cell, .mat-mdc-cell) p {
+  margin: 0;
+  padding: 0;
+}
+
+/* Заголовок: фон/цвет + sticky (как в вашем фрагменте) */
+table th {
+  font-weight: 500;
+  background-color: var(--table-header-bg);
+  color: var(--table-header-fg);
+  position: sticky;
+  top: 0;
+  z-index: 5; /* выше содержимого строк */
+  box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+}
+
+/* Для mat-table продублируем */
+.mat-mdc-header-cell {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: var(--table-header-bg);
+  color: var(--table-header-fg);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+  font-weight: 500;
+}
+
+/* Строки: фон и hover */
+table tr {
+  background-color: var(--table-row-bg);
+}
+table tr:hover {
+  background-color: var(--table-row-hover-bg);
+}
+
+/* Материальные строки для единообразия */
+.mat-mdc-row .mat-mdc-cell {
+  background-color: var(--table-row-bg);
+}
+.mat-mdc-row:hover .mat-mdc-cell {
+  background-color: var(--table-row-hover-bg);
+}
+
+/* =============================================== */

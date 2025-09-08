@@ -1,0 +1,194 @@
+:host {
+  display: block;
+  height: auto; /* страница может расти по высоте */
+}
+.dash-viewport {
+  height: calc(100vh - 150px);
+  width: 1200px;                 /* фиксированная ширина */
+  max-width: calc(100vw - 32px); /* чтобы влезало на узких экранах, можно убрать */
+  margin: 0 auto;                /* центрирование */
+  overflow: auto;                /* внутренний скролл */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: block;
+}
+
+/* оставляем как есть */
+.dash-wrap {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Верхняя панель */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--mat-sys-outline) 24%, transparent);
+  background: color-mix(in oklab, var(--mat-sys-surface) 88%, transparent);
+}
+.grow { flex: 1 1 auto; }
+
+/* KPI-сетка */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+
+
+
+.divider { margin: 4px 0 2px; opacity: .6; }
+
+/* Таблицы теперь без внутреннего скролла — растут по контенту */
+.tables {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.table-card {
+  display: block;          /* не флекс, чтобы контент свободно расширял высоту */
+  border-radius: 14px;
+
+
+}
+
+/* Таблица без sticky-заголовков */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th.mat-mdc-header-cell {
+  position: static;      /* было sticky — убираем */
+  top: auto;
+  z-index: auto;
+  background: var(--mat-sys-surface);
+  box-shadow: none;
+}
+
+td.mat-mdc-cell,
+th.mat-mdc-header-cell {
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+tr.mat-mdc-row:hover td.mat-mdc-cell {
+  background: color-mix(in oklab, var(--mat-sys-surface) 92%, transparent);
+}
+
+.chip { margin-left: 8px; }
+
+/* Адаптив */
+@media (max-width: 1100px) {
+  .kpis { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+}
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: 1fr; }
+  .tables { grid-template-columns: 1fr; }
+}
+
+/* Тёмная тема (необязательно) */
+@media (prefers-color-scheme: dark) {
+  .topbar {
+    border-color: color-mix(in oklab, var(--mat-sys-outline-variant) 40%, transparent);
+    background: color-mix(in oklab, var(--mat-sys-surface-container) 86%, transparent);
+  }
+  tr.mat-mdc-row:hover td.mat-mdc-cell {
+    background: color-mix(in oklab, var(--mat-sys-surface-container) 88%, transparent);
+  }
+}
+
+
+/* Глобальный стиль для всех mat-card */
+:root,
+.mat-app-background {
+  /* Цвет контейнера для всех типов карт */
+  --mdc-elevated-card-container-color: #f9fafb;
+  --mdc-outlined-card-container-color: #f9fafb;
+  --mdc-filled-card-container-color: #f9fafb;
+}
+
+.mat-mdc-card,
+mat-card,
+.mdc-card {
+  border-radius: 12px !important;
+  background-color: #FFF !important; /* светлый фон */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); /* мягкая тень */
+  border: 1px solid #e0e0e0; /* тонкая рамка */
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+/* Ховер-эффект (опционально) */
+.mat-mdc-card:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Внутренние отступы 20px */
+.mat-mdc-card .mat-mdc-card-header,
+.mat-mdc-card .mat-mdc-card-content,
+.mat-mdc-card .mat-mdc-card-actions {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.mat-mdc-card .mat-mdc-card-header { padding-top: 20px; padding-bottom: 6px; }
+.mat-mdc-card .mat-mdc-card-content { padding-top: 10px; padding-bottom: 20px; }
+.mat-mdc-card .mat-mdc-card-actions { padding-top: 12px; padding-bottom: 16px; }
+
+/* Тёмная тема — немного усилим контраст (по желанию) */
+@media (prefers-color-scheme: dark) {
+  .mat-mdc-card,
+  mat-card,
+  .mdc-card {
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    border-color: rgba(255,255,255,.08);
+  }
+}
+
+
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-card .mat-mdc-card-content {
+  flex: 1 1 auto;                 /* растянуть контент внутри карты */
+  display: flex;
+  flex-direction: column;          /* вертикально: число -> подпись */
+  align-items: center;             /* горизонтально по центру */
+  justify-content: center;         /* вертикально по центру */
+  text-align: center;
+  padding: 16px 20px;
+}
+
+/* большая цифра */
+.kpi-value {                 /* поддержка вашего текущего .value */
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: .2px;
+}
+
+.kpi-value-date {                 /* поддержка вашего текущего .value */
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: .2px;
+}
+
+/* подпись под цифрой */
+.kpi-caption {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  opacity: .72;
+}

@@ -3,53 +3,15 @@
     margin: 0 auto;
   }
 
+
 .table-wrapper {
-  height: calc(100vh - 250px);
+  height: calc(100vh - 300px);
   min-width: 1160px;
   max-width: 1460px;
   overflow: auto;
   position: relative;
 
-  table {
-
-
-      th, td {
-        padding: 12px;
-        font-size: 14px;
-        
-        p {
-          padding: 0;
-          margin: 0;
-        }
-      }
-
-      th {
-        font-weight: 500;
-        background-color: var(--mat-sys-background);;
-        color: rgba(0, 0, 0, 0.6);
-          position: sticky;
-          top: 0;
-          z-index: 5; /* выше содержимого строк */
-          box-shadow: 0 1px 0 rgba(0,0,0,0.08);
-      }
-          /* На случай mat-table: продублируем для mat header cells */
-          .mat-mdc-header-cell {
-            position: sticky;
-            top: 0;
-            z-index: 5;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.08);
-            background-color: var(--mat-sys-background);
-          }
-
-      tr {
-        background-color: #ffffff; // явно белый фон строк
-        &:hover {
-          background-color: var(--mat-sys-background);;
-        }
-      }
-
-    }
-  } 
+}
 
   :host {
   display: block;
