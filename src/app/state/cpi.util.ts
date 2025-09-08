@@ -54,6 +54,12 @@ function toNumberOrNull(v: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function toPosNumberOrNull(v: any): number | null {
+  const n = toNumberOrNull(v);
+  if (n == null) return null;
+  return Number.isFinite(n) ? n : null;
+}
+
 function pickNum(row: any, keys: string[]): number | null {
   for (const k of keys) {
     const v = row?.[k];
@@ -62,6 +68,102 @@ function pickNum(row: any, keys: string[]): number | null {
       if (Number.isFinite(n)) return n;
     }
   }
+  return null;
+}
+
+function clamp01(x: number): number {
+  if (!Number.isFinite(x)) return 0;
+  if (x < 0) return 0;
+  if (x > 1) return 1;
+  return x;
+}
+
+function isYes(flag: any): boolean {
+  const s = String(flag ?? '').trim().toUpperCase();
+  return s === 'Y' || s === 'YES' || s === '1' || s === 'TRUE';
+}
+
+/**
+ * Возвращает фактическое количество (actual_qty) = act_reg_qty + act_ot_qty.
+ */
+function actualQtyOf(r: any): number {
+  const reg = toNumberOrNull(r?.act_reg_qty) ?? 0;
+  const ot  = toNumberOrNull(r?.act_ot_qty) ?? 0;
+  const q = reg + ot;
+  return Number.isFinite(q) ? q : 0;
+}
+
+/**
+ * Рассчитать AC по назначению с приоритетами:
+ * 1) act_reg_cost + act_ot_cost
+ * 2) act_total_cost / act_cost / actual_cost (если присутствуют единым полем)
+ * 3) (act_reg_qty + act_ot_qty) * cost_per_qty (если cost_qty_link_flag='Y' или rate известен)
+ */
+function computeAssignmentAC(r: any, actualCostKeysFallback: string[]): number {
+  const actReg = toNumberOrNull(r?.act_reg_cost);
+  const actOt  = toNumberOrNull(r?.act_ot_cost);
+  const sumCosts = (actReg ?? 0) + (actOt ?? 0);
+
+  let ac = 0;
+
+  if ((actReg != null || actOt != null) && Number.isFinite(sumCosts) && sumCosts !== 0) {
+    ac = sumCosts;
+  } else {
+    const single = pickNum(r, actualCostKeysFallback);
+    if (single != null) {
+      ac = single;
+    } else {
+      const cpq = toNumberOrNull(r?.cost_per_qty);
+      const aq  = actualQtyOf(r);
+      if (cpq != null && aq > 0) ac = cpq * aq;
+    }
+  }
+
+  return Number.isFinite(ac) ? ac : 0;
+}
+
+/**
+ * Рассчитать BAC по назначению с приоритетами:
+ * 1) target_cost (или его синонимы)
+ * 2) при связке стоимости с объёмом (cost_qty_link_flag='Y'):
+ *    - target_qty * cost_per_qty
+ *    - иначе (remain_qty + actual_qty) * cost_per_qty
+ * 3) если есть remain_cost и есть фактические затраты => remain_cost + actual_cost (приближение BAC)
+ */
+function computeAssignmentBAC(r: any, targetCostKeys: string[], actualCostKeysFallback: string[]): number | null {
+  // 1) Прямые target-поля:
+  const directTarget = pickNum(r, targetCostKeys);
+  if (directTarget != null) return directTarget;
+
+  const cpq = toNumberOrNull(r?.cost_per_qty);
+  const link = isYes(r?.cost_qty_link_flag);
+
+  // 2) Производные из qty*rate
+  if (link && cpq != null) {
+    const tQty = toNumberOrNull(r?.target_qty);
+    if (tQty != null) return tQty * cpq;
+
+    const rQty = toNumberOrNull(r?.remain_qty);
+    const aQty = actualQtyOf(r);
+    if (rQty != null) return (rQty + aQty) * cpq;
+  }
+
+  // 3) Приближение: remain_cost + AC
+  const rem = toNumberOrNull(r?.remain_cost);
+  if (rem != null) {
+    const ac = computeAssignmentAC(r, actualCostKeysFallback);
+    if (Number.isFinite(ac)) return rem + ac;
+  }
+
+  // 4) Последняя попытка qty*rate даже без 'Y'
+  if (cpq != null) {
+    const tQty = toNumberOrNull(r?.target_qty);
+    if (tQty != null) return tQty * cpq;
+
+    const rQty = toNumberOrNull(r?.remain_qty);
+    if (rQty != null) return (rQty + actualQtyOf(r)) * cpq;
+  }
+
   return null;
 }
 
@@ -82,9 +184,12 @@ export function computeCPI(
   const targetCostKeys = opts?.targetCostKeys ?? [
     'target_cost', 'target_total_cost', 'target_cost_sum', 'at_completion_total_cost', 'cost_at_completion'
   ];
-  const actualCostKeys = opts?.actualCostKeys ?? [
-    'act_cost', 'actual_cost', 'act_total_cost'
+
+  // Эти ключи используются как единое поле AC, если нет раздельных reg/ot:
+  const actualCostKeysFallback = opts?.actualCostKeys ?? [
+    'act_total_cost', 'act_cost', 'actual_cost'
   ];
+
   const taskProgressField = opts?.taskProgressField ?? 'phys_complete_pct';
 
   // Карта прогресса задач (0..1)
@@ -93,26 +198,33 @@ export function computeCPI(
     const id = Number(t?.task_id);
     if (!Number.isFinite(id)) continue;
     const p = toNumberOrNull(t?.[taskProgressField]);
-    const clamped = p != null ? Math.max(0, Math.min(100, p)) / 100 : 0;
+    const clamped = p != null ? clamp01(p / 100) : 0;
     taskPct.set(id, clamped);
   }
 
-  // Суммируем BAC (target) и AC (actual) по назначениям
+  // Суммы по назначениям
   let BAC = 0;
   let AC  = 0;
-  for (const r of taskRsrcRows) {
-    BAC += pickNum(r, targetCostKeys) ?? 0;
-    AC  += pickNum(r, actualCostKeys) ?? 0;
-  }
 
-  // EV = Σ (phys%_task * target_cost_назначения)
+  // Для EV нам нужен BAC по каждому назначению
   let EV = 0;
+
   for (const r of taskRsrcRows) {
     const tid = Number(r?.task_id);
     if (!Number.isFinite(tid)) continue;
-    const tc = pickNum(r, targetCostKeys) ?? 0;
-    const p  = taskPct.get(tid) ?? 0;
-    EV += tc * p;
+
+    const bac_i = computeAssignmentBAC(r, targetCostKeys, actualCostKeysFallback);
+    const ac_i  = computeAssignmentAC(r, actualCostKeysFallback);
+
+    if (bac_i != null && Number.isFinite(bac_i) && bac_i > 0) {
+      BAC += bac_i;
+      const p = taskPct.get(tid) ?? 0;
+      EV += bac_i * p;
+    }
+
+    if (Number.isFinite(ac_i) && ac_i > 0) {
+      AC += ac_i;
+    }
   }
 
   let CPI: number | null = null;
@@ -125,10 +237,14 @@ export function computeCPI(
     toIsoDateOrNull(projectRow?.update_date) ??
     null;
 
-  const method =
+    const method =
     (BAC > 0 || AC > 0)
-      ? 'EV = Σ(phys% × target_cost by TASKRSRC); AC = Σ(act_cost by TASKRSRC)'
-      : 'Not available: no cost fields in TASKRSRC';
+      ? [
+          'EV = Σ(phys%_TASK × BAC_TASKRSRC)',
+          'BAC per TASKRSRC: target_cost; otherwise qty×rate (target_qty or remain_qty+actual_qty if cost_qty_link_flag=Y); otherwise remain_cost + AC',
+          'AC per TASKRSRC: act_reg_cost + act_ot_cost; otherwise (act_total_cost / act_cost / actual_cost); otherwise qty×rate from actuals',
+        ].join(' | ')
+      : 'Not available: no cost data in TASKRSRC';
 
   return {
     EV: BAC > 0 ? EV : null,

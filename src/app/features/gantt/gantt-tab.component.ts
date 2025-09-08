@@ -16,7 +16,7 @@ import { NgIf } from '@angular/common';
           {{ 'loading' | transloco }}
         </div>
       } @else {
-        @defer (on viewport; prefetch on idle) {
+        
           <gantt-canvas
             #gantt
             style="height: calc(100vh - 210px);"
@@ -24,11 +24,7 @@ import { NgIf } from '@angular/common';
             [refLines]="wm.refLines()"
             [columns]="wm.columns()">
           </gantt-canvas>
-        } @placeholder {
-          <div class="mat-body" style="padding:8px;opacity:.7">
-            {{ 'loading' | transloco }}
-          </div>
-        }
+        
       }
     </div>
   `,

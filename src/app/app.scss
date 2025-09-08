@@ -1,3 +1,24 @@
+:host {
+  display: block;
+  height: auto; /* страница может расти по высоте */
+}
+.dash-viewport {
+  width: 1200px;                 /* фиксированная ширина */
+  max-width: calc(100vw - 32px); /* чтобы влезало на узких экранах, можно убрать */
+  margin: 0 auto;                /* центрирование */
+  overflow: auto;                /* внутренний скролл */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: block;
+}
+
+/* оставляем как есть */
+.dash-wrap {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .center {
     width: 1080px;
     margin: 0 auto;
@@ -5,8 +26,8 @@
 
 
 .table-wrapper {
-  height: calc(100vh - 300px);
-  min-width: 1160px;
+  height: calc(100vh - 400px);
+  min-width: 1060px;
   max-width: 1460px;
   overflow: auto;
   position: relative;

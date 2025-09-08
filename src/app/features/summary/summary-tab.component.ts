@@ -98,61 +98,84 @@ import { AppStateService } from '../../state/app-state.service';
     </mat-card>
     </div>
     } @else {
-        
-    <div style="padding:16px; max-width: 880px;">
-      <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:12px;">
-        <div style="color: rgba(0,0,0,0.6);">
-          {{ 'xer_upload_hint' | transloco }}
-        </div>
-        <div>
-          <input
-            #reloadInput
-            type="file"
-            accept=".xer"
-            
-            (change)="onFileSelected($event)"
-            style="display:none" />
-          <button [disabled]="wm.loading()" mat-stroked-button color="primary" type="button" (click)="reloadInput.click()">
-            <mat-icon>upload_file</mat-icon>
-            {{ 'xer_reload_file' | transloco }}
-          </button>
-        </div>
-      </div>
-      @if (wm.loading()) {
-          <div class="sv-progress" style="margin-bottom: 8px;margin-top: 8px;">
-            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-          </div>
-      } 
+      <div class="dash-viewport">
+        <div class="dash-wrap">
 
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-    <mat-form-field appearance="outline" style="min-width: 280px;">
-      <mat-label>Project</mat-label>
-      <mat-select [value]="wm.selectedProjectId()" (selectionChange)="onProjectChange($event.value)">
-        @for (p of wm.projects(); track p.proj_id) {
-          <mat-option [value]="p.proj_id">{{ p.proj_short_name || ('#' + p.proj_id) }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-  </div>
-        <div class="table-wrapper">
-      <table mat-table [dataSource]="wm.xerSummaryArray()" class="mat-elevation-z1" style="width:100%; margin-bottom: 16px;">
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef style="width: 200px;">Name</th>
-          <td mat-cell *matCellDef="let row">{{ row.i18n ? (row.i18n | transloco) : row.name }} </td>
-        </ng-container>
-        <ng-container matColumnDef="value">
-          <th mat-header-cell *matHeaderCellDef>Value</th>
-          <td mat-cell *matCellDef="let row">
-            {{ row.i18nValue ? (row.i18nValue | transloco: row.params) : row.value }}
-          </td>
-        </ng-container>
+          <mat-card appearance="outlined">
+            <mat-card-content>
+              <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:12px;">
+                <div style="color: rgba(0,0,0,0.6);">
+                  {{ 'xer_upload_hint' | transloco }}
+                </div>
+                <div>
+                  <input
+                    #reloadInput
+                    type="file"
+                    accept=".xer"
+                    (change)="onFileSelected($event)"
+                    style="display:none" />
+                  <button
+                    [disabled]="wm.loading()"
+                    mat-stroked-button
+                    color="primary"
+                    type="button"
+                    (click)="reloadInput.click()">
+                    <mat-icon>upload_file</mat-icon>
+                    {{ 'xer_reload_file' | transloco }}
+                  </button>
+                </div>
+              </div>
 
-        <tr mat-header-row *matHeaderRowDef="['name', 'value'];sticky: true"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['name', 'value'];"></tr>
-      </table>
+              @if (wm.loading()) {
+                <div class="sv-progress" style="margin-bottom: 8px; margin-top: 8px;">
+                  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card appearance="outlined">
+            <mat-card-content>
+              <mat-form-field appearance="outline" style="min-width: 280px;">
+                <mat-label>Project</mat-label>
+                <mat-select [value]="wm.selectedProjectId()" (selectionChange)="onProjectChange($event.value)">
+                  @for (p of wm.projects(); track p.proj_id) {
+                    <mat-option [value]="p.proj_id">
+                      {{ p.proj_short_name || ('#' + p.proj_id) }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card appearance="outlined">
+            <mat-card-content>
+              <div class="table-wrapper">
+                <table mat-table [dataSource]="wm.xerSummaryArray()" class="mat-elevation-z1" style="width:100%; margin-bottom: 16px;">
+                  <ng-container matColumnDef="name">
+                    <th mat-header-cell *matHeaderCellDef style="width: 200px;">Name</th>
+                    <td mat-cell *matCellDef="let row">
+                      {{ row.i18n ? (row.i18n | transloco) : row.name }}
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="value">
+                    <th mat-header-cell *matHeaderCellDef>Value</th>
+                    <td mat-cell *matCellDef="let row">
+                      {{ row.i18nValue ? (row.i18nValue | transloco: row.params) : row.value }}
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="['name', 'value']; sticky: true"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ['name', 'value'];"></tr>
+                </table>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
         </div>
-
-    </div>
+      </div>   
     }
 
   `,
