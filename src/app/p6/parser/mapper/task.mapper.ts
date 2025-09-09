@@ -12,6 +12,13 @@ function num(el: Element, tag: string): number | null {
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
+function numAny(el: Element, tags: string[]): number | null {
+  for (const t of tags) {
+    const v = num(el, t);
+    if (v != null) return v;
+  }
+  return null;
+}
 function dt(el: Element, tag: string): Date | null {
   const s = txt(el, tag);
   if (!s) return null;
@@ -184,6 +191,31 @@ export function mapActivityToTaskRow(a: Element, projId: number): Record<string,
   const completeCode  = toCode(REV_COMPLETE_PCT_TYPE, pctTypeTxt);
   const priorityCode  = toCode(REV_PRIORITY_TYPE, priorityTxt);
 
+  const actual_labor_cost        = numAny(a, ['ActualLaborCost']);
+  const actual_nonlabor_cost     = numAny(a, ['ActualNonLaborCost']);
+  const actual_total_cost_any    = numAny(a, ['ActualTotalCost']);
+
+  const at_completion_labor_cost    = numAny(a, ['AtCompletionLaborCost']);
+  const at_completion_nonlabor_cost = numAny(a, ['AtCompletionNonLaborCost']);
+  const at_completion_total_cost_any= numAny(a, ['AtCompletionTotalCost']);
+
+  const planned_labor_cost       = numAny(a, ['PlannedLaborCost']);
+  const planned_nonlabor_cost    = numAny(a, ['PlannedNonLaborCost']);
+  const planned_total_cost_any   = numAny(a, ['PlannedTotalCost']);
+
+  const actual_total_cost = actual_total_cost_any != null
+    ? actual_total_cost_any
+    : (actual_labor_cost ?? 0) + (actual_nonlabor_cost ?? 0);
+
+  const at_completion_total_cost = at_completion_total_cost_any != null
+    ? at_completion_total_cost_any
+    : (at_completion_labor_cost ?? 0) + (at_completion_nonlabor_cost ?? 0);
+
+  const planned_total_cost = planned_total_cost_any != null
+    ? planned_total_cost_any
+    : (planned_labor_cost ?? 0) + (planned_nonlabor_cost ?? 0);
+
+
   const row: Record<string, P6Scalar> = {
     // Идентификаторы/общие (ключи первыми)
     task_id: taskId ?? null,
@@ -250,7 +282,36 @@ export function mapActivityToTaskRow(a: Element, projId: number): Record<string,
     rem_labor_units: num(a, 'RemainingLaborUnits'),
     rem_nonlabor_cost: num(a, 'RemainingNonLaborCost'),
     rem_nonlabor_units: num(a, 'RemainingNonLaborUnits'),
-  };
 
+
+    actual_labor_cost,
+    actual_nonlabor_cost,
+    actual_total_cost,
+
+    at_completion_labor_cost,
+    at_completion_nonlabor_cost,
+    at_completion_total_cost,
+
+    planned_labor_cost,
+    planned_nonlabor_cost,
+    planned_total_cost,
+
+
+    // Проценты/трудозатраты для агрегаторов
+    phys_complete_pct: (() => {
+      const v = num(a, 'PhysicalPercentComplete');        // в XML 0..1
+      return v == null ? null : (v <= 1 ? v * 100 : v);    // переводим в 0..100
+    })(),
+    act_work_qty: num(a, 'ActualLaborUnits'),
+    target_work_qty: (() => {
+      const atc  = num(a, 'AtCompletionLaborUnits');
+      if (atc != null) return atc;                         // приоритет: текущий бюджет на завершение
+      const act  = num(a, 'ActualLaborUnits')  ?? 0;
+      const rem  = num(a, 'RemainingLaborUnits') ?? 0;
+      const plan = num(a, 'PlannedLaborUnits');
+      if (act + rem > 0) return act + rem;                 // фолбэк: факт + остаток
+      return plan ?? null;                                 // последний фолбэк: исходный план
+    })()
+  };
   return row;
 }

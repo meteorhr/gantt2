@@ -64,6 +64,14 @@ function hash32ToNum(s: string): number {
   }
   return h >>> 0;
 }
+function sumNullable(a: number | null, b: number | null): number | null {
+  if (a == null && b == null) return null;
+  return (a ?? 0) + (b ?? 0);
+}
+function clampPct(x: number): number {
+  if (!Number.isFinite(x)) return 0;
+  return x < 0 ? 0 : x > 100 ? 100 : x;
+}
 
 /* ===== mapper ===== */
 export function mapResAssignToTaskrsrcRow(
@@ -102,10 +110,24 @@ export function mapResAssignToTaskrsrcRow(
   const act_ot_qty  = numAny(ra, ['ActualOvertimeUnits', 'ActOvertimeUnits']);
 
   const cost_per_qty = numAny(ra, ['Rate', 'CostPerQty']); // цена за ед./час
-  const target_cost  = numAny(ra, ['BudgetedCost', 'TargetCost']);
+  let target_cost  = numAny(ra, ['BudgetedCost', 'TargetCost']);
+  // если target_cost отсутствует, считаем из единиц и ставки
+  if (target_cost == null && target_qty != null && cost_per_qty != null) {
+    target_cost = target_qty * cost_per_qty;
+  }
   const remain_cost  = numAny(ra, ['RemainingCost']);
   const act_reg_cost = numAny(ra, ['ActualRegularCost', 'ActRegularCost']);
   const act_ot_cost  = numAny(ra, ['ActualOvertimeCost', 'ActOvertimeCost']);
+  const act_cost_any = numAny(ra, ['ActualCost', 'ActCost']);
+
+  // агрегаты
+  const act_qty  = sumNullable(act_reg_qty, act_ot_qty);                // всего факт-единиц
+  const act_cost = (act_reg_cost != null || act_ot_cost != null)
+    ? sumNullable(act_reg_cost, act_ot_cost)
+    : (act_cost_any ?? null);             // всего факт-стоимость
+  const progress_cost_pct = (target_cost != null && target_cost > 0 && act_cost != null)
+    ? clampPct((act_cost / target_cost) * 100)
+    : null;
 
   // даты
   const act_start_date      = dtAny(ra, ['ActualStartDate']);
@@ -157,9 +179,13 @@ export function mapResAssignToTaskrsrcRow(
     // стоимость
     cost_per_qty,
     target_cost,
+    act_cost,
     remain_cost,
     act_reg_cost,
     act_ot_cost,
+    // агрегаты/удобные поля
+    act_qty,
+    progress_cost_pct,
 
     // даты
     act_start_date,

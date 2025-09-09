@@ -9,7 +9,7 @@ import { TaskPredRow } from './models/taskpred.model';
 import { PROJWBSRow as WbsRow } from './models/index';
 import { buildResourceIndex } from './resources.adapter';
 import { getRows } from './parser';
-import { XerDexieService } from './dexie.service';
+import { P6DexieService } from './dexie.service';
 import { P6Document, P6Scalar } from './parser/parser.types';
 
 const T_I18N_PREFIX = 'task';
@@ -511,7 +511,7 @@ function buildRsrcNames(list: ResourceAssignment[]): string | null {
 
 /** Построить дерево напрямую из IndexedDB (Dexie), не требуя XERDocument извне. */
 export async function buildWbsTaskTreeFromIndexedDb(
-  dexie: XerDexieService,
+  dexie: P6DexieService,
   opts?: WbsBuildOptions
 ): Promise<Node[]> {
   const doc = await dexie.getDocument();
@@ -523,7 +523,7 @@ export async function buildWbsTaskTreeFromIndexedDb(
  * Фильтрует PROJWBS, TASK, TASKPRED и TASKRSRC по proj_id, остальные справочники (RSRC/ROLE(S)) берёт целиком.
  */
 export async function buildWbsTaskByProjectTreeFromIndexedDb(
-  dexie: XerDexieService,
+  dexie: P6DexieService,
   projectId: number,
   opts?: WbsBuildOptions
 ): Promise<Node[]> {

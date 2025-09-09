@@ -1,5 +1,5 @@
 // src/app/utils/evm.util.ts
-import { XerDexieService } from '../p6/dexie.service';
+import { P6DexieService } from '../p6/dexie.service';
 
 export interface CPIvm {
   EV: number | null;   // Earned Value
@@ -260,7 +260,7 @@ export function computeCPI(
  * Удобная функция: читает из Dexie PROJECT/TASK/TASKRSRC и считает CPI.
  */
 export async function computeCPIFromDexie(
-  dexie: XerDexieService,
+  dexie: P6DexieService,
   projectId: number,
   opts?: ComputeCPIOptions
 ): Promise<CPIvm> {

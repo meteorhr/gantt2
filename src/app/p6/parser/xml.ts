@@ -6,6 +6,8 @@ import { mapResAssignToTaskrsrcRow } from './mapper/taskrsrc.mapper.js';
 import { mapResourceToRsrcRow } from './mapper/rsrc.mapper.js';
 import { mapResourceRoleToRsrcroleRow } from './mapper/rsrcrole.mapper.js';
 import type { P6Scalar, P6Table, P6Document } from './parser.types.ts';
+import { mapCurrencyToCurrtypeRow } from './mapper/currtype.mapper.js';
+import { mapCalendarToCalendarRow } from './mapper/calendar.mapper.js';
 
 /* ---------------------- XML helpers ---------------------- */
 function xmlText(el: Element | null, tag: string): string {
@@ -17,12 +19,7 @@ function xmlAttr(el: Element | null, name: string): string {
   if (!el) return '';
   return el.getAttribute(name)?.trim() ?? '';
 }
-function xmlNum(el: Element | null, tag: string): number | null {
-  const s = xmlText(el, tag);
-  if (!s) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
+
 function xmlDate(el: Element | null, tag: string): Date | null {
   const s = xmlText(el, tag);
   if (!s) return null;
@@ -36,6 +33,8 @@ function pushRow(tbl: P6Table, row: Record<string, P6Scalar>): void {
   }
   tbl.rows.push(row);
 }
+
+/* ===== mapper: Currency → CURRTYPE row ===== */
 
 /* -- локальная SUMMARIZE -- */
 function summarizeArrayLocal(doc: P6Document) {
@@ -112,8 +111,12 @@ export function parseP6XML(input: string): P6Document {
   const T_RSRC:      P6Table = { name: 'RSRC',      fields: [], rows: [] };
   const T_RSRCROLE:  P6Table = { name: 'RSRCROLE',  fields: [], rows: [] };
 
+  const T_CURRTYPE: P6Table = { name: 'CURRTYPE', fields: [], rows: [] };
+  const T_CALENDAR: P6Table = { name: 'CALENDAR', fields: [], rows: [] };
+
   const seenRsrc    = new Set<number>();
   const seenRsrcRole = new Set<number>();
+  const seenCurr = new Set<number>();
   const pushRsrcUnique = (row: Record<string, P6Scalar>) => {
     const id = row['rsrc_id'] as number;
     if (!Number.isFinite(id) || seenRsrc.has(id)) return;
@@ -125,6 +128,19 @@ export function parseP6XML(input: string): P6Document {
     if (!Number.isFinite(id) || seenRsrcRole.has(id)) return;
     seenRsrcRole.add(id);
     pushRow(T_RSRCROLE, row);
+  };
+  const pushCurrUnique = (row: Record<string, P6Scalar>) => {
+    const id = row['curr_id'] as number;
+    if (!Number.isFinite(id) || seenCurr.has(id)) return;
+    seenCurr.add(id);
+    pushRow(T_CURRTYPE, row);
+  };
+  const seenClndr = new Set<number>();
+  const pushClndrUnique = (row: Record<string, P6Scalar>) => {
+    const id = row['clndr_id'] as number;
+    if (!Number.isFinite(id) || seenClndr.has(id)) return;
+    seenClndr.add(id);
+    pushRow(T_CALENDAR, row);
   };
 
 
@@ -211,6 +227,13 @@ export function parseP6XML(input: string): P6Document {
       }
     }
 
+    // CALENDAR — календари проекта
+    const calNodes = Array.from(p.getElementsByTagName('Calendar'));
+    for (const c of calNodes) {
+      const cr = mapCalendarToCalendarRow(c, projIdNum);
+      if (cr) pushClndrUnique(cr);
+    }
+
     // TASKRSRC — назначения ресурсов
     const raNodes = Array.from(p.getElementsByTagName('ResourceAssignment'));
     for (const ra of raNodes) {
@@ -241,6 +264,20 @@ export function parseP6XML(input: string): P6Document {
     if (row) pushRsrcRoleUnique(row);
   }
 
+  // ===== ГЛОБАЛЬНЫЕ CALENDAR (корневой уровень) =====
+  const globalCalendars = Array.from(xml.getElementsByTagName('Calendar'));
+  for (const c of globalCalendars) {
+    const row = mapCalendarToCalendarRow(c, null);
+    if (row) pushClndrUnique(row);
+  }
+
+  // ===== ГЛОБАЛЬНЫЕ CURRTYPE (Currency) =====
+  const curNodes = Array.from(xml.getElementsByTagName('Currency'));
+  for (const cu of curNodes) {
+    const row = mapCurrencyToCurrtypeRow(cu);
+    if (row) pushCurrUnique(row);
+  }
+
 
   // регистрируем таблицы
   doc.tables[T_PROJECT.name]  = T_PROJECT;
@@ -250,6 +287,8 @@ export function parseP6XML(input: string): P6Document {
   doc.tables[T_TASKRSRC.name] = T_TASKRSRC;
   doc.tables[T_RSRC.name]     = T_RSRC;
   doc.tables[T_RSRCROLE.name] = T_RSRCROLE;
+  doc.tables[T_CURRTYPE.name] = T_CURRTYPE;
+  doc.tables[T_CALENDAR.name] = T_CALENDAR;
 
   // SUMMARIZE
   doc.tables['SUMMARIZE'] = buildSummarizeTableLocal(doc);

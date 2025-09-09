@@ -4,7 +4,7 @@ import { RSRCROLERow } from './models/rsrcrole.model';
 import { TASKRSRCRow } from './models/taskrsrc.model';
 import { ResourceAssignment } from '../gantt/models/gantt.model';
 import { getRows } from './parser';
-import { XerDexieService } from './dexie.service';
+import { P6DexieService } from './dexie.service';
 import { P6Document } from './parser/parser.types';
 
 function buildResourceIndexFromLists(
@@ -87,7 +87,7 @@ export function buildResourceIndex(doc: P6Document): Map<number, ResourceAssignm
 
 /** Построить индекс назначений напрямую из IndexedDB (все проекты) */
 export async function buildResourceIndexFromIndexedDb(
-  dexie: XerDexieService
+  dexie: P6DexieService
 ): Promise<Map<number, ResourceAssignment[]>> {
   const [rsrcRows, roleRows, tx] = await Promise.all([
     dexie.getRows('RSRC'),
@@ -103,7 +103,7 @@ export async function buildResourceIndexFromIndexedDb(
 
 /** Построить индекс назначений для одного проекта по proj_id (фильтруем TASKRSRC по проекту/задачам) */
 export async function buildResourceIndexByProjectFromIndexedDb(
-  dexie: XerDexieService,
+  dexie: P6DexieService,
   projectId: number
 ): Promise<Map<number, ResourceAssignment[]>> {
   const pid = Number(projectId);

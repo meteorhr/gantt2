@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 import { XerLoaderService } from '../p6/loader.service';
-import { XerDexieService } from '../p6/dexie.service';
+import { P6DexieService } from '../p6/dexie.service';
 import { buildWbsTaskByProjectTreeFromIndexedDb } from '../p6/task-to-node.adapter';
 import { Node, ColumnDef } from '../gantt/models/gantt.model';
 import { AnalyticsService } from '../firebase/analytics.service';
@@ -77,7 +77,7 @@ export class AppStateService {
   // DI
   private readonly transloco = inject(TranslocoService);
   private readonly xer = inject(XerLoaderService);
-  private readonly dexie = inject(XerDexieService);
+  private readonly dexie = inject(P6DexieService);
   private readonly analytics = inject(AnalyticsService);
 
   // UI signals
@@ -381,13 +381,55 @@ export class AppStateService {
     const progressPhysicalPct = this.clampPct(
       this.avgBy(tasks, t => this.toNumberOrNull((t as any).phys_complete_pct)) ?? 0
     );
-    const actWorkSum    = this.sumBy(tasks, t => this.toNumberOrNull((t as any).act_work_qty));
-    const targetWorkSum = this.sumBy(tasks, t => this.toNumberOrNull((t as any).target_work_qty));
-    const progressCostPct = this.clampPct(targetWorkSum > 0 ? (actWorkSum / targetWorkSum) * 100 : 0);
-  
+
+    const actUnits    = this.sumBy(tasks, t => this.toNumberOrNull((t as any).act_work_qty));
+    const targetUnits = this.sumBy(tasks, t => this.toNumberOrNull((t as any).target_work_qty));
+    const progressUnitsPct = this.clampPct(targetUnits > 0 ? (actUnits / targetUnits) * 100 : 0);
     // ================== COST LOADING ==================
     // 1) Пытаемся взять из TASKRSRC (надежнее, если таблица заполнена).
     const trsAll = await this.dexie.getRows('TASKRSRC');
+
+    let actCost = this.sumBy(trsAll, a => {
+  const ar = this.toNumberOrNull((a as any).act_reg_cost) ?? 0;
+  const ao = this.toNumberOrNull((a as any).act_ot_cost)  ?? 0;
+  const ac = this.toNumberOrNull((a as any).act_cost)     ?? 0;
+  return (ar + ao) || ac;
+});
+
+let targetCost = this.sumBy(trsAll, a => {
+  const tc = this.toNumberOrNull((a as any).target_cost);
+  if (tc != null) return tc;
+  const tq  = this.toNumberOrNull((a as any).target_qty);
+  const cpq = this.toNumberOrNull((a as any).cost_per_qty);
+  return (tq != null && cpq != null) ? tq * cpq : 0;
+});
+
+// ==== Fallback на TASK.*, если из TASKRSRC ничего ====
+if (!targetCost || targetCost === 0) {
+  
+  const taskAct = this.sumBy(tasks, t =>
+    (this.toNumberOrNull((t as any).actual_total_cost)        ?? 0) ||
+    ((this.toNumberOrNull((t as any).actual_labor_cost)       ?? 0) +
+     (this.toNumberOrNull((t as any).actual_nonlabor_cost)    ?? 0))
+  );
+
+  const taskTarget = this.sumBy(tasks, t =>
+    (this.toNumberOrNull((t as any).at_completion_total_cost) ?? 0) ||
+    ((this.toNumberOrNull((t as any).at_completion_labor_cost)    ?? 0) +
+     (this.toNumberOrNull((t as any).at_completion_nonlabor_cost) ?? 0)) ||
+    // как дополнительный фолбэк можно взять planned:
+    ((this.toNumberOrNull((t as any).planned_labor_cost)      ?? 0) +
+     (this.toNumberOrNull((t as any).planned_nonlabor_cost)   ?? 0))
+  );
+
+  actCost    = taskAct;
+  targetCost = taskTarget;
+}
+
+const progressCostPct =
+  this.clampPct(targetCost > 0 ? (actCost / targetCost) * 100 : 0);
+
+
     const trs = (trsAll as any[]).filter(r =>
       Number(r?.proj_id) === pid || taskIdSet.has(Number(r?.task_id))
     );
@@ -447,46 +489,46 @@ export class AppStateService {
     }
 
     // --- RESOURCE LOADING (qty) ---
-const KQ = {
-  budget: ['target_qty', 'budg_qty', 'target_total_qty'],
-  actual: ['act_qty', 'actual_qty', 'act_total_qty', 'act_this_qty_to_date'],
-  remain: ['remain_qty', 'remaining_qty', 'remain_total_qty'],
-  period: ['act_this_per_qty', 'this_per_qty'],
-};
+    const KQ = {
+      budget: ['target_qty', 'budg_qty', 'target_total_qty'],
+      actual: ['act_qty', 'actual_qty', 'act_total_qty', 'act_this_qty_to_date'],
+      remain: ['remain_qty', 'remaining_qty', 'remain_total_qty'],
+      period: ['act_this_per_qty', 'this_per_qty'],
+    };
 
-let rsrcQtyBudgeted     = sumKeys(trs, KQ.budget);
-let rsrcQtyActualToDate = sumKeys(trs, KQ.actual);
-let rsrcQtyRemaining    = sumKeys(trs, KQ.remain);
-let rsrcQtyThisPeriod   = sumKeys(trs, KQ.period);
+    let rsrcQtyBudgeted     = sumKeys(trs, KQ.budget);
+    let rsrcQtyActualToDate = sumKeys(trs, KQ.actual);
+    let rsrcQtyRemaining    = sumKeys(trs, KQ.remain);
+    let rsrcQtyThisPeriod   = sumKeys(trs, KQ.period);
 
-// Фоллбэк на TASK.*_work_qty, если в TASKRSRC всё пусто / отсутствует
-if (trs.length === 0 || (rsrcQtyBudgeted + rsrcQtyActualToDate + rsrcQtyRemaining + rsrcQtyThisPeriod) === 0) {
-  const getN = (t: any, k: string) => this.toNumberOrNull(t?.[k]) ?? 0;
+    // Фоллбэк на TASK.*_work_qty, если в TASKRSRC всё пусто / отсутствует
+    if (trs.length === 0 || (rsrcQtyBudgeted + rsrcQtyActualToDate + rsrcQtyRemaining + rsrcQtyThisPeriod) === 0) {
+      const getN = (t: any, k: string) => this.toNumberOrNull(t?.[k]) ?? 0;
 
-  const sumTargetWork  = tasks.reduce((s, t) => s + getN(t, 'target_work_qty'), 0);
-  const sumActWork     = tasks.reduce((s, t) => s + getN(t, 'act_work_qty'), 0);
-  const sumRemainWork  = tasks.reduce((s, t) => {
-    const rem = this.toNumberOrNull(t?.remain_work_qty);
-    if (rem !== null) return s + rem;
-    const tgt = getN(t, 'target_work_qty');
-    const act = getN(t, 'act_work_qty');
-    return s + Math.max(0, tgt - act);
-  }, 0);
-  const sumThisPerWork = tasks.reduce((s, t) => s + getN(t, 'act_this_per_work_qty'), 0);
+      const sumTargetWork  = tasks.reduce((s, t) => s + getN(t, 'target_work_qty'), 0);
+      const sumActWork     = tasks.reduce((s, t) => s + getN(t, 'act_work_qty'), 0);
+      const sumRemainWork  = tasks.reduce((s, t) => {
+        const rem = this.toNumberOrNull(t?.remain_work_qty);
+        if (rem !== null) return s + rem;
+        const tgt = getN(t, 'target_work_qty');
+        const act = getN(t, 'act_work_qty');
+        return s + Math.max(0, tgt - act);
+      }, 0);
+      const sumThisPerWork = tasks.reduce((s, t) => s + getN(t, 'act_this_per_work_qty'), 0);
 
-  rsrcQtyBudgeted     = sumTargetWork;
-  rsrcQtyActualToDate = sumActWork;
-  rsrcQtyRemaining    = sumRemainWork;
-  rsrcQtyThisPeriod   = sumThisPerWork;
-}
+      rsrcQtyBudgeted     = sumTargetWork;
+      rsrcQtyActualToDate = sumActWork;
+      rsrcQtyRemaining    = sumRemainWork;
+      rsrcQtyThisPeriod   = sumThisPerWork;
+    }
 
-const cpi = await computeCPIFromDexie(this.dexie, pid);
+    const cpi = await computeCPIFromDexie(this.dexie, pid);
 
-const spiRes = await computeSpiForProject(this.dexie, pid, {
-  weight: 'work',            // можно переключить на 'equal'
-  asOf:  dataDate ?? lastRecalc
-});
-  
+    const spiRes = await computeSpiForProject(this.dexie, pid, {
+      weight: 'work',            // можно переключить на 'equal'
+      asOf:  dataDate ?? lastRecalc
+    });
+      
     // Если at-completion исчезающе мал — тоже EAC
     if (!costValue) costValue = costActualToDate + costRemaining || costBudgeted;
   

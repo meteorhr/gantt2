@@ -1,4 +1,4 @@
-// src/app/xer/xer-dexie.service.ts
+// src/app/P6/dexie.service.ts
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 import { P6Document } from './parser/parser.types';
@@ -93,17 +93,17 @@ export interface XerDbTableRecord {
   count: number;
 }
 
-class XerDb extends Dexie {
+class P6Db extends Dexie {
   // Декларативно Dexie требует хотя бы одну версию; начинаем с пустой схемы.
   constructor() {
-    super('XerDb');
+    super('P6Db');
     this.version(1).stores({}); // пустая схема; object stores будут добавляться динамически через апгрейды
   }
 }
 
 @Injectable({ providedIn: 'root' })
-export class XerDexieService {
-  private readonly db = new XerDb();
+export class P6DexieService {
+  private readonly db = new P6Db();
 
   /**
    * Гарантирует наличие object store для таблицы XER.

@@ -1,5 +1,5 @@
 // src/app/state/float-summary.util.ts
-import { XerDexieService } from '../p6/dexie.service';
+import { P6DexieService } from '../p6/dexie.service';
 
 export type FloatUnits = 'days' | 'hours';
 
@@ -32,7 +32,7 @@ function toNum(v: unknown): number | null {
 }
 
 /** Часы в дне проекта: берём PROJECT.clndr_id → CALENDAR.day_hr_cnt, иначе 8. */
-async function getHoursPerDay(dexie: XerDexieService, projId: number): Promise<number> {
+async function getHoursPerDay(dexie: P6DexieService, projId: number): Promise<number> {
   try {
     const projects = await dexie.getRows('PROJECT');
     const p = (projects as any[]).find(r => Number(r?.proj_id) === Number(projId));
@@ -59,7 +59,7 @@ function isOnLongestPath(task: any): boolean {
  * Пороговые значения задаются вручную в thresholds (в днях или часах).
  */
 export async function floatSummaryForProject(
-  dexie: XerDexieService,
+  dexie: P6DexieService,
   projId: number,
   thresholds: FloatThresholds
 ): Promise<FloatSummary> {

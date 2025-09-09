@@ -1,14 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { parseXER, summarize, buildSummarizeTable, parseP6XML } from './parser';
-import { XerDexieService } from './dexie.service';
+import { P6DexieService } from './dexie.service';
 import { firstValueFrom } from 'rxjs';
-import { P6Document, P6Scalar, P6Table } from './parser/parser.types';
 
 @Injectable({ providedIn: 'root' })
 export class XerLoaderService {
   private readonly http = inject(HttpClient);
-  private readonly dexie = inject(XerDexieService);
+  private readonly dexie = inject(P6DexieService);
 
   /**
    * Универсальная загрузка из assets:
@@ -17,25 +16,17 @@ export class XerLoaderService {
    * Парсит, сохраняет в IndexedDB (Dexie) и печатает сводки.
    */
   async loadAndLogFromAssets(): Promise<void> {
-    const xmlPath = 'assets/p6/project.xml';
     const xerPath = 'assets/xer/project.xer';
 
     let text: string | null = null;
     let isXml = false;
 
-    // 1) Пробуем XML
-    try {
-      text = await firstValueFrom(this.http.get(xmlPath, { responseType: 'text' }));
-      isXml = true;
-    } catch {
-      // 2) Фоллбэк на XER
+
       text = await firstValueFrom(this.http.get(xerPath, { responseType: 'text' }));
       isXml = false;
-    }
+    
 
-    if (!text || text.length === 0) {
-      throw new Error(`Файл не прочитан: ${xmlPath} или ${xerPath}`);
-    }
+
 
     const doc = isXml ? parseP6XML(text) : parseXER(text);
     await this.dexie.saveDocument(doc);

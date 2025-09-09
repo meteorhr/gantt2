@@ -1,4 +1,4 @@
-import { XerDexieService } from '../p6/dexie.service';
+import { P6DexieService } from '../p6/dexie.service';
 
 export type SpiWeight = 'work' | 'equal';
 
@@ -44,7 +44,7 @@ function plannedFraction(asOf: Date, start: Date | null, end: Date | null): numb
  * PV: взвешивание по ресурсам с их датами (если они есть).
  */
 export async function computeSpiForProject(
-  dexie: XerDexieService,
+  dexie: P6DexieService,
   projectId: number,
   opts?: { weight?: SpiWeight; asOf?: string | Date | null }
 ): Promise<SpiResult> {

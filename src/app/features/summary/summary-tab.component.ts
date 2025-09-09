@@ -27,7 +27,7 @@ import { AppStateService } from '../../state/app-state.service';
         <mat-card-subtitle class="sv-subtitle">{{ 'app.subtitle' | transloco }}</mat-card-subtitle>
         </mat-card-header>
 
-        <mat-card-content class="sv-content" style="height: calc(100vh - 200px); overflow-y: auto;">
+        <mat-card-content class="sv-content">
         <section class="sv-section sv-intro">
             <p class="sv-p">{{ 'intro.p1' | transloco }}</p>
             <p class="sv-p">{{ 'intro.p2' | transloco }}</p>
@@ -124,7 +124,7 @@ import { AppStateService } from '../../state/app-state.service';
                   <input
                     #reloadInput
                     type="file"
-                    accept=".xer"
+                    accept=".xer,.xml"
                     (change)="onFileSelected($event)"
                     style="display:none" />
                   <button
