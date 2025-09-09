@@ -1,10 +1,10 @@
 // Общие базовые типы для XER-моделей
 
-import { XERScalar } from '../parser';
+import { P6Scalar } from '../parser/parser.types'; 
 
 /** Базовая строка XER-таблицы: любые колонки со значениями XERScalar */
 export interface XERRowBase {
-  [key: string]: XERScalar; // string | number | Date | null
+  [key: string]: P6Scalar; // string | number | Date | null
 }
 
 /** Да/Нет, как в P6 */

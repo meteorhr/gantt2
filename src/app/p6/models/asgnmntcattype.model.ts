@@ -2,9 +2,9 @@
 // ASGNMNTCATTYPE — Assignment Codes
 // P6 EPPM Field → P6 EPPM Column Name
 
-import { XERScalar } from '../parser';
+import { P6Scalar } from '../parser/parser.types'; 
 
-export interface ASGNMNTCATTYPERow extends Record<string, XERScalar> {
+export interface ASGNMNTCATTYPERow extends Record<string, P6Scalar> {
   /** Unique Id */
   asgnmnt_catg_type_id: number;
 

@@ -1,7 +1,8 @@
 // src/app/xer/xer-dexie.service.ts
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
-import type { XERDocument } from './parser';
+import { P6Document } from './parser/parser.types';
+
 
 /**
  * Маппинг ключевых полей для основных P6-таблиц.
@@ -206,7 +207,7 @@ export class XerDexieService {
    * - Ключ выбирать по маппингу/автоопределению
    * - Сами строки — содержимое table.rows
    */
-  async saveDocument(doc: XERDocument): Promise<void> {
+  async saveDocument(doc: P6Document): Promise<void> {
     // Разные стора — независимые транзакции; пишем последовательно.
     for (const [name, table] of Object.entries(doc.tables)) {
       const rows = Array.isArray(table.rows) ? table.rows : [];
@@ -225,7 +226,7 @@ export class XerDexieService {
   
 
   /** Забрать все сохранённые таблицы и восстановить XERDocument для дальнейшей обработки (buildWbsTaskTree и т.д.) */
-  async getDocument(): Promise<XERDocument> {
+  async getDocument(): Promise<P6Document> {
     const tablesList = this.db.tables.map(t => t.name);
 
     const tables: Record<string, { name: string; fields: string[]; rows: any[] }> = {};

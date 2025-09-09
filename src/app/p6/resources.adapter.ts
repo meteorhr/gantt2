@@ -3,8 +3,9 @@ import { RSRCRow } from './models/rsrc.model';
 import { RSRCROLERow } from './models/rsrcrole.model';
 import { TASKRSRCRow } from './models/taskrsrc.model';
 import { ResourceAssignment } from '../gantt/models/gantt.model';
-import { getRows, XERDocument } from './parser';
+import { getRows } from './parser';
 import { XerDexieService } from './dexie.service';
+import { P6Document } from './parser/parser.types';
 
 function buildResourceIndexFromLists(
   rsrcRows: RSRCRow[],
@@ -75,7 +76,7 @@ function buildResourceIndexFromLists(
   return result;
 }
 
-export function buildResourceIndex(doc: XERDocument): Map<number, ResourceAssignment[]> {
+export function buildResourceIndex(doc: P6Document): Map<number, ResourceAssignment[]> {
   {
     const rsrcRows = getRows<RSRCRow>(doc, 'RSRC');
     const roleRows = getRows<RSRCROLERow>(doc, 'RSRCROLE');

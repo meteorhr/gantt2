@@ -8,8 +8,9 @@ import { TaskRow } from './models/task.model';
 import { TaskPredRow } from './models/taskpred.model';
 import { PROJWBSRow as WbsRow } from './models/index';
 import { buildResourceIndex } from './resources.adapter';
-import { XERDocument, XERScalar, getRows } from './parser';
+import { getRows } from './parser';
 import { XerDexieService } from './dexie.service';
+import { P6Document, P6Scalar } from './parser/parser.types';
 
 const T_I18N_PREFIX = 'task';
 const codeKey = (section: string, code?: string | null) =>
@@ -62,7 +63,7 @@ function cmpTuple(...parts: Array<number>): number {
   return 0;
 }
 
-export function buildWbsTaskTree(doc: XERDocument, opts?: WbsBuildOptions): Node[] {
+export function buildWbsTaskTree(doc: P6Document, opts?: WbsBuildOptions): Node[] {
   // (1) WBS
   const wbsRows = getRows<WbsRow>(doc, 'PROJWBS');
   const wbsMap = new Map<number, WbsNode>();
@@ -404,7 +405,7 @@ function latestChildFinish(children: Node[]): IsoDate | null {
   return acc;
 }
 
-function buildPredecessorMap(doc: XERDocument): Map<number, string[]> {
+function buildPredecessorMap(doc: P6Document): Map<number, string[]> {
   const map = new Map<number, string[]>();
   const rows = getRows<TaskPredRow>(doc, 'TASKPRED');
   for (const r of rows) {
@@ -422,7 +423,7 @@ function buildPredecessorMap(doc: XERDocument): Map<number, string[]> {
 }
 
 function pickDate(
-  row: Partial<Record<string, XERScalar>>,
+  row: Partial<Record<string, P6Scalar>>,
   key: string
 ): Date | string | null | undefined {
   const v = row[key];
@@ -562,15 +563,15 @@ export async function buildWbsTaskByProjectTreeFromIndexedDb(
     rows,
   });
 
-  const tables: XERDocument['tables'] = {
+  const tables: P6Document['tables'] = {
     PROJWBS:  makeTable('PROJWBS',  wbsRows),
     TASK:     makeTable('TASK',     tasks),
     TASKPRED: makeTable('TASKPRED', taskpred),
     TASKRSRC: makeTable('TASKRSRC', taskrsrc),
     RSRC:     makeTable('RSRC',     rsrcAll),
-    RSRCROLE: makeTable('RSRCROLE', rsrcRoleAll), // ← вот это обеспечит подтяжку ролей/ресурсов
+    RSRCROLE: makeTable('RSRCROLE', rsrcRoleAll), 
   };
 
-  const doc: XERDocument = { header: null, tables };
+  const doc: P6Document = { header: null, tables };
   return buildWbsTaskTree(doc, opts);
 }
