@@ -1,53 +1,58 @@
+// src/app/p6/loader.service.ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { parseXER, summarize, buildSummarizeTable, parseP6XML } from './parser';
-import { P6DexieService } from './dexie.service';
 import { firstValueFrom } from 'rxjs';
+import { parseXER, parseP6XML, summarize, buildSummarizeTable } from './parser';
+import { P6DexieService } from './dexie.service';
 
 @Injectable({ providedIn: 'root' })
-export class XerLoaderService {
+export class LoaderService {
   private readonly http = inject(HttpClient);
   private readonly dexie = inject(P6DexieService);
 
+  /** Простая сигнатура для определения формата по содержимому */
+  private sniffFormat(raw: string): 'xml' | 'xer' {
+    const s = raw.trimStart();
+    if (s.startsWith('<')) return 'xml';
+    // XER обычно таб- или пробел-разделён, первые строки — «%T ...», «%F ...», «%R ...»
+    if (s.startsWith('%T') || s.includes('\t') || s.includes('\r\n')) return 'xer';
+    return 'xer';
+  }
+
   /**
-   * Универсальная загрузка из assets:
-   * - Сначала пытается открыть XML (assets/p6/project.xml),
-   * - при ошибке — XER (assets/xer/project.xer).
-   * Парсит, сохраняет в IndexedDB (Dexie) и печатает сводки.
+   * Универсальная загрузка из assets.
+   * Можно оставить только XER или XML; ниже — пример с XER.
    */
   async loadAndLogFromAssets(): Promise<void> {
+    // пример: грузим XER из ассетов
     const xerPath = 'assets/xer/project.xer';
+    const text = await firstValueFrom(this.http.get(xerPath, { responseType: 'text' }));
 
-    let text: string | null = null;
-    let isXml = false;
+    const fmt = this.sniffFormat(text);
+    const doc = fmt === 'xml' ? parseP6XML(text) : parseXER(text);
 
+    // перезапишем SUMMARIZE с новым билдом (только непустые поля)
+    doc.tables['SUMMARIZE'] = buildSummarizeTable(doc);
 
-      text = await firstValueFrom(this.http.get(xerPath, { responseType: 'text' }));
-      isXml = false;
-    
-
-
-
-    const doc = isXml ? parseP6XML(text) : parseXER(text);
+    await this.dexie.clear();
     await this.dexie.saveDocument(doc);
 
-    // Сводки/логи
-    console.group(isXml ? '[P6-XML] Сводка' : '[XER] Сводка');
+    console.group(fmt === 'xml' ? '[P6-XML] Сводка' : '[XER] Сводка');
     console.log(summarize(doc));
     console.groupEnd();
 
-    console.group(isXml ? '[P6-XML] Header' : '[XER] Header');
+    console.group(fmt === 'xml' ? '[P6-XML] Header' : '[XER] Header');
     console.log(JSON.stringify(doc.header, null, 2));
     console.groupEnd();
 
-    console.group(isXml ? '[P6-XML] Таблицы (JSON)' : '[XER] Таблицы (JSON)');
-    // Явно указываем тип значений, чтобы избежать TS18046 ('unknown').
+    console.group(fmt === 'xml' ? '[P6-XML] Таблицы (JSON)' : '[XER] Таблицы (JSON)]');
     const tables = Object.values(doc.tables as Record<string, { name: string; fields: string[]; rows: unknown[] }>);
     for (const table of tables) {
+      if (!table.rows?.length) continue; // печатаем только непустые
       console.group(table.name);
       console.log(JSON.stringify(
         { name: table.name, fields: table.fields, rows: table.rows },
-        replacerDates,
+        (_k, v) => v instanceof Date ? (v as Date).toISOString() : v,
         2
       ));
       console.groupEnd();
@@ -64,7 +69,7 @@ export class XerLoaderService {
 
   /**
    * Загрузить файл пользователя (.xer ИЛИ .xml), распарсить и сохранить таблицы в IndexedDB (Dexie).
-   * Жёсткая проверка расширения и пустоты содержимого.
+   * Формат определяется по расширению и по сигнатуре текста (sniff), чтобы не зависеть от неверного расширения.
    */
   async loadFromFile(file: File): Promise<void> {
     await this.dexie.clear();
@@ -81,17 +86,19 @@ export class XerLoaderService {
       throw new Error('Файл пустой или не удалось прочитать содержимое.');
     }
 
-    const isXml = lower.endsWith('.xml');
-    const doc = isXml ? parseP6XML(text) : parseXER(text);
+    const sniffed = this.sniffFormat(text);
+    const isXmlByExt = lower.endsWith('.xml');
+    const fmt = isXmlByExt ? 'xml' : (sniffed === 'xml' ? 'xml' : 'xer');
+
+    const doc = fmt === 'xml' ? parseP6XML(text) : parseXER(text);
+    // перезапишем SUMMARIZE «умной» таблицей
+    doc.tables['SUMMARIZE'] = buildSummarizeTable(doc);
+
     await this.dexie.saveDocument(doc);
 
-    console.group(isXml ? '[P6-XML] Загрузка из файла' : '[XER] Загрузка из файла');
+    console.group(fmt === 'xml' ? '[P6-XML] Загрузка из файла' : '[XER] Загрузка из файла');
     console.log('File:', name);
     console.log(summarize(doc));
     console.groupEnd();
   }
-}
-
-function replacerDates(_key: string, value: unknown) {
-  return value instanceof Date ? value.toISOString() : (value as any);
 }

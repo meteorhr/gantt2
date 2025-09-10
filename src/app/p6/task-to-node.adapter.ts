@@ -11,6 +11,7 @@ import { buildResourceIndex } from './resources.adapter';
 import { getRows } from './parser';
 import { P6DexieService } from './dexie.service';
 import { P6Document, P6Scalar } from './parser/parser.types';
+import { isCriticalTaskRow } from '../state/p6-float.util';
 
 const T_I18N_PREFIX = 'task';
 const codeKey = (section: string, code?: string | null) =>
@@ -167,7 +168,8 @@ export function buildWbsTaskTree(doc: P6Document, opts?: WbsBuildOptions): Node[
       undefined;
 
     const complete = clamp0to100(numberOrNull(t['phys_complete_pct'])) ?? undefined; // индексация скобками, безопасно для XER
-    const critical = typeof t.total_float_hr_cnt === 'number' ? t.total_float_hr_cnt <= 0 : false;
+   // const critical = typeof t.total_float_hr_cnt === 'number' ? t.total_float_hr_cnt <= 0 : false;
+    const critical = isCriticalTaskRow(t, /* hoursPerDay? */ 8);
     const dependency = preds.get(t.task_id) ?? [];
     const resources = resIdx.get(t.task_id) ?? [];
 

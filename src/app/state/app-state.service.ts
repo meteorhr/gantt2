@@ -4,7 +4,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
 
-import { XerLoaderService } from '../p6/loader.service';
+import { LoaderService } from '../p6/loader.service';
 import { P6DexieService } from '../p6/dexie.service';
 import { buildWbsTaskByProjectTreeFromIndexedDb } from '../p6/task-to-node.adapter';
 import { Node, ColumnDef } from '../gantt/models/gantt.model';
@@ -76,7 +76,7 @@ export interface DashboardVm {
 export class AppStateService {
   // DI
   private readonly transloco = inject(TranslocoService);
-  private readonly xer = inject(XerLoaderService);
+  private readonly p6 = inject(LoaderService);
   private readonly dexie = inject(P6DexieService);
   private readonly analytics = inject(AnalyticsService);
 
@@ -151,7 +151,7 @@ export class AppStateService {
     this.error.set(null);
     try {
       await this.dexie.clear();
-      await this.xer.loadFromFile(file);
+      await this.p6.loadFromFile(file);
 
       const projects = await this.dexie.getRows('PROJECT');
       const list = (projects as any[]).filter(p => p?.proj_id != null);
@@ -182,7 +182,7 @@ export class AppStateService {
     this.error.set(null);
     try {
       await this.dexie.clear();
-      await this.xer.loadAndLogFromAssets();
+      await this.p6.loadAndLogFromAssets();
 
       const projects = await this.dexie.getRows('PROJECT');
       const list = (projects as any[]).filter(p => p?.proj_id != null);
@@ -330,7 +330,7 @@ export class AppStateService {
   
     const planStart  = this.toIsoDateOrNull(p?.plan_start_date ?? p?.fcst_start_date);
     const planEnd    = this.toIsoDateOrNull(p?.plan_end_date   ?? p?.scd_end_date);
-    const dataDate   = this.toIsoDateOrNull(p?.next_data_date);
+    const dataDate   = this.toIsoDateOrNull(p?.next_data_date ?? p?.data_date );
     const mustFinish = this.toIsoDateOrNull(p?.scd_end_date ?? p?.plan_end_date);
   
     const lastRecalc =
@@ -526,7 +526,8 @@ const progressCostPct =
 
     const spiRes = await computeSpiForProject(this.dexie, pid, {
       weight: 'work',            // можно переключить на 'equal'
-      asOf:  dataDate ?? lastRecalc
+      asOf:  dataDate ?? lastRecalc,
+      debug: true
     });
       
     // Если at-completion исчезающе мал — тоже EAC

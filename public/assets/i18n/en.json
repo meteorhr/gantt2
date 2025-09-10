@@ -190,7 +190,9 @@
     "db": "Database",
     "module": "Module",
     "baseCurrency": "Base currency",
+    "fileType": "File type",
     "table": {
+      "SUMMARIZE": "Summarize",
         "count": "{{rows}} rows, {{fields}} fields",
         "rowsFields": "{{rows}} rows, {{fields}} fields",
         "ACCOUNT": "Cost Accounts",
@@ -262,7 +264,8 @@
         "WBSBUDG": "Spending and Benefit Plans",
         "WBSMEMO": "EPS, Project and WBS Notebook",
         "WBSRSRC_QTY": "WBS Resource Quantities",
-        "WBSSTEP": "WBS Milestones"
+        "WBSSTEP": "WBS Milestones",
+        "projrisk": "Project risks"
     }
   },
   

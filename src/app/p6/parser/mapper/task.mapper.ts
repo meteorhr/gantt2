@@ -1,4 +1,6 @@
-// parser/mapper/task.mapper.ts
+// ==============================
+// FILE: parser/mapper/task.mapper.ts
+// ==============================
 import type { P6Scalar } from '../parser.types.ts';
 
 /* -------------------- helpers: xml → primitives -------------------- */
@@ -22,13 +24,13 @@ function numAny(el: Element, tags: string[]): number | null {
 function dt(el: Element, tag: string): Date | null {
   const s = txt(el, tag);
   if (!s) return null;
+  // Поддержим форматы "YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ss", "YYYY-MM-DD HH:mm:ss"
   const iso = s.includes('T') ? s : s.length === 10 ? `${s}T00:00:00` : s.replace(' ', 'T');
   const d = new Date(iso);
   return isNaN(d.getTime()) ? null : d;
 }
 
 /* -------------------- dictionaries: code → label -------------------- */
-// Исходные словари (ваши) сохранены как есть.
 const DICT_TASK_TYPE = {
   TT_Task: 'Task',
   TT_Rsrc: 'Resource Dependent',
@@ -76,61 +78,49 @@ const DICT_PRIORITY_TYPE = {
 } as const;
 
 /* -------------------- normalization & reverse maps -------------------- */
-type AnyDict = Record<string, string>;
-
+ type AnyDict = Record<string, string>;
 function norm(s: string): string {
   return s
     .trim()
     .toLowerCase()
     .replace(/&/g, ' and ')
     .replace(/[%]/g, ' percent ')
-    .replace(/[\/]+/g, ' / ')             // сохранить семантику units/time
+    .replace(/[\/]+/g, ' / ')
     .replace(/[\s_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
-
 function makeReverse(dict: AnyDict, aliases: Record<string, string> = {}): Map<string, string> {
   const m = new Map<string, string>();
-  // сначала основная карта: label → code
-  for (const [code, label] of Object.entries(dict)) {
-    m.set(norm(label), code);
-  }
-  // затем алиасы: aliasLabel → targetCode
-  for (const [aliasLabel, targetCode] of Object.entries(aliases)) {
-    m.set(norm(aliasLabel), targetCode);
-  }
+  for (const [code, label] of Object.entries(dict)) m.set(norm(label), code);
+  for (const [aliasLabel, targetCode] of Object.entries(aliases)) m.set(norm(aliasLabel), targetCode);
   return m;
 }
 
 /* -------------------- aliases (XML-строки → коды) -------------------- */
-// Покрываем формулировки из P6 XML (в т.ч. "Task Dependent", "Fixed Duration and Units", и т.д.)
 const REV_TASK_TYPE = makeReverse(DICT_TASK_TYPE, {
   'task dependent': 'TT_Task',
-  'task': 'TT_Task',
+  task: 'TT_Task',
   'resource dependent': 'TT_Rsrc',
   'level of effort': 'TT_LOE',
   'wbs summary': 'TT_WBS',
-  'start milestone': 'TT_StartMile', // предпочитаем явный стартовый код
+  'start milestone': 'TT_StartMile',
   'finish milestone': 'TT_FinMile',
-  'milestone': 'TT_Mile',
-  'hammock': 'TT_Hammock',
+  milestone: 'TT_Mile',
+  hammock: 'TT_Hammock',
   'template activity': 'TT_Tmpl',
 });
-
 const REV_STATUS_CODE = makeReverse(DICT_STATUS_CODE, {
   'not started': 'TK_NotStart',
   'in progress': 'TK_Active',
-  'active': 'TK_Active',
-  'suspended': 'TK_Suspend',
-  'completed': 'TK_Complete',
-  'complete': 'TK_Complete',
-  'inactive': 'TK_Inactive',
+  active: 'TK_Active',
+  suspended: 'TK_Suspend',
+  completed: 'TK_Complete',
+  complete: 'TK_Complete',
+  inactive: 'TK_Inactive',
 });
-
-// DurationType в P6 часто "Fixed Duration and Units" / "Fixed Units/Time"
 const REV_DURATION_TYPE = makeReverse(DICT_DURATION_TYPE, {
-  'fixed duration and units': 'DT_FixedDUR',      // маппим на один из кодов Fixed Duration
+  'fixed duration and units': 'DT_FixedDUR',
   'fixed duration & units': 'DT_FixedDUR',
   'fixed duration': 'DT_FixedDrtn',
   'fixed units/time': 'DT_FixedUnitsTime',
@@ -139,28 +129,25 @@ const REV_DURATION_TYPE = makeReverse(DICT_DURATION_TYPE, {
   'fixed units': 'DT_FixedUnits',
   'fixed work': 'DT_FixedWork',
   'fixed rate': 'DT_FixedRate',
-  'none': 'DT_None',
-  // встречается в данных: "Fixed Duration and Units/Time" — сведём к Units/Time
+  none: 'DT_None',
   'fixed duration and units/time': 'DT_FixedUnitsTime',
   'fixed duration & units/time': 'DT_FixedUnitsTime',
 });
-
 const REV_COMPLETE_PCT_TYPE = makeReverse(DICT_COMPLETE_PCT_TYPE, {
-  'duration': 'CP_Drtn',
-  'units': 'CP_Units',
-  'physical': 'CP_Phys',
+  duration: 'CP_Drtn',
+  units: 'CP_Units',
+  physical: 'CP_Phys',
   'duration percent complete': 'CP_Drtn',
   'units percent complete': 'CP_Units',
   'physical percent complete': 'CP_Phys',
 });
-
 const REV_PRIORITY_TYPE = makeReverse(DICT_PRIORITY_TYPE, {
   'very low': 'PT_VeryLow',
-  'low': 'PT_Low',
-  'normal': 'PT_Normal',
-  'high': 'PT_High',
+  low: 'PT_Low',
+  normal: 'PT_Normal',
+  high: 'PT_High',
   'very high': 'PT_VeryHigh',
-  'top': 'PT_Top',
+  top: 'PT_Top',
 });
 
 /* -------------------- safe converter: text → code -------------------- */
@@ -173,48 +160,77 @@ function toCode(reverse: Map<string, string>, value: string | null | undefined):
 /* -------------------- main mapper -------------------- */
 export function mapActivityToTaskRow(a: Element, projId: number): Record<string, P6Scalar> {
   const taskId = num(a, 'ObjectId'); // PK
-  const calId  = num(a, 'CalendarObjectId');
+  const calId = num(a, 'CalendarObjectId');
   const priRes = num(a, 'PrimaryResourceObjectId');
-  const wbsId  = num(a, 'WBSObjectId');
+  const wbsId = num(a, 'WBSObjectId');
 
   // исходные тексты из XML
-  const taskTypeTxt   = txt(a, 'Type') || null;
-  const statusTxt     = txt(a, 'Status') || null;
-  const durTypeTxt    = txt(a, 'DurationType') || null;
-  const pctTypeTxt    = txt(a, 'PercentCompleteType') || null;
-  const priorityTxt   = txt(a, 'LevelingPriority') || null;
+  const taskTypeTxt = txt(a, 'Type') || null;
+  const statusTxt = txt(a, 'Status') || null;
+  const durTypeTxt = txt(a, 'DurationType') || null;
+  const pctTypeTxt = txt(a, 'PercentCompleteType') || null;
+  const priorityTxt = txt(a, 'LevelingPriority') || null;
 
   // коды, рассчитанные по словарям
-  const taskTypeCode  = toCode(REV_TASK_TYPE, taskTypeTxt);
-  const statusCode    = toCode(REV_STATUS_CODE, statusTxt);
-  const durationCode  = toCode(REV_DURATION_TYPE, durTypeTxt);
-  const completeCode  = toCode(REV_COMPLETE_PCT_TYPE, pctTypeTxt);
-  const priorityCode  = toCode(REV_PRIORITY_TYPE, priorityTxt);
+  const taskTypeCode = toCode(REV_TASK_TYPE, taskTypeTxt);
+  const statusCode = toCode(REV_STATUS_CODE, statusTxt);
+  const durationCode = toCode(REV_DURATION_TYPE, durTypeTxt);
+  const completeCode = toCode(REV_COMPLETE_PCT_TYPE, pctTypeTxt);
+  const priorityCode = toCode(REV_PRIORITY_TYPE, priorityTxt);
 
-  const actual_labor_cost        = numAny(a, ['ActualLaborCost']);
-  const actual_nonlabor_cost     = numAny(a, ['ActualNonLaborCost']);
-  const actual_total_cost_any    = numAny(a, ['ActualTotalCost']);
+  // Стоимости (аккуратные фолбэки)
+  const actual_labor_cost = numAny(a, ['ActualLaborCost']);
+  const actual_nonlabor_cost = numAny(a, ['ActualNonLaborCost']);
+  const actual_total_cost_any = numAny(a, ['ActualTotalCost']);
 
-  const at_completion_labor_cost    = numAny(a, ['AtCompletionLaborCost']);
+  const at_completion_labor_cost = numAny(a, ['AtCompletionLaborCost']);
   const at_completion_nonlabor_cost = numAny(a, ['AtCompletionNonLaborCost']);
-  const at_completion_total_cost_any= numAny(a, ['AtCompletionTotalCost']);
+  const at_completion_total_cost_any = numAny(a, ['AtCompletionTotalCost']);
 
-  const planned_labor_cost       = numAny(a, ['PlannedLaborCost']);
-  const planned_nonlabor_cost    = numAny(a, ['PlannedNonLaborCost']);
-  const planned_total_cost_any   = numAny(a, ['PlannedTotalCost']);
+  const planned_labor_cost = numAny(a, ['PlannedLaborCost']);
+  const planned_nonlabor_cost = numAny(a, ['PlannedNonLaborCost']);
+  const planned_total_cost_any = numAny(a, ['PlannedTotalCost']);
 
-  const actual_total_cost = actual_total_cost_any != null
-    ? actual_total_cost_any
-    : (actual_labor_cost ?? 0) + (actual_nonlabor_cost ?? 0);
+  const actual_total_cost =
+    actual_total_cost_any != null ? actual_total_cost_any : (actual_labor_cost ?? 0) + (actual_nonlabor_cost ?? 0);
 
-  const at_completion_total_cost = at_completion_total_cost_any != null
-    ? at_completion_total_cost_any
-    : (at_completion_labor_cost ?? 0) + (at_completion_nonlabor_cost ?? 0);
+  const at_completion_total_cost =
+    at_completion_total_cost_any != null
+      ? at_completion_total_cost_any
+      : (at_completion_labor_cost ?? 0) + (at_completion_nonlabor_cost ?? 0);
 
-  const planned_total_cost = planned_total_cost_any != null
-    ? planned_total_cost_any
-    : (planned_labor_cost ?? 0) + (planned_nonlabor_cost ?? 0);
+  const planned_total_cost =
+    planned_total_cost_any != null ? planned_total_cost_any : (planned_labor_cost ?? 0) + (planned_nonlabor_cost ?? 0);
 
+  // === ВАЖНО: даты в P6 XML чаще БЕЗ суффикса "Date" ===
+  // ActualStart / ActualFinish
+  const actStart = dt(a, 'ActualStart') ?? dt(a, 'ActualStartDate');
+  const actFinish = dt(a, 'ActualFinish') ?? dt(a, 'ActualFinishDate');
+
+  // EarlyStart / EarlyFinish
+  const earlyStart = dt(a, 'EarlyStart') ?? dt(a, 'EarlyStartDate');
+  const earlyFinish = dt(a, 'EarlyFinish') ?? dt(a, 'EarlyFinishDate');
+
+  // LateStart / LateFinish
+  const lateStart = dt(a, 'LateStart') ?? dt(a, 'LateStartDate');
+  const lateFinish = dt(a, 'LateFinish') ?? dt(a, 'LateFinishDate');
+
+  // PlannedStart / PlannedFinish
+  const planStart = dt(a, 'PlannedStart') ?? dt(a, 'PlannedStartDate');
+  const planFinish = dt(a, 'PlannedFinish') ?? dt(a, 'PlannedFinishDate');
+
+  // RemainingEarly*, RemainingLate*
+  const remEarlyStart = dt(a, 'RemainingEarlyStart') ?? dt(a, 'RemainingEarlyStartDate');
+  const remEarlyFinish = dt(a, 'RemainingEarlyFinish') ?? dt(a, 'RemainingEarlyFinishDate');
+  const remLateStart = dt(a, 'RemainingLateStart') ?? dt(a, 'RemainingLateStartDate');
+  const remLateFinish = dt(a, 'RemainingLateFinish') ?? dt(a, 'RemainingLateFinishDate');
+
+  // === TF и Longest Path ===
+  const totalFloatRaw = numAny(a, ['TotalFloat']); // единицы могут не быть часами
+  const totalFloatUnits = txt(a, 'TotalFloatUnits') || '';
+  const floatPath = numAny(a, ['FloatPath']);
+  const floatPathOrder = numAny(a, ['FloatPathOrder']);
+  const onLongestPathRaw = txt(a, 'OnLongestPath'); // 'Y'/'N' или 'true'/'false'
 
   const row: Record<string, P6Scalar> = {
     // Идентификаторы/общие (ключи первыми)
@@ -232,7 +248,7 @@ export function mapActivityToTaskRow(a: Element, projId: number): Record<string,
     complete_pct_type: completeCode,
     priority_type: priorityCode,
 
-    // ОРИГИНАЛЬНЫЕ ТЕКСТЫ (оставляем для отображения/отладки)
+    // ОРИГИНАЛЬНЫЕ ТЕКСТЫ (для отображения/диагностики)
     task_type_txt: taskTypeTxt,
     status_txt: statusTxt,
     duration_type_txt: durTypeTxt,
@@ -244,32 +260,32 @@ export function mapActivityToTaskRow(a: Element, projId: number): Record<string,
     rsrc_id: priRes,
 
     // Даты план/ран/поздн/факт/ожидаемые
-    act_start_date: dt(a, 'ActualStartDate'),
-    act_end_date: dt(a, 'ActualFinishDate'),
-    early_start_date: dt(a, 'EarlyStartDate'),
-    early_end_date: dt(a, 'EarlyFinishDate'),
-    late_start_date: dt(a, 'LateStartDate'),
-    late_end_date: dt(a, 'LateFinishDate'),
-    plan_start_date: dt(a, 'PlannedStartDate'),
-    plan_end_date: dt(a, 'PlannedFinishDate'),
-    start_date: dt(a, 'StartDate'),
-    end_date: dt(a, 'FinishDate'),
-    rem_early_start_date: dt(a, 'RemainingEarlyStartDate'),
-    rem_early_end_date: dt(a, 'RemainingEarlyFinishDate'),
-    rem_late_start_date: dt(a, 'RemainingLateStartDate'),
-    rem_late_end_date: dt(a, 'RemainingLateFinishDate'),
+    act_start_date: actStart,
+    act_end_date: actFinish,
+    early_start_date: earlyStart,
+    early_end_date: earlyFinish,
+    late_start_date: lateStart,
+    late_end_date: lateFinish,
+    plan_start_date: planStart,
+    plan_end_date: planFinish,
+    start_date: dt(a, 'StartDate') ?? actStart ?? earlyStart ?? planStart,
+    end_date: dt(a, 'FinishDate') ?? actFinish ?? earlyFinish ?? planFinish,
+    rem_early_start_date: remEarlyStart,
+    rem_early_end_date: remEarlyFinish,
+    rem_late_start_date: remLateStart,
+    rem_late_end_date: remLateFinish,
 
     // Продолжительности/проценты
-    act_total_drtn_hr_cnt: num(a, 'ActualDuration'),
-    rem_drtn_hr_cnt: num(a, 'RemainingDuration'),
-    at_complete_drtn_hr_cnt: num(a, 'AtCompletionDuration'),
-    plan_drtn_hr_cnt: num(a, 'PlannedDuration'),
-    pct_complete: num(a, 'PercentComplete'),
-    scope_pct_complete: num(a, 'ScopePercentComplete'),
-    units_pct_complete: num(a, 'UnitsPercentComplete'),
-    duration_pct_complete: num(a, 'DurationPercentComplete'),
+    act_total_drtn_hr_cnt: numAny(a, ['ActualDuration', 'ActualDurationHours']),
+    rem_drtn_hr_cnt: numAny(a, ['RemainingDuration', 'RemainingDurationHours']),
+    at_complete_drtn_hr_cnt: numAny(a, ['AtCompletionDuration', 'AtCompletionDurationHours']),
+    plan_drtn_hr_cnt: numAny(a, ['PlannedDuration', 'PlannedDurationHours']),
+    pct_complete: numAny(a, ['PercentComplete']),
+    scope_pct_complete: numAny(a, ['ScopePercentComplete']),
+    units_pct_complete: numAny(a, ['UnitsPercentComplete']),
+    duration_pct_complete: numAny(a, ['DurationPercentComplete']),
 
-    // Стоимости/трудозатраты (если нужно)
+    // Стоимости/трудозатраты
     at_complete_labor_cost: num(a, 'AtCompletionLaborCost'),
     at_complete_nonlabor_cost: num(a, 'AtCompletionNonLaborCost'),
     at_complete_labor_units: num(a, 'AtCompletionLaborUnits'),
@@ -283,7 +299,6 @@ export function mapActivityToTaskRow(a: Element, projId: number): Record<string,
     rem_nonlabor_cost: num(a, 'RemainingNonLaborCost'),
     rem_nonlabor_units: num(a, 'RemainingNonLaborUnits'),
 
-
     actual_labor_cost,
     actual_nonlabor_cost,
     actual_total_cost,
@@ -296,22 +311,38 @@ export function mapActivityToTaskRow(a: Element, projId: number): Record<string,
     planned_nonlabor_cost,
     planned_total_cost,
 
+    // ФИЗ. % — перевод из 0..1 к 0..100 при необходимости
+    phys_complete_pct: (() => {
+      const v = num(a, 'PhysicalPercentComplete');
+      return v == null ? null : v <= 1 ? v * 100 : v;
+    })(),
+
+    // === Total Float и Longest Path ===
+    // Сохраняем "сырое" поле TF и его юниты, чтобы утилита смогла корректно сконвертировать
+    TotalFloat: totalFloatRaw,
+    TotalFloatUnits: totalFloatUnits || null,
+
+    // Для XER-совместимости оставим и «часовой» слот, если уверены, что XML отдаёт часы — обычно нет.
+    // Поэтому НЕ умножаем/не делим здесь, а конвертацию делаем в float-summary.util.ts.
+    // total_float_hr_cnt: null,
+
+    // Longest Path маркеры
+    float_path: floatPath,
+    float_path_order: floatPathOrder,
+    OnLongestPath: onLongestPathRaw || null,
 
     // Проценты/трудозатраты для агрегаторов
-    phys_complete_pct: (() => {
-      const v = num(a, 'PhysicalPercentComplete');        // в XML 0..1
-      return v == null ? null : (v <= 1 ? v * 100 : v);    // переводим в 0..100
-    })(),
     act_work_qty: num(a, 'ActualLaborUnits'),
     target_work_qty: (() => {
-      const atc  = num(a, 'AtCompletionLaborUnits');
-      if (atc != null) return atc;                         // приоритет: текущий бюджет на завершение
-      const act  = num(a, 'ActualLaborUnits')  ?? 0;
-      const rem  = num(a, 'RemainingLaborUnits') ?? 0;
+      const atc = num(a, 'AtCompletionLaborUnits');
+      if (atc != null) return atc;
+      const act = num(a, 'ActualLaborUnits') ?? 0;
+      const rem = num(a, 'RemainingLaborUnits') ?? 0;
       const plan = num(a, 'PlannedLaborUnits');
-      if (act + rem > 0) return act + rem;                 // фолбэк: факт + остаток
-      return plan ?? null;                                 // последний фолбэк: исходный план
-    })()
+      if ((act + rem) > 0) return act + rem;
+      return plan ?? null;
+    })(),
   };
+
   return row;
 }

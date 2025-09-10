@@ -1,5 +1,13 @@
 // parser/mapper/taskrsrc.mapper.ts
+import { TASKRSRCRow } from '../../models/taskrsrc.model';
 import type { P6Scalar } from '../parser.types';
+
+export interface XmlLookupMaps {
+  actObjId_to_taskId: Map<number, number>;   // Activity.ObjectId -> TASK.task_id
+  actObjId_to_projId: Map<number, number>;   // Activity.ObjectId -> PROJECT.proj_id
+  resObjId_to_rsrcId: Map<number, number>;   // Resource.ObjectId -> RSRC.rsrc_id
+  roleObjId_to_roleId: Map<number, number>;  // Role.ObjectId -> RSRCROLE.role_id (если ведёте)
+}
 
 /* ===== helpers ===== */
 function txt(el: Element, tag: string): string {
@@ -73,26 +81,88 @@ function clampPct(x: number): number {
   return x < 0 ? 0 : x > 100 ? 100 : x;
 }
 
+/* ===== internal guards ===== */
+function isMaps(arg: XmlLookupMaps | number): arg is XmlLookupMaps {
+  return typeof arg === 'object'
+    && arg !== null
+    && 'actObjId_to_taskId' in arg
+    && 'actObjId_to_projId' in arg;
+}
+
 /* ===== mapper ===== */
+/**
+ * Новый API (рекомендовано):
+ *   mapResAssignToTaskrsrcRow(ra, maps, fallbackProjId?)
+ *   - task_id / proj_id / rsrc_id / role_id резолвятся через XmlLookupMaps.
+ *
+ * Обратная совместимость (deprecated):
+ *   mapResAssignToTaskrsrcRow(ra, projId)
+ *   - proj_id берётся как есть, task_id = ActivityObjectId (что неверно для PK, но сохраняем поведение).
+ */
+export function mapResAssignToTaskrsrcRow(
+  ra: Element,
+  maps: XmlLookupMaps,
+  fallbackProjId?: number
+): Record<string, P6Scalar> | null;
 export function mapResAssignToTaskrsrcRow(
   ra: Element,
   projId: number
+): Record<string, P6Scalar> | null;
+// реализация
+export function mapResAssignToTaskrsrcRow(
+  ra: Element,
+  mapsOrProjId: XmlLookupMaps | number,
+  fallbackProjId?: number
 ): Record<string, P6Scalar> | null {
-  const taskId = numAny(ra, ['ActivityObjectId']);
-  const rsrcId = numAny(ra, ['ResourceObjectId']);
-  const roleId = numAny(ra, ['RoleObjectId']);
+  // источники ID из XML
+  const actObjId = numAny(ra, ['ActivityObjectId', 'TaskObjectId', 'ActObjectId']);
+  const rsrcObjId = numAny(ra, ['ResourceObjectId']);
+  const roleObjId = numAny(ra, ['RoleObjectId']);
 
-  // обязательные по модели
-  if (!Number.isFinite(projId) || !Number.isFinite(taskId as number)) {
-    console.warn('[P6-XML] TASKRSRC пропущен (нет proj_id/task_id)', { projId, taskId });
+  if (!Number.isFinite(actObjId as number)) {
+    console.warn('[P6-XML] TASKRSRC пропущен (нет ActivityObjectId)');
     return null;
+  }
+
+  // Резолвим ключи через maps (новый путь) либо оставляем поведение (deprecated)
+  let task_id: number | null = null;
+  let proj_id: number | null = null;
+  let rsrc_id: number | null = null;
+  let role_id: number | null = null;
+
+  if (isMaps(mapsOrProjId)) {
+    const maps = mapsOrProjId;
+    task_id = maps.actObjId_to_taskId.get(actObjId!) ?? null;
+    proj_id = maps.actObjId_to_projId.get(actObjId!) ?? (Number.isFinite(fallbackProjId as number) ? (fallbackProjId as number) : null);
+    rsrc_id = Number.isFinite(rsrcObjId as number)
+      ? (maps.resObjId_to_rsrcId.get(rsrcObjId as number) ?? (rsrcObjId as number))
+      : null;
+    role_id = Number.isFinite(roleObjId as number)
+      ? (maps.roleObjId_to_roleId.get(roleObjId as number) ?? (roleObjId as number))
+      : null;
+
+    if (!Number.isFinite(task_id as number) || !Number.isFinite(proj_id as number)) {
+      console.warn('[P6-XML] TASKRSRC пропущен (не удалось зарезолвить task_id/proj_id через maps)', { actObjId, task_id, proj_id });
+      return null;
+    }
+  } else {
+    // deprecated режим: proj_id приходит числом, task_id = ActivityObjectId (как было)
+    proj_id = Number(mapsOrProjId);
+    task_id = actObjId as number;
+    rsrc_id = Number.isFinite(rsrcObjId as number) ? (rsrcObjId as number) : null;
+    role_id = Number.isFinite(roleObjId as number) ? (roleObjId as number) : null;
+
+    if (!Number.isFinite(proj_id)) {
+      console.warn('[P6-XML] TASKRSRC пропущен (нет proj_id в deprecated режиме)');
+      return null;
+    }
   }
 
   // PK: берём <ObjectId>, иначе синтетический числовой
   const objId = numAny(ra, ['ObjectId']);
   const taskrsrc_id: number = Number.isFinite(objId as number)
     ? (objId as number)
-    : hash32ToNum(`${projId}|${taskId}|${rsrcId ?? ''}|${roleId ?? ''}`);
+    : hash32ToNum(`${proj_id}|${task_id}|${rsrc_id ?? ''}|${role_id ?? ''}`);
 
   // тип/флаги/источники
   const rsrcTypeTxt = txtAny(ra, ['ResourceType', 'Type']);
@@ -100,31 +170,54 @@ export function mapResAssignToTaskrsrcRow(
   const cpqSrcType  = txtAny(ra, ['CostPerQtySourceType', 'CostPerQtySrcType']);
   const linkFlag    = txtAny(ra, ['CalculateCostsFromUnits', 'CostQtyLinkFlag']);
 
-  // нагрузки/стоимости
-  const remain_qty        = numAny(ra, ['RemainingUnits']);
-  const target_qty        = numAny(ra, ['BudgetedUnits', 'TargetUnits']);
-  const remain_qty_per_hr = numAny(ra, ['RemainingUnitsPerTime']);
+  // нагрузки (единицы)
+  const remain_qty        = numAny(ra, ['RemainingUnits', 'RemainUnits', 'RemainingQty']);
+  // RA-level AtCompletionUnits (если есть) — приоритетнее Budgeted/Target
+  const at_comp_qty       = numAny(ra, ['AtCompletionUnits', 'AtCompleteUnits', 'AtCompUnits']);
+  const target_qty_raw    = numAny(ra, ['BudgetedUnits', 'TargetUnits']);
   const target_qty_per_hr = numAny(ra, ['BudgetedUnitsPerTime', 'TargetUnitsPerTime']);
+  const remain_qty_per_hr = numAny(ra, ['RemainingUnitsPerTime']);
 
   const act_reg_qty = numAny(ra, ['ActualRegularUnits', 'ActRegularUnits']);
   const act_ot_qty  = numAny(ra, ['ActualOvertimeUnits', 'ActOvertimeUnits']);
+  const act_units_any = numAny(ra, ['ActualUnits', 'ActUnits', 'ActualQty']); // фолбэк, если нет разбивки reg/ot
+  const cur_qty = numAny(ra, ['ThisPeriodUnits', 'CurUnits', 'ThisPeriodQty']); // «период» если дан в XML
 
-  const cost_per_qty = numAny(ra, ['Rate', 'CostPerQty']); // цена за ед./час
-  let target_cost  = numAny(ra, ['BudgetedCost', 'TargetCost']);
-  // если target_cost отсутствует, считаем из единиц и ставки
-  if (target_cost == null && target_qty != null && cost_per_qty != null) {
-    target_cost = target_qty * cost_per_qty;
+  // Стоимости
+  const cost_per_qty   = numAny(ra, ['Rate', 'CostPerQty']); // цена за ед./час
+  let target_cost      = numAny(ra, ['BudgetedCost', 'TargetCost']);
+  const at_comp_cost   = numAny(ra, ['AtCompletionCost', 'AtCompleteCost', 'AtCompCost']);
+  const remain_cost    = numAny(ra, ['RemainingCost']);
+  const act_reg_cost   = numAny(ra, ['ActualRegularCost', 'ActRegularCost']);
+  const act_ot_cost    = numAny(ra, ['ActualOvertimeCost', 'ActOvertimeCost']);
+  const act_cost_any   = numAny(ra, ['ActualCost', 'ActCost']);
+
+  // агрегаты по единицам
+  const act_qty = (act_reg_qty != null || act_ot_qty != null)
+    ? sumNullable(act_reg_qty, act_ot_qty)
+    : (act_units_any ?? null);
+
+  // целевой объём (budget/at-completion) с умными фолбэками
+  let target_qty = at_comp_qty ?? target_qty_raw ?? null;
+  if (target_qty == null && (act_qty != null || remain_qty != null)) {
+    // чаще всего XML не содержит BudgetedUnits, но есть Actual + Remaining
+    target_qty = (act_qty ?? 0) + (remain_qty ?? 0);
   }
-  const remain_cost  = numAny(ra, ['RemainingCost']);
-  const act_reg_cost = numAny(ra, ['ActualRegularCost', 'ActRegularCost']);
-  const act_ot_cost  = numAny(ra, ['ActualOvertimeCost', 'ActOvertimeCost']);
-  const act_cost_any = numAny(ra, ['ActualCost', 'ActCost']);
 
-  // агрегаты
-  const act_qty  = sumNullable(act_reg_qty, act_ot_qty);                // всего факт-единиц
+  // целевая стоимость
+  if (target_cost == null) {
+    if (at_comp_cost != null) {
+      target_cost = at_comp_cost;
+    } else if (target_qty != null && cost_per_qty != null) {
+      target_cost = target_qty * cost_per_qty;
+    }
+  }
+
+  // факт-стоимость
   const act_cost = (act_reg_cost != null || act_ot_cost != null)
     ? sumNullable(act_reg_cost, act_ot_cost)
-    : (act_cost_any ?? null);             // всего факт-стоимость
+    : (act_cost_any ?? null);
+
   const progress_cost_pct = (target_cost != null && target_cost > 0 && act_cost != null)
     ? clampPct((act_cost / target_cost) * 100)
     : null;
@@ -132,7 +225,7 @@ export function mapResAssignToTaskrsrcRow(
   // даты
   const act_start_date      = dtAny(ra, ['ActualStartDate']);
   const act_end_date        = dtAny(ra, ['ActualFinishDate']);
-  const restart_date        = dtAny(ra, ['RestartDate']);
+  const restart_date        = dtAny(ra, ['RestartDate', 'ResumeDate']);
   const reend_date          = dtAny(ra, ['ReEndDate']);
   const target_start_date   = dtAny(ra, ['PlannedStartDate', 'TargetStartDate']);
   const target_end_date     = dtAny(ra, ['PlannedFinishDate', 'TargetFinishDate']);
@@ -140,27 +233,27 @@ export function mapResAssignToTaskrsrcRow(
   const rem_late_end_date   = dtAny(ra, ['RemainingLateFinishDate']);
 
   // прочее
-  const pobs_id    = numAny(ra, ['OBSObjectId', 'ResponsibleManagerObjectId']);
-  const skill      = numAny(ra, ['Proficiency', 'ProficiencyLevel', 'SkillLevel']);
-  const relag      = numAny(ra, ['RelagDrtnHrCnt', 'RelagDuration', 'Relag']);
-  const guid       = txtAny(ra, ['GUID', 'Guid']);
-  const curv_id    = numAny(ra, ['CurveObjectId', 'SpreadCurveObjectId']);
-  const unit_id    = numAny(ra, ['UnitOfMeasureObjectId', 'UOMObjectId', 'UnitObjectId']);
-  const curr_id    = numAny(ra, ['CurrencyObjectId', 'CurrObjectId']);
-  const create_user= txtAny(ra, ['CreateUser', 'CreateBy', 'AddByName']);
-  const create_date= dtAny(ra, ['CreateDate', 'AddDate', 'DateCreated']);
-  const hasHours   = txtAny(ra, ['HasRsrcHours', 'HasRsrchours']);
-  const sum_id     = numAny(ra, ['TaskRsrcSumObjectId', 'TaskRsrcSummaryObjectId']);
+  const pobs_id     = numAny(ra, ['OBSObjectId', 'ResponsibleManagerObjectId']);
+  const skill       = numAny(ra, ['Proficiency', 'ProficiencyLevel', 'SkillLevel']);
+  const relag       = numAny(ra, ['RelagDrtnHrCnt', 'RelagDuration', 'Relag']);
+  const guid        = txtAny(ra, ['GUID', 'Guid']);
+  const curv_id     = numAny(ra, ['CurveObjectId', 'SpreadCurveObjectId']);
+  const unit_id     = numAny(ra, ['UnitOfMeasureObjectId', 'UOMObjectId', 'UnitObjectId']);
+  const curr_id     = numAny(ra, ['CurrencyObjectId', 'CurrObjectId']);
+  const create_user = txtAny(ra, ['CreateUser', 'CreateBy', 'AddByName']);
+  const create_date = dtAny(ra, ['CreateDate', 'AddDate', 'DateCreated']);
+  const hasHours    = txtAny(ra, ['HasRsrcHours', 'HasRsrchours']);
+  const sum_id      = numAny(ra, ['TaskRsrcSumObjectId', 'TaskRsrcSummaryObjectId']);
 
   return {
     // обязательные
     taskrsrc_id,
-    task_id: taskId as number,
-    proj_id: projId,
+    task_id: task_id as number,
+    proj_id: proj_id as number,
 
     // связки
-    rsrc_id: Number.isFinite(rsrcId as number) ? (rsrcId as number) : null,
-    role_id: Number.isFinite(roleId as number) ? (roleId as number) : null,
+    rsrc_id,
+    role_id,
 
     // флаги/типы
     cost_qty_link_flag: yn(linkFlag),
@@ -168,13 +261,15 @@ export function mapResAssignToTaskrsrcRow(
     rate_type: rateType ? rateType.toString().toUpperCase() : null,
     cost_per_qty_source_type: cpqSrcType ?? null,
 
-    // нагрузки
+    // нагрузки (единицы)
     remain_qty,
     target_qty,
     remain_qty_per_hr,
     target_qty_per_hr,
     act_reg_qty,
     act_ot_qty,
+    act_qty,
+    cur_qty, // ← This Period Units, если есть в XML
 
     // стоимость
     cost_per_qty,
@@ -183,8 +278,8 @@ export function mapResAssignToTaskrsrcRow(
     remain_cost,
     act_reg_cost,
     act_ot_cost,
-    // агрегаты/удобные поля
-    act_qty,
+
+    // прогресс по стоимости
     progress_cost_pct,
 
     // даты
@@ -210,4 +305,54 @@ export function mapResAssignToTaskrsrcRow(
     has_rsrchours: yn(hasHours),
     taskrsrc_sum_id: sum_id,
   };
+}
+
+/** Синтетическое назначение из Activity.*Units для PrimaryResource */
+export function synthesizeTaskrsrcFromActivity(
+  actEl: Element,
+  maps: XmlLookupMaps
+): TASKRSRCRow | null {
+  const get = (tag: string) => actEl.getElementsByTagName(tag)[0]?.textContent?.trim() ?? '';
+  const toNum = (v: any) => (v === '' || v == null) ? null : (Number(v));
+
+  const actObjId  = toNum(get('ObjectId'));
+  if (!actObjId) return null;
+
+  const task_id   = maps.actObjId_to_taskId.get(actObjId) ?? null;
+  const proj_id   = maps.actObjId_to_projId.get(actObjId) ?? null;
+  const primResId = toNum(get('PrimaryResourceObjectId'));
+  const rsrc_id   = primResId ? (maps.resObjId_to_rsrcId.get(primResId) ?? primResId) : null;
+
+  // Берём AC/REM/PLAN с уровня активности
+  const actualUnits    = toNum(get('ActualLaborUnits')) ?? 0;
+  const remainingUnits = toNum(get('RemainingLaborUnits')) ?? 0;
+
+  // AtCompletion лучше вычислять как Actual + Remaining
+  let atCompletionUnits = (actualUnits ?? 0) + (remainingUnits ?? 0);
+  if (!atCompletionUnits || atCompletionUnits === 0) {
+    // Фолбэк на план, если и AC и REM нули
+    atCompletionUnits = toNum(get('AtCompletionLaborUnits'))
+                     ?? toNum(get('PlannedLaborUnits'))
+                     ?? 0;
+  }
+
+  // Генерируем стабильный отрицательный id, чтобы не пересечься с реальными ObjectId
+  const syntheticId = -(actObjId * 1_000_000 + (primResId ?? 0));
+
+  const row: any = {
+    taskrsrc_id: syntheticId,
+    task_id,
+    proj_id,
+    rsrc_id,
+    role_id: null,
+
+    target_qty: atCompletionUnits,
+    remain_qty: remainingUnits,
+    act_reg_qty: actualUnits,
+    act_ot_qty: 0,
+    act_qty: actualUnits,
+    cur_qty: null, // без PeriodPerformance вычислить нельзя
+  };
+
+  return row as TASKRSRCRow;
 }

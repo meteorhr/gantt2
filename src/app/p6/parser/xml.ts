@@ -1,13 +1,18 @@
-// parser/xml.ts — парсер Primavera P6 XML в XERDocument-подобную структуру
-import { mapWbsToProjwbsRow } from './mapper/projwbs.mapper.js';
-import { mapActivityToTaskRow } from './mapper/task.mapper.js';
-import { mapPredLinkToTaskpredRow } from './mapper/taskpred.mapper.js';
-import { mapResAssignToTaskrsrcRow } from './mapper/taskrsrc.mapper.js';
-import { mapResourceToRsrcRow } from './mapper/rsrc.mapper.js';
-import { mapResourceRoleToRsrcroleRow } from './mapper/rsrcrole.mapper.js';
-import type { P6Scalar, P6Table, P6Document } from './parser.types.ts';
-import { mapCurrencyToCurrtypeRow } from './mapper/currtype.mapper.js';
-import { mapCalendarToCalendarRow } from './mapper/calendar.mapper.js';
+
+
+// ==============================
+// FILE: parser/xml.ts
+// ==============================
+import { mapWbsToProjwbsRow } from './mapper/projwbs.mapper';
+import { mapActivityToTaskRow } from './mapper/task.mapper';
+import { mapPredLinkToTaskpredRow } from './mapper/taskpred.mapper';
+import { mapResAssignToTaskrsrcRow, synthesizeTaskrsrcFromActivity } from './mapper/taskrsrc.mapper';
+import type { XmlLookupMaps } from './mapper/taskrsrc.mapper';
+import { mapResourceToRsrcRow } from './mapper/rsrc.mapper';
+import { mapResourceRoleToRsrcroleRow } from './mapper/rsrcrole.mapper';
+import type { P6Scalar, P6Table, P6Document } from './parser.types';
+import { mapCurrencyToCurrtypeRow } from './mapper/currtype.mapper';
+import { mapCalendarToCalendarRow } from './mapper/calendar.mapper';
 
 /* ---------------------- XML helpers ---------------------- */
 function xmlText(el: Element | null, tag: string): string {
@@ -19,7 +24,12 @@ function xmlAttr(el: Element | null, name: string): string {
   if (!el) return '';
   return el.getAttribute(name)?.trim() ?? '';
 }
-
+function xmlNum(el: Element | null, tag: string): number | null {
+  const s = xmlText(el, tag);
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
 function xmlDate(el: Element | null, tag: string): Date | null {
   const s = xmlText(el, tag);
   if (!s) return null;
@@ -34,19 +44,21 @@ function pushRow(tbl: P6Table, row: Record<string, P6Scalar>): void {
   tbl.rows.push(row);
 }
 
-/* ===== mapper: Currency → CURRTYPE row ===== */
-
-/* -- локальная SUMMARIZE -- */
+/* ===== локальная SUMMARIZE ===== */
 function summarizeArrayLocal(doc: P6Document) {
   const arr: { name: string; i18n: string; value: string; i18nValue?: string; params?: Record<string, unknown> }[] = [];
   if (doc.header) {
-    arr.push({ name: 'version',     i18n: 'summarize.version',     value: doc.header.productVersion ?? '' });
-    arr.push({ name: 'exportDate',  i18n: 'summarize.exportDate',  value: doc.header.exportDate ?? '' });
-    arr.push({ name: 'context',     i18n: 'summarize.context',     value: doc.header.projectOrContext ?? '' });
-    arr.push({ name: 'user',        i18n: 'summarize.user',        value: `${doc.header.userLogin ?? ''} (${doc.header.userFullNameOrRole ?? ''})` });
-    arr.push({ name: 'db',          i18n: 'summarize.db',          value: doc.header.database ?? '' });
-    arr.push({ name: 'module',      i18n: 'summarize.module',      value: doc.header.moduleName ?? '' });
-    arr.push({ name: 'baseCurrency',i18n: 'summarize.baseCurrency',value: doc.header.baseCurrency ?? '' });
+    arr.push({ name: 'version', i18n: 'summarize.version', value: doc.header.productVersion ?? '' });
+    arr.push({ name: 'exportDate', i18n: 'summarize.exportDate', value: doc.header.exportDate ?? '' });
+    arr.push({ name: 'context', i18n: 'summarize.context', value: doc.header.projectOrContext ?? '' });
+    arr.push({
+      name: 'user',
+      i18n: 'summarize.user',
+      value: `${doc.header.userLogin ?? ''} (${doc.header.userFullNameOrRole ?? ''})`,
+    });
+    arr.push({ name: 'db', i18n: 'summarize.db', value: doc.header.database ?? '' });
+    arr.push({ name: 'module', i18n: 'summarize.module', value: doc.header.moduleName ?? '' });
+    arr.push({ name: 'baseCurrency', i18n: 'summarize.baseCurrency', value: doc.header.baseCurrency ?? '' });
   }
   for (const t of Object.values(doc.tables)) {
     arr.push({
@@ -62,7 +74,7 @@ function summarizeArrayLocal(doc: P6Document) {
 function buildSummarizeTableLocal(doc: P6Document): P6Table {
   const items = summarizeArrayLocal(doc);
   const fields = ['name', 'i18n', 'value', 'i18nValue', 'params'];
-  const rows = items.map(it => ({
+  const rows = items.map((it) => ({
     name: it.name,
     i18n: it.i18n,
     value: it.value ?? '',
@@ -71,8 +83,6 @@ function buildSummarizeTableLocal(doc: P6Document): P6Table {
   })) as Record<string, P6Scalar>[];
   return { name: 'SUMMARIZE', fields, rows };
 }
-
-
 
 /* ---------------------- Основной парсер ---------------------- */
 export function parseP6XML(input: string): P6Document {
@@ -102,29 +112,31 @@ export function parseP6XML(input: string): P6Document {
     baseCurrency,
   };
 
-  // таблицы
-  const T_PROJECT:   P6Table = { name: 'PROJECT',   fields: [], rows: [] };
-  const T_PROJWBS:   P6Table = { name: 'PROJWBS',       fields: [], rows: [] };
-  const T_TASK:      P6Table = { name: 'TASK',      fields: [], rows: [] };
-  const T_TASKPRED:  P6Table = { name: 'TASKPRED',  fields: [], rows: [] };
-  const T_TASKRSRC:  P6Table = { name: 'TASKRSRC',  fields: [], rows: [] };
-  const T_RSRC:      P6Table = { name: 'RSRC',      fields: [], rows: [] };
-  const T_RSRCROLE:  P6Table = { name: 'RSRCROLE',  fields: [], rows: [] };
-
+  // Инициализация таблиц
+  const T_PROJECT: P6Table = { name: 'PROJECT', fields: [], rows: [] };
+  const T_PROJWBS: P6Table = { name: 'PROJWBS', fields: [], rows: [] };
+  const T_TASK: P6Table = { name: 'TASK', fields: [], rows: [] };
+  const T_TASKPRED: P6Table = { name: 'TASKPRED', fields: [], rows: [] };
+  const T_TASKRSRC: P6Table = { name: 'TASKRSRC', fields: [], rows: [] };
+  const T_RSRC: P6Table = { name: 'RSRC', fields: [], rows: [] };
+  const T_RSRCROLE: P6Table = { name: 'RSRCROLE', fields: [], rows: [] };
   const T_CURRTYPE: P6Table = { name: 'CURRTYPE', fields: [], rows: [] };
   const T_CALENDAR: P6Table = { name: 'CALENDAR', fields: [], rows: [] };
 
-  const seenRsrc    = new Set<number>();
+  // Уникальные вставки
+  const seenRsrc = new Set<number>();
   const seenRsrcRole = new Set<number>();
   const seenCurr = new Set<number>();
+  const seenClndr = new Set<number>();
+
   const pushRsrcUnique = (row: Record<string, P6Scalar>) => {
-    const id = row['rsrc_id'] as number;
+    const id = (row['rsrc_id'] as number) ?? (row['id'] as number);
     if (!Number.isFinite(id) || seenRsrc.has(id)) return;
     seenRsrc.add(id);
     pushRow(T_RSRC, row);
   };
   const pushRsrcRoleUnique = (row: Record<string, P6Scalar>) => {
-    const id = row['rsrc_role_id'] as number;
+    const id = (row['rsrc_role_id'] as number) ?? (row['role_id'] as number) ?? (row['id'] as number);
     if (!Number.isFinite(id) || seenRsrcRole.has(id)) return;
     seenRsrcRole.add(id);
     pushRow(T_RSRCROLE, row);
@@ -135,7 +147,6 @@ export function parseP6XML(input: string): P6Document {
     seenCurr.add(id);
     pushRow(T_CURRTYPE, row);
   };
-  const seenClndr = new Set<number>();
   const pushClndrUnique = (row: Record<string, P6Scalar>) => {
     const id = row['clndr_id'] as number;
     if (!Number.isFinite(id) || seenClndr.has(id)) return;
@@ -143,15 +154,65 @@ export function parseP6XML(input: string): P6Document {
     pushRow(T_CALENDAR, row);
   };
 
+  // ===== Глобальные мапы для резолвинга ID в мапперах назначений =====
+  const maps: XmlLookupMaps = {
+    actObjId_to_taskId: new Map<number, number>(),
+    actObjId_to_projId: new Map<number, number>(),
+    resObjId_to_rsrcId: new Map<number, number>(),
+    roleObjId_to_roleId: new Map<number, number>(),
+  };
 
+  // ===== Сначала соберём все ресурсы (и вложенные роли), чтобы иметь корректные resObjId→rsrc_id заранее =====
+  const allResourceNodes = Array.from(xml.getElementsByTagName('Resource'));
+  for (const r of allResourceNodes) {
+    const rr = mapResourceToRsrcRow(r, /* projId */ NaN);
+    if (rr) {
+      pushRsrcUnique(rr);
+      // заполним ResObjId → rsrc_id
+      const objId = xmlNum(r, 'ObjectId') ?? Number(r.getAttribute('ObjectId'));
+      const rsrc_id = (rr['rsrc_id'] as number) ?? objId;
+      if (Number.isFinite(objId as number) && Number.isFinite(rsrc_id)) {
+        maps.resObjId_to_rsrcId.set(objId as number, rsrc_id as number);
+      }
+    }
+    // вложенные роли ресурса
+    const rRoles = Array.from(r.getElementsByTagName('ResourceRole'));
+    for (const rRole of rRoles) {
+      const rrr = mapResourceRoleToRsrcroleRow(rRole, rr?.['rsrc_id'] as number);
+      if (rrr) {
+        pushRsrcRoleUnique(rrr);
+        const roleObjId = xmlNum(rRole, 'ObjectId') ?? Number(rRole.getAttribute('ObjectId'));
+        const roleId = (rrr['rsrc_role_id'] as number) ?? (rrr['role_id'] as number);
+        if (Number.isFinite(roleObjId as number) && Number.isFinite(roleId)) {
+          maps.roleObjId_to_roleId.set(roleObjId as number, roleId as number);
+        }
+      }
+    }
+  }
+
+  // Отдельный глобальный список ролей (если присутствует)
+  const globalRsrcRoles = Array.from(xml.getElementsByTagName('ResourceRole'));
+  for (const rr of globalRsrcRoles) {
+    // пропустим те, что уже были вложены — Set по id отсеет
+    const row = mapResourceRoleToRsrcroleRow(rr, null);
+    if (row) {
+      pushRsrcRoleUnique(row);
+      const roleObjId = xmlNum(rr, 'ObjectId') ?? Number(rr.getAttribute('ObjectId'));
+      const roleId = (row['rsrc_role_id'] as number) ?? (row['role_id'] as number);
+      if (Number.isFinite(roleObjId as number) && Number.isFinite(roleId)) {
+        maps.roleObjId_to_roleId.set(roleObjId as number, roleId as number);
+      }
+    }
+  }
+
+  // ===== Проекты =====
   const allProjects = Array.from(xml.getElementsByTagName('Project'));
-  const projects = allProjects.filter(p =>
-    p.getElementsByTagName('WBS').length > 0 ||
-    p.getElementsByTagName('Activity').length > 0 ||
-    p.getElementsByTagName('ActivityDefaultDurationType').length > 0
+  const projects = allProjects.filter(
+    (p) =>
+      p.getElementsByTagName('WBS').length > 0 ||
+      p.getElementsByTagName('Activity').length > 0 ||
+      p.getElementsByTagName('ActivityDefaultDurationType').length > 0,
   );
-
-  
 
   for (const p of projects) {
     const projIdStr = xmlAttr(p, 'ObjectId') || xmlText(p, 'ObjectId');
@@ -161,10 +222,8 @@ export function parseP6XML(input: string): P6Document {
       continue;
     }
 
-
-
     // PROJECT
-    const row: Record<string, P6Scalar> = {
+    const rowProject: Record<string, P6Scalar> = {
       proj_id: projIdNum,
       proj_short_name: xmlText(p, 'Id'),
       proj_url: xmlText(p, 'WebUrl'),
@@ -181,8 +240,11 @@ export function parseP6XML(input: string): P6Document {
       data_date: xmlDate(p, 'DataDate'),
       name: xmlText(p, 'Name'),
       status: xmlText(p, 'Status'),
+
+      clndr_id: xmlNum(p, 'CalendarObjectId') ?? xmlNum(p, 'ProjectCalendarObjectId'),
+      day_hr_cnt: xmlNum(p, 'WorkHoursPerDay') ?? xmlNum(p, 'DayHrCnt'),
     };
-    pushRow(T_PROJECT, row);
+    pushRow(T_PROJECT, rowProject);
 
     // TASK (+ TASKPRED внутри Activity)
     const actNodes = Array.from(p.getElementsByTagName('Activity'));
@@ -194,7 +256,14 @@ export function parseP6XML(input: string): P6Document {
       }
       pushRow(T_TASK, taskRow as Record<string, P6Scalar>);
 
-      // связи-предшественники
+      // наполним actObjId → task_id и actObjId → proj_id
+      const actObjId = xmlNum(a, 'ObjectId') ?? Number(a.getAttribute('ObjectId'));
+      if (Number.isFinite(actObjId as number)) {
+        maps.actObjId_to_taskId.set(actObjId as number, taskRow['task_id'] as number);
+        maps.actObjId_to_projId.set(actObjId as number, projIdNum);
+      }
+
+      // связи-предшественники (вложенные)
       const preds = Array.from(a.getElementsByTagName('PredecessorLink'));
       for (const link of preds) {
         const pr = mapPredLinkToTaskpredRow(link, projIdNum, taskRow['task_id'] as number);
@@ -202,10 +271,11 @@ export function parseP6XML(input: string): P6Document {
       }
     }
 
+    // Relationship на уровне проекта (если есть)
     const relNodes = Array.from(p.getElementsByTagName('Relationship'));
     for (const rel of relNodes) {
       const pr = mapPredLinkToTaskpredRow(rel, projIdNum, null);
-      if (pr)  pushRow(T_TASKPRED, pr);
+      if (pr) pushRow(T_TASKPRED, pr);
     }
 
     // WBS
@@ -215,18 +285,6 @@ export function parseP6XML(input: string): P6Document {
       pushRow(T_PROJWBS, wbsRow);
     }
 
-    const rsrcNodes = Array.from(p.getElementsByTagName('Resource'));
-    for (const r of rsrcNodes) {
-      const rr = mapResourceToRsrcRow(r, projIdNum);
-      if (rr) pushRsrcUnique(rr);
-    
-      const rRoles = Array.from(r.getElementsByTagName('ResourceRole'));
-      for (const rRole of rRoles) {
-        const rrr = mapResourceRoleToRsrcroleRow(rRole, rr?.['rsrc_id'] as number);
-        if (rrr) pushRsrcRoleUnique(rrr);
-      }
-    }
-
     // CALENDAR — календари проекта
     const calNodes = Array.from(p.getElementsByTagName('Calendar'));
     for (const c of calNodes) {
@@ -234,58 +292,53 @@ export function parseP6XML(input: string): P6Document {
       if (cr) pushClndrUnique(cr);
     }
 
-    // TASKRSRC — назначения ресурсов
+    // TASKRSRC — назначения ресурсов для проекта
+    const assignedTaskIds = new Set<number>();
     const raNodes = Array.from(p.getElementsByTagName('ResourceAssignment'));
     for (const ra of raNodes) {
-      const tr = mapResAssignToTaskrsrcRow(ra, projIdNum);
-      if (tr) pushRow(T_TASKRSRC, tr);
+      const tr = mapResAssignToTaskrsrcRow(ra, maps, projIdNum); // новый API с maps
+      if (tr) {
+        pushRow(T_TASKRSRC, tr);
+        const tid = tr['task_id'] as number;
+        if (Number.isFinite(tid)) assignedTaskIds.add(tid);
+      }
     }
-    
-  }
 
-  // ===== ГЛОБАЛЬНЫЕ RSRC (корневой уровень) =====
-  const globalRsrc = Array.from(xml.getElementsByTagName('Resource'));
-  for (const r of globalRsrc) {
-    const rr = mapResourceToRsrcRow(r, /* projId */ NaN);
-    if (rr) pushRsrcUnique(rr);
+    // Досинтезировать назначения для активностей без ResourceAssignment
+    for (const a of actNodes) {
+      const actObjId = xmlNum(a, 'ObjectId') ?? Number(a.getAttribute('ObjectId'));
+      if (!Number.isFinite(actObjId as number)) continue;
+      const taskId = maps.actObjId_to_taskId.get(actObjId as number);
+      if (!Number.isFinite(taskId as number) || assignedTaskIds.has(taskId as number)) continue;
 
-    // на случай, если роли вложены внутрь Resource на корне
-    const rRoles = Array.from(r.getElementsByTagName('ResourceRole'));
-    for (const rRole of rRoles) {
-      const rrr = mapResourceRoleToRsrcroleRow(rRole, rr?.['rsrc_id'] as number);
-      if (rrr) pushRsrcRoleUnique(rrr);
+      const synth = synthesizeTaskrsrcFromActivity(a, maps);
+      if (synth) {
+        pushRow(T_TASKRSRC, synth as unknown as Record<string, P6Scalar>);
+      }
     }
   }
 
-  // ===== ГЛОБАЛЬНЫЕ RSRCROLE (если идут отдельным списком) =====
-  const globalRsrcRoles = Array.from(xml.getElementsByTagName('ResourceRole'));
-  for (const rr of globalRsrcRoles) {
-    const row = mapResourceRoleToRsrcroleRow(rr, null);
-    if (row) pushRsrcRoleUnique(row);
-  }
-
-  // ===== ГЛОБАЛЬНЫЕ CALENDAR (корневой уровень) =====
+  // ===== Глобальные CALENDAR (корневой уровень) =====
   const globalCalendars = Array.from(xml.getElementsByTagName('Calendar'));
   for (const c of globalCalendars) {
     const row = mapCalendarToCalendarRow(c, null);
     if (row) pushClndrUnique(row);
   }
 
-  // ===== ГЛОБАЛЬНЫЕ CURRTYPE (Currency) =====
+  // ===== Глобальные CURRTYPE (Currency) =====
   const curNodes = Array.from(xml.getElementsByTagName('Currency'));
   for (const cu of curNodes) {
     const row = mapCurrencyToCurrtypeRow(cu);
     if (row) pushCurrUnique(row);
   }
 
-
-  // регистрируем таблицы
-  doc.tables[T_PROJECT.name]  = T_PROJECT;
-  doc.tables[T_PROJWBS.name]  = T_PROJWBS;
-  doc.tables[T_TASK.name]     = T_TASK;
+  // Зарегистрировать таблицы
+  doc.tables[T_PROJECT.name] = T_PROJECT;
+  doc.tables[T_PROJWBS.name] = T_PROJWBS;
+  doc.tables[T_TASK.name] = T_TASK;
   doc.tables[T_TASKPRED.name] = T_TASKPRED;
   doc.tables[T_TASKRSRC.name] = T_TASKRSRC;
-  doc.tables[T_RSRC.name]     = T_RSRC;
+  doc.tables[T_RSRC.name] = T_RSRC;
   doc.tables[T_RSRCROLE.name] = T_RSRCROLE;
   doc.tables[T_CURRTYPE.name] = T_CURRTYPE;
   doc.tables[T_CALENDAR.name] = T_CALENDAR;

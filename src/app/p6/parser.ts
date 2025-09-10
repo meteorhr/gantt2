@@ -1,19 +1,12 @@
 // parser.ts — ядро типов + общие утилиты; ре-экспорт parseXER/parseP6XML из отдельных модулей
-/* ============================ Ре-экспорт парсеров ============================ */
-// ВАЖНО: xer.ts и xml.ts импортируют из этого файла ТОЛЬКО типы (import type),
 
 import { P6Document, P6Scalar, P6Table } from './parser/parser.types';
 
-// поэтому здесь безопасно ре-экспортировать реализацию, избегая runtime-циклов.
+// реализация парсеров
 export { parseXER } from './parser/xer';
 export { parseP6XML } from './parser/xml';
 
-
 /* ============================ Типы/интерфейсы ============================ */
-
-
-
-/* ============================ Summarize ============================ */
 
 export interface P6SummaryItem {
   name: string;
@@ -23,25 +16,76 @@ export interface P6SummaryItem {
   params?: Record<string, unknown>; // параметры для i18n шаблона
 }
 
+/* ============================ helpers ============================ */
+
+function nonEmpty(v: unknown): string {
+  const s = String(v ?? '').trim();
+  return s;
+}
+
+function detectDocFormat(doc: P6Document): 'xml' | 'xer' | 'unknown' {
+  const m = nonEmpty(doc.header?.moduleName).toLowerCase();
+  const v = nonEmpty(doc.header?.productVersion).toLowerCase();
+
+  if (m.includes('xml') || v.includes('xml')) return 'xml';
+  if (m.includes('xer') || v.includes('xer')) return 'xer';
+
+  // эвристика: если есть baseCurrency как атрибут шапки XML, parseP6XML обычно ставит moduleName 'P6-XML'
+  // если парсер XER заполняет moduleName, оно, как правило, содержит "XER".
+  return 'unknown';
+}
+
+/* ============================ Summarize ============================ */
+
 export function summarizeArray(doc: P6Document): P6SummaryItem[] {
   const arr: P6SummaryItem[] = [];
+
+  // 0) Тип файла
+  const fmt = detectDocFormat(doc);
+  arr.push({
+    name: 'fileType',
+    i18n: 'summarize.fileType',
+    value: fmt.toUpperCase()
+  });
+
   if (doc.header) {
-    arr.push({ name: 'version',     i18n: 'summarize.version',     value: doc.header.productVersion ?? '' });
-    arr.push({ name: 'exportDate',  i18n: 'summarize.exportDate',  value: doc.header.exportDate ?? '' });
-    arr.push({ name: 'context',     i18n: 'summarize.context',     value: doc.header.projectOrContext ?? '' });
-    arr.push({ name: 'user',        i18n: 'summarize.user',        value: `${doc.header.userLogin ?? ''} (${doc.header.userFullNameOrRole ?? ''})` });
-    arr.push({ name: 'db',          i18n: 'summarize.db',          value: doc.header.database ?? '' });
-    arr.push({ name: 'module',      i18n: 'summarize.module',      value: doc.header.moduleName ?? '' });
-    arr.push({ name: 'baseCurrency',i18n: 'summarize.baseCurrency',value: doc.header.baseCurrency ?? '' });
+    // Добавляем только существующие и непустые поля
+    const pushIf = (name: string, i18n: string, value?: string | null) => {
+      const v = nonEmpty(value);
+      if (v) arr.push({ name, i18n, value: v });
+    };
+
+    pushIf('version',     'summarize.version',     doc.header.productVersion);
+    pushIf('exportDate',  'summarize.exportDate',  doc.header.exportDate);
+    pushIf('context',     'summarize.context',     doc.header.projectOrContext);
+    // userLogin или userFullNameOrRole — добавим только если хоть что-то есть
+    const userLogin = nonEmpty(doc.header.userLogin);
+    const userFull  = nonEmpty(doc.header.userFullNameOrRole);
+    if (userLogin || userFull) {
+      arr.push({
+        name: 'user',
+        i18n: 'summarize.user',
+        value: userFull ? `${userLogin} (${userFull})` : userLogin || userFull
+      });
+    }
+    pushIf('db',          'summarize.db',          doc.header.database);
+    pushIf('module',      'summarize.module',      doc.header.moduleName);
+
+    // baseCurrency — в XER обычно есть, в XML может отсутствовать: не показываем пустое
+    pushIf('baseCurrency','summarize.baseCurrency',doc.header.baseCurrency);
   }
 
+  // Таблицы — только те, где есть строки
   for (const t of Object.values(doc.tables)) {
+    const rowsCount = t.rows?.length ?? 0;
+    if (rowsCount <= 0) continue;
+
     arr.push({
       name: t.name,
       i18n: 'summarize.table.' + t.name,
       value: '',
       i18nValue: 'summarize.table.count',
-      params: { rows: t.rows.length, fields: t.fields.length },
+      params: { rows: rowsCount, fields: t.fields.length }
     });
   }
 
@@ -64,25 +108,41 @@ export function buildSummarizeTable(doc: P6Document): P6Table {
 
 export function summarize(doc: P6Document): string {
   const out: string[] = [];
-  out.push("=== HEADER ===");
+  out.push('=== HEADER ===');
+
+  const fmt = detectDocFormat(doc);
+  out.push(`File type: ${fmt.toUpperCase()}`);
+
   if (doc.header) {
-    out.push(
-      `Version: ${doc.header.productVersion ?? ""}`,
-      `Export date: ${doc.header.exportDate ?? ""}`,
-      `Context: ${doc.header.projectOrContext ?? ""}`,
-      `User: ${doc.header.userLogin ?? ""} (${doc.header.userFullNameOrRole ?? ""})`,
-      `DB: ${doc.header.database ?? ""}`,
-      `Module: ${doc.header.moduleName ?? ""}`,
-      `Base currency: ${doc.header.baseCurrency ?? ""}`,
-    );
+    const pushIf = (label: string, v?: string | null) => {
+      const s = nonEmpty(v);
+      if (s) out.push(`${label}: ${s}`);
+    };
+
+    pushIf('Version',    doc.header.productVersion);
+    pushIf('Export date',doc.header.exportDate);
+    pushIf('Context',    doc.header.projectOrContext);
+
+    const userLogin = nonEmpty(doc.header.userLogin);
+    const userFull  = nonEmpty(doc.header.userFullNameOrRole);
+    if (userLogin || userFull) {
+      out.push(`User: ${userFull ? `${userLogin} (${userFull})` : (userLogin || userFull)}`);
+    }
+
+    pushIf('DB',         doc.header.database);
+    pushIf('Module',     doc.header.moduleName);
+    pushIf('Base currency', doc.header.baseCurrency);
   } else {
-    out.push("— отсутствует —");
+    out.push('— отсутствует —');
   }
-  out.push("\n=== Таблицы ===");
+
+  out.push('\n=== Таблицы (только непустые) ===');
   for (const t of Object.values(doc.tables)) {
-    out.push(`${t.name}: ${t.rows.length} строк, ${t.fields.length} полей`);
+    const rowsCount = t.rows?.length ?? 0;
+    if (rowsCount <= 0) continue;
+    out.push(`${t.name}: ${rowsCount} строк, ${t.fields.length} полей`);
   }
-  return out.join("\n");
+  return out.join('\n');
 }
 
 /* ============================ Навигация по таблицам ============================ */
@@ -104,7 +164,7 @@ export function getTable(
     if (norm(t.name) === wanted) return t;
   }
   if (opts?.required) {
-    const available = Object.keys(doc.tables).join(", ");
+    const available = Object.keys(doc.tables).join(', ');
     throw new Error(`Таблица "${name}" не найдена. Доступны: ${available}`);
   }
   return null;
@@ -147,4 +207,3 @@ export function printTable(
 export function dateReplacer(_k: string, v: unknown) {
   return v instanceof Date ? v.toISOString() : (v as any);
 }
-
