@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgClass } from '@angular/common';
 import { TranslocoModule } from '@jsverse/transloco';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -20,6 +20,7 @@ import { Inject } from '@angular/core';
   standalone: true,
   imports: [
     CommonModule,
+    NgClass,
     TranslocoModule,
     MatCardModule,
     MatTableModule,

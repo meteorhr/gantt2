@@ -51,26 +51,27 @@
 
   <!-- Третий столбец: три карточки вертикально -->
   <div class="kpi-stack">
-    <mat-card class="kpi-card" appearance="outlined">
+    <mat-card class="kpi-card" style="height: 157px" appearance="outlined">
       <mat-card-content>
         <div class="kpi-value">{{ d.totalTasks }}</div>
         <div class="kpi-caption">{{ 'dashboard.total_tasks' | transloco }}</div>
       </mat-card-content>
     </mat-card>
 
-    <mat-card class="kpi-card" appearance="outlined">
+    <mat-card class="kpi-card" style="height: 156px; margin: 0" appearance="outlined">
       <mat-card-content>
         <div class="kpi-value">{{ nonEmptyRsrcCount() }}</div>
         <div class="kpi-caption">{{ 'dashboard.distinct_resources' | transloco }}</div>
       </mat-card-content>
     </mat-card>
-
+    <!--
     <mat-card class="kpi-card" appearance="outlined">
       <mat-card-content>
         <div class="kpi-value-date">{{ d.lastRecalc || '—' }}</div>
         <div class="kpi-caption">{{ 'dashboard.last_recalc' | transloco }}</div>
       </mat-card-content>
     </mat-card>
+    -->
   </div>
 </div>
         <!-- ТАБЛИЦЫ -->
@@ -125,7 +126,12 @@
                 </ng-container>
                 <ng-container matColumnDef="percent">
                   <th mat-header-cell *matHeaderCellDef>%</th>
-                  <td mat-cell *matCellDef="let r">{{ (r.value ?? 0) | number:'1.0-2' }}%</td>
+                  <td mat-cell *matCellDef="let r">
+                    <div class="progress-cell">
+                      <div class="progress-bar" [style.width.%]="r.value ?? 0"></div>
+                      <span class="progress-text">{{ (r.value ?? 0) | number:'1.0-2' }}%</span>
+                    </div>
+                  </td>
                 </ng-container>
 
                 <tr mat-header-row *matHeaderRowDef="['label','percent']"></tr>
@@ -135,30 +141,34 @@
           </mat-card>
 
           <!-- By Status + TOTAL -->
-          <mat-card class="table-card" appearance="outlined">
-            <mat-card-header>
-              <mat-card-title>{{ 'dashboard.table_by_status' | transloco }}</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <table mat-table [dataSource]="d.byStatus">
-                <ng-container matColumnDef="value">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.status' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ ('task.status_code.' + r.value) | transloco }}</td>
-                  <td mat-footer-cell *matFooterCellDef>{{ 'dashboard.total' | transloco }}</td>
-                </ng-container>
-                <ng-container matColumnDef="count">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
-                  <td mat-footer-cell *matFooterCellDef>{{ d.totalTasks }}</td>
-                </ng-container>
+<mat-card class="table-card" appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>{{ 'dashboard.table_by_status' | transloco }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <table mat-table [dataSource]="d.byStatus">
+      <ng-container matColumnDef="value">
+        <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.status' | transloco }}</th>
+        <td mat-cell *matCellDef="let r" >
+            <span class="status-badge" [ngClass]="'status-' + r.value">
+    {{ ('task.status_code.' + r.value) | transloco }}
+  </span>
+        </td>
+        <td mat-footer-cell *matFooterCellDef>{{ 'dashboard.total' | transloco }}</td>
+      </ng-container>
 
-                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
-                <tr mat-footer-row *matFooterRowDef="['value','count']"></tr>
-              </table>
-            </mat-card-content>
-          </mat-card>
+      <ng-container matColumnDef="count">
+        <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+        <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+        <td mat-footer-cell *matFooterCellDef>{{ d.totalTasks }}</td>
+      </ng-container>
 
+      <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+      <tr mat-footer-row *matFooterRowDef="['value','count']"></tr>
+    </table>
+  </mat-card-content>
+</mat-card>
           <!-- By Task Type -->
           <mat-card class="table-card" appearance="outlined">
             <mat-card-header>

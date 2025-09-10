@@ -96,6 +96,9 @@ import { AppStateService } from '../../state/app-state.service';
             <p class="sv-p">{{ 'security.outro' | transloco }}</p>
         </section>
 
+        <section class="sv-section sv-privacy" aria-labelledby="privacy-title">
+          {{ 'info' | transloco }}
+        </section>
         </mat-card-content>
         <mat-card-actions>
                       <a

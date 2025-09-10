@@ -107,12 +107,12 @@
   },
   "xer": {
     "upload": {
-      "title": "Upload XER File",
-      "desc": "Choose an Oracle Primavera P6 XER file for local processing and viewing. All processing is done in your browser, and no data is sent to the server.",
-      "btn": "Select XER File",
-      "btn_aria": "Upload XER file from local device" ,
+      "title": "Upload XER or XML File",
+      "desc": "Choose an Oracle Primavera P6 XER or XML file for local processing and viewing. All processing is done in your browser, and no data is sent to the server.",
+      "btn": "Select XER or XML File",
+      "btn_aria": "Upload XER or XML file from local device" ,
     "demo_btn": "Load demo data",
-    "demo_btn_aria": "Load bundled demo .xer file"
+    "demo_btn_aria": "Load bundled demo .xer, .xml file"
   }
   },
   "security": {
@@ -126,14 +126,14 @@
     },
     "outro": "Thus, working with projects in ScheduleVision is safe, private, and fully under your control."
   },
-    "xer_upload_title": "Upload XER file",
+    "xer_upload_title": "Upload XER or XML file",
   "xer_upload_desc": "To get started, upload a .xer or .xml file from your device. The local database will be cleared on page load.",
   "xer_upload_btn": "Choose .xer or .xml file",
   "xer_reload_file": "Reload .xer or .xml file",
   "xer_upload_hint": "If you want to switch the dataset, reload a .xer or .xml file.",
   "loading": "Loading…",
     "activities_gantt": "Activities",
-    "xer_summary": "XER Summary",
+    "xer_summary": "Summary",
     
     "task": {
     "task_type": {
@@ -279,5 +279,7 @@
       "FF": "Finish to Finish",
       "SF": "Start to Finish"
     }
-  }
+  },
+
+  "info": "ScheduleVision is fully compatible with Oracle® Primavera® P6®. It is an independently developed reader application created by Ruslan Khissamov. ScheduleVision is not a product of Oracle® and is neither endorsed, sponsored, nor affiliated with Oracle® Corporation. Oracle®, Primavera®, and P6® are registered trademarks of Oracle® Corporation and/or its affiliates."
 }

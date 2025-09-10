@@ -13,7 +13,7 @@ export const APP_ROUTES: Routes = [
     children: [
       {
         path: 'summary',
-        title: 'XER Summary',
+        title: 'Summary',
         loadComponent: () =>
           import('./features/summary/summary-tab.component').then(m => m.SummaryTabComponent),
       },

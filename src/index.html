@@ -5,52 +5,83 @@
   <title>ScheduleVision</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Canonical + hreflang -->
   <link rel="canonical" href="https://sv.meteorhr.com/">
   <link rel="alternate" href="https://sv.meteorhr.com/" hreflang="en">
 
+  <!-- Robots -->
   <meta name="robots" content="index,follow">
-  <meta name="description" content="Free Primavera P6 XER viewer in your browser. Open .xer, inspect WBS/Task tree, no install.">
-  <meta name="google-site-verification" content="PCUfgGfWi6bA-RSrMjjW4zIdy0UGS2HAl1RWlYbJ-T0" />
-  <!-- Open Graph / Twitter -->
+
+  <!-- SEO description -->
+  <meta name="description" content="Free Primavera P6 XER and XML viewer in your browser. Open .xer or .xml, inspect WBS/Task tree, no install.">
+
+  <!-- Site verification -->
+  <meta name="google-site-verification" content="PCUfgGfWi6bA-RSrMjjW4zIdy0UGS2HAl1RWlYbJ-T0">
+
+  <!-- Open Graph -->
+  <meta property="og:locale" content="en_US">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://sv.meteorhr.com/">
-  <meta property="og:title" content="Free XER Viewer (Primavera P6) — ScheduleVision">
-  <meta property="og:description" content="Open .xer online, build WBS/Task tree, no installation. 100% free.">
+  <meta property="og:site_name" content="ScheduleVision">
+  <meta property="og:title" content="ScheduleVision – Viewer for Oracle® Primavera® P6® Files">
+  <meta property="og:description" content="ScheduleVision is an independent reader for Oracle® Primavera® P6® XER and XML files. Analyze, share, and create project reports with ease.">
   <meta property="og:image" content="https://sv.meteorhr.com/assets/og-xer-viewer.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="ScheduleVision — free Primavera P6 XER viewer">
 
+  <!-- Twitter Cards -->
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@ScheduleVision">
   <meta name="twitter:title" content="Free XER Viewer (Primavera P6) — ScheduleVision">
   <meta name="twitter:description" content="Open .xer online, build WBS/Task tree, no installation.">
   <meta name="twitter:image" content="https://sv.meteorhr.com/assets/og-xer-viewer.png">
-  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <meta name="twitter:image:alt" content="ScheduleVision — free Primavera P6 XER viewer">
+
+  <!-- Structured Data: SoftwareApplication -->
   <script type="application/ld+json">
-    {
+  {
     "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "ScheduleVision — XER Viewer",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "url": "https://sv.meteorhr.com/",
-      "description": "Free web-based viewer for Primavera P6 XER files. Upload .xer, inspect WBS and Tasks. No installation required.",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-    }
+    "@type": "SoftwareApplication",
+    "name": "ScheduleVision",
+    "url": "https://sv.meteorhr.com/",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Windows, MacOS, Web",
+    "description": "Independent reader for Oracle® Primavera® P6® files (XER, XML).",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "publisher": { "@type": "Organization", "name": "ScheduleVision" }
+  }
   </script>
 
+  <!-- Structured Data: WebSite -->
   <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "ScheduleVision",
-        "url": "https://sv.meteorhr.com/"
-      }
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "ScheduleVision",
+    "url": "https://sv.meteorhr.com/"
+  }
   </script>
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#0b57d0">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
   <app-root>
     <div class="pre-container">
-      <img src="/assets/favicon.svg" width="100px"/>
+      <img src="/assets/favicon.svg" width="100" height="100" alt="ScheduleVision logo">
     </div>
   </app-root>
 </body>
