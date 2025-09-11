@@ -23,16 +23,48 @@ function nonEmpty(v: unknown): string {
   return s;
 }
 
+function hasXerRawHeader(doc: P6Document): boolean {
+  const anyHeader = (doc as any)?.header as any;
+  return Array.isArray(anyHeader?.raw) && anyHeader.raw.length > 0;
+}
+
+function tableNamesUpper(doc: P6Document): string[] {
+  return Object.keys(doc.tables ?? {}).map(n => n.trim().toUpperCase());
+}
+
+/**
+ * Надёжное определение формата уже распарсенного документа.
+ * Источники правды по возрастанию "жёсткости":
+ * 1) moduleName/productVersion содержат "xml"/"xer"
+ * 2) XER-признаки: header.raw есть, или таблица ERMHDR присутствует
+ */
 function detectDocFormat(doc: P6Document): 'xml' | 'xer' | 'unknown' {
   const m = nonEmpty(doc.header?.moduleName).toLowerCase();
   const v = nonEmpty(doc.header?.productVersion).toLowerCase();
 
-  if (m.includes('xml') || v.includes('xml')) return 'xml';
-  if (m.includes('xer') || v.includes('xer')) return 'xer';
+  if (m.includes('xml') || v.includes('xml') || m === 'p6-xml') return 'xml';
+  if (m.includes('xer') || v.includes('xer') || m === 'p6-xer') return 'xer';
 
-  // эвристика: если есть baseCurrency как атрибут шапки XML, parseP6XML обычно ставит moduleName 'P6-XML'
-  // если парсер XER заполняет moduleName, оно, как правило, содержит "XER".
+  // Признак XER №1: парсер XER обычно оставляет "сырую" шапку
+  if (hasXerRawHeader(doc)) return 'xer';
+
+  // Признак XER №2: в наборе таблиц есть ERMHDR
+  const tnames = tableNamesUpper(doc);
+  if (tnames.includes('ERMHDR')) return 'xer';
+
   return 'unknown';
+}
+
+/**
+ * Опциональный хелпер: проставить разумные значения header.moduleName,
+ * если парсер этого не сделал, чтобы сводка и логика UI были стабильнее.
+ * Вызывайте сразу после parseXER/parseP6XML.
+ */
+export function ensureHeaderDefaults(doc: P6Document, formatHint?: 'xml' | 'xer'): void {
+  const fmt = formatHint ?? detectDocFormat(doc);
+  if (!doc.header) (doc as any).header = {};
+  if (fmt === 'xer' && !doc.header!.moduleName) doc.header!.moduleName = 'P6-XER';
+  if (fmt === 'xml' && !doc.header!.moduleName) doc.header!.moduleName = 'P6-XML';
 }
 
 /* ============================ Summarize ============================ */
@@ -58,6 +90,7 @@ export function summarizeArray(doc: P6Document): P6SummaryItem[] {
     pushIf('version',     'summarize.version',     doc.header.productVersion);
     pushIf('exportDate',  'summarize.exportDate',  doc.header.exportDate);
     pushIf('context',     'summarize.context',     doc.header.projectOrContext);
+
     // userLogin или userFullNameOrRole — добавим только если хоть что-то есть
     const userLogin = nonEmpty(doc.header.userLogin);
     const userFull  = nonEmpty(doc.header.userFullNameOrRole);
@@ -65,7 +98,7 @@ export function summarizeArray(doc: P6Document): P6SummaryItem[] {
       arr.push({
         name: 'user',
         i18n: 'summarize.user',
-        value: userFull ? `${userLogin} (${userFull})` : userLogin || userFull
+        value: userFull ? `${userLogin} (${userFull})` : (userLogin || userFull)
       });
     }
     pushIf('db',          'summarize.db',          doc.header.database);
@@ -158,7 +191,7 @@ export function getTable(
   opts?: { required?: boolean }
 ): P6Table | null {
   const wanted = norm(name);
-  const direct = doc.tables[name];
+  const direct = (doc.tables as Record<string, P6Table | undefined>)[name];
   if (direct) return direct;
   for (const t of Object.values(doc.tables)) {
     if (norm(t.name) === wanted) return t;

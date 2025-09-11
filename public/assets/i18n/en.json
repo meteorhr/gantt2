@@ -275,6 +275,7 @@
         "WBSBUDG": "Spending and Benefit Plans",
         "WBSMEMO": "EPS, Project and WBS Notebook",
         "WBSRSRC_QTY": "WBS Resource Quantities",
+        "WBSRSRC": "WBS Resource",
         "WBSSTEP": "WBS Milestones",
         "projrisk": "Project risks"
     }
