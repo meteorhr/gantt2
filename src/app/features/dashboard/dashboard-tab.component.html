@@ -74,6 +74,9 @@
     -->
   </div>
 </div>
+
+
+
         <!-- ТАБЛИЦЫ -->
         <div class="tables">
 
@@ -231,7 +234,84 @@
               </table>
             </mat-card-content>
           </mat-card>
-
+        </div>
+        <div>
+          <mat-card class="table-card" appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>
+                {{ 'dashboard.unitsByResources' | transloco : { defaultValue: 'Units by resources' } }}
+              </mat-card-title>
+          
+              <div style="margin-left:auto; display:flex; gap:12px; align-items:center; flex-wrap: wrap;">
+                <!-- ВРЕМЕННОЙ ДИАПАЗОН -->
+                <mat-form-field appearance="outline" style="min-width: 320px;">
+                  <mat-label>
+                    {{ 'dashboard.period' | transloco : { defaultValue: 'Period' } }}
+                  </mat-label>
+          
+                  <mat-date-range-input [rangePicker]="picker">
+                    <input
+                      matStartDate
+                      [placeholder]="'common.start' | transloco : { defaultValue: 'Start' }"
+                      [value]="startDate"
+                      (dateChange)="onStartChange($event)" />
+                    <input
+                      matEndDate
+                      [placeholder]="'common.end' | transloco : { defaultValue: 'End' }"
+                      [value]="endDate"
+                      (dateChange)="onEndChange($event)" />
+                  </mat-date-range-input>
+          
+                  <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                  <mat-date-range-picker #picker></mat-date-range-picker>
+                </mat-form-field>
+          
+                <!-- МЕТРИКА -->
+                <mat-form-field appearance="outline" style="min-width: 260px;">
+                  <mat-label>
+                    {{ 'dashboard.metric.units' | transloco : { defaultValue: 'Metric (Units)' } }}
+                  </mat-label>
+                  <mat-select [(value)]="selectedMeasure">
+                    @for (m of measureOptions; track m) {
+                      <mat-option [value]="m.key">
+                        {{ 'dashboard.measures.' + m.label | transloco  }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </mat-card-header>
+          
+            <mat-card-content>
+              <!-- тонкая полоса прогресса под шапкой -->
+              @if (loading) {
+                <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+              }
+          
+              <!-- Ошибка -->
+              @if (error) {
+                <div class="hpc-error">
+                  <mat-icon color="warn" aria-hidden="true">error_outline</mat-icon>
+                  <span>{{ error }}</span>
+                  <button mat-stroked-button color="primary" (click)="loadHistogram()">
+                    {{ 'common.retry' | transloco : { defaultValue: 'Retry' } }}
+                  </button>
+                </div>
+              }
+          
+              <!-- Контент: график -->
+              @if (!loading && !error) {
+                <histogramPivotChart
+                  [data]="histogramResult"
+                  [height]="360"
+                  [value]="selectedMeasure">
+                </histogramPivotChart>
+              }
+            </mat-card-content>
+          </mat-card>
+          
+        </div>
+        <div class="table">
           <!-- By Resource -->
           <mat-card class="table-card" appearance="outlined">
             <mat-card-header>

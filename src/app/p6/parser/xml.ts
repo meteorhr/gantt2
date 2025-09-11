@@ -1,5 +1,3 @@
-
-
 // ==============================
 // FILE: parser/xml.ts
 // ==============================
@@ -82,6 +80,15 @@ function buildSummarizeTableLocal(doc: P6Document): P6Table {
     params: it.params ? JSON.stringify(it.params) : '',
   })) as Record<string, P6Scalar>[];
   return { name: 'SUMMARIZE', fields, rows };
+}
+
+/* ---------------------- Вспомогательное для TASKRSRC merge ---------------------- */
+function raKey(proj_id: number | null, task_id: number | null, rsrc_id: number | null, role_id: number | null): string {
+  return `${proj_id ?? ''}|${task_id ?? ''}|${rsrc_id ?? ''}|${role_id ?? ''}`;
+}
+function isRealTaskrsrc(row: Record<string, P6Scalar>): boolean {
+  const id = Number(row['taskrsrc_id']);
+  return Number.isFinite(id) && id > 0; // real <ObjectId> из XML
 }
 
 /* ---------------------- Основной парсер ---------------------- */
@@ -292,29 +299,77 @@ export function parseP6XML(input: string): P6Document {
       if (cr) pushClndrUnique(cr);
     }
 
-    // TASKRSRC — назначения ресурсов для проекта
-    const assignedTaskIds = new Set<number>();
+    /* =======================
+       TASKRSRC — безопасный merge
+       ======================= */
+
+    // 1) индексы реальных RA и хранилище финальных строк
+    const actHasAnyReal = new Set<number>();
+    const taskrsrcStore = new Map<string, Record<string, P6Scalar>>();
+
+    const pushTaskrsrcSafe = (row: Record<string, P6Scalar>) => {
+      const key = raKey(
+        (row['proj_id'] as number) ?? null,
+        (row['task_id'] as number) ?? null,
+        (row['rsrc_id'] as number) ?? null,
+        (row['role_id'] as number) ?? null
+      );
+      const existed = taskrsrcStore.get(key);
+      if (!existed) {
+        taskrsrcStore.set(key, row);
+        return;
+      }
+      const oldReal = isRealTaskrsrc(existed);
+      const newReal = isRealTaskrsrc(row);
+      // Правило: real > synthetic
+      if (!oldReal && newReal) {
+        taskrsrcStore.set(key, row);
+        return;
+      }
+      if (oldReal && !newReal) {
+        return; // оставляем реальный
+      }
+      // оба real или оба synthetic — можно выбрать «более полный»; упростим: берём последний
+      taskrsrcStore.set(key, row);
+    };
+
+    // 2) реальные ResourceAssignment
     const raNodes = Array.from(p.getElementsByTagName('ResourceAssignment'));
     for (const ra of raNodes) {
-      const tr = mapResAssignToTaskrsrcRow(ra, maps, projIdNum); // новый API с maps
-      if (tr) {
-        pushRow(T_TASKRSRC, tr);
-        const tid = tr['task_id'] as number;
-        if (Number.isFinite(tid)) assignedTaskIds.add(tid);
-      }
+      const tr = mapResAssignToTaskrsrcRow(ra, maps, projIdNum);
+      if (!tr) continue;
+
+      // индикатор «на активности есть хотя бы одно реальное назначение»
+      const tid = tr['task_id'] as number;
+      if (Number.isFinite(tid)) actHasAnyReal.add(tid);
+
+      // сохраняем безопасно
+      pushTaskrsrcSafe(tr);
     }
 
-    // Досинтезировать назначения для активностей без ResourceAssignment
-    for (const a of actNodes) {
+    // 3) Досинтез только для активностей БЕЗ любых RA
+    const actNodesForSynth = actNodes; // уже собраны выше
+    for (const a of actNodesForSynth) {
       const actObjId = xmlNum(a, 'ObjectId') ?? Number(a.getAttribute('ObjectId'));
       if (!Number.isFinite(actObjId as number)) continue;
-      const taskId = maps.actObjId_to_taskId.get(actObjId as number);
-      if (!Number.isFinite(taskId as number) || assignedTaskIds.has(taskId as number)) continue;
+
+      const taskId = maps.actObjId_to_taskId.get(actObjId as number) ?? null;
+      const hasReal = taskId != null && actHasAnyReal.has(taskId);
+      if (hasReal) continue; // по этой активности есть хотя бы одно реальное назначение → синтез не нужен
 
       const synth = synthesizeTaskrsrcFromActivity(a, maps);
-      if (synth) {
-        pushRow(T_TASKRSRC, synth as unknown as Record<string, P6Scalar>);
-      }
+      if (!synth) continue;
+
+      // не добавляем синтетику без ресурса (иначе рискуем перетирать)
+      if (synth.rsrc_id == null) continue;
+
+      // записываем безопасно (если совпадёт ключ с реальным — real > synthetic защитит)
+      pushTaskrsrcSafe(synth as unknown as Record<string, P6Scalar>);
+    }
+
+    // 4) выгружаем store в таблицу (и поля расширяем на лету)
+    for (const row of taskrsrcStore.values()) {
+      pushRow(T_TASKRSRC, row);
     }
   }
 

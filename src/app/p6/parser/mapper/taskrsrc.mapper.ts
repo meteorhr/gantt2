@@ -158,7 +158,7 @@ export function mapResAssignToTaskrsrcRow(
     }
   }
 
-  // PK: берём <ObjectId>, иначе синтетический числовой
+  // PK: берём <ObjectId>, иначе синтетический числовой (стабильный, положительный)
   const objId = numAny(ra, ['ObjectId']);
   const taskrsrc_id: number = Number.isFinite(objId as number)
     ? (objId as number)
@@ -167,30 +167,32 @@ export function mapResAssignToTaskrsrcRow(
   // тип/флаги/источники
   const rsrcTypeTxt = txtAny(ra, ['ResourceType', 'Type']);
   const rateType    = txtAny(ra, ['RateType']);
-  const cpqSrcType  = txtAny(ra, ['CostPerQtySourceType', 'CostPerQtySrcType']);
-  const linkFlag    = txtAny(ra, ['CalculateCostsFromUnits', 'CostQtyLinkFlag']);
+  const cpqSrcType  = txtAny(ra, ['CostPerQtySourceType', 'CostPerQtySrcType', 'RateSource']);        // + RateSource
+  const linkFlag    = txtAny(ra, ['CalculateCostsFromUnits', 'CostQtyLinkFlag', 'IsCostUnitsLinked']); // + IsCostUnitsLinked
+  const isActFlagged = txtAny(ra, ['IsActivityFlagged']);
+  const drivActDates = txtAny(ra, ['DrivingActivityDatesFlag']);
 
   // нагрузки (единицы)
   const remain_qty        = numAny(ra, ['RemainingUnits', 'RemainUnits', 'RemainingQty']);
-  // RA-level AtCompletionUnits (если есть) — приоритетнее Budgeted/Target
   const at_comp_qty       = numAny(ra, ['AtCompletionUnits', 'AtCompleteUnits', 'AtCompUnits']);
-  const target_qty_raw    = numAny(ra, ['BudgetedUnits', 'TargetUnits']);
-  const target_qty_per_hr = numAny(ra, ['BudgetedUnitsPerTime', 'TargetUnitsPerTime']);
+  const target_qty_raw    = numAny(ra, ['BudgetedUnits', 'TargetUnits', 'PlannedUnits']);               // + PlannedUnits
+  const target_qty_per_hr = numAny(ra, ['BudgetedUnitsPerTime', 'TargetUnitsPerTime', 'PlannedUnitsPerTime']); // + PlannedUnitsPerTime
   const remain_qty_per_hr = numAny(ra, ['RemainingUnitsPerTime']);
 
   const act_reg_qty = numAny(ra, ['ActualRegularUnits', 'ActRegularUnits']);
   const act_ot_qty  = numAny(ra, ['ActualOvertimeUnits', 'ActOvertimeUnits']);
-  const act_units_any = numAny(ra, ['ActualUnits', 'ActUnits', 'ActualQty']); // фолбэк, если нет разбивки reg/ot
-  const cur_qty = numAny(ra, ['ThisPeriodUnits', 'CurUnits', 'ThisPeriodQty']); // «период» если дан в XML
+  const act_units_any = numAny(ra, ['ActualUnits', 'ActUnits', 'ActualQty']);
+  const cur_qty = numAny(ra, ['ActualThisPeriodUnits', 'ThisPeriodUnits', 'CurUnits', 'ThisPeriodQty']); // + ActualThisPeriodUnits
 
   // Стоимости
-  const cost_per_qty   = numAny(ra, ['Rate', 'CostPerQty']); // цена за ед./час
-  let target_cost      = numAny(ra, ['BudgetedCost', 'TargetCost']);
+  const cost_per_qty   = numAny(ra, ['Rate', 'CostPerQty', 'PricePerUnit']); // + PricePerUnit
+  let   target_cost    = numAny(ra, ['BudgetedCost', 'TargetCost', 'PlannedCost']); // + PlannedCost
   const at_comp_cost   = numAny(ra, ['AtCompletionCost', 'AtCompleteCost', 'AtCompCost']);
   const remain_cost    = numAny(ra, ['RemainingCost']);
   const act_reg_cost   = numAny(ra, ['ActualRegularCost', 'ActRegularCost']);
   const act_ot_cost    = numAny(ra, ['ActualOvertimeCost', 'ActOvertimeCost']);
   const act_cost_any   = numAny(ra, ['ActualCost', 'ActCost']);
+  const cur_cost       = numAny(ra, ['ActualThisPeriodCost', 'ThisPeriodCost']); // периодная стоимость
 
   // агрегаты по единицам
   const act_qty = (act_reg_qty != null || act_ot_qty != null)
@@ -200,7 +202,6 @@ export function mapResAssignToTaskrsrcRow(
   // целевой объём (budget/at-completion) с умными фолбэками
   let target_qty = at_comp_qty ?? target_qty_raw ?? null;
   if (target_qty == null && (act_qty != null || remain_qty != null)) {
-    // чаще всего XML не содержит BudgetedUnits, но есть Actual + Remaining
     target_qty = (act_qty ?? 0) + (remain_qty ?? 0);
   }
 
@@ -231,11 +232,15 @@ export function mapResAssignToTaskrsrcRow(
   const target_end_date     = dtAny(ra, ['PlannedFinishDate', 'TargetFinishDate']);
   const rem_late_start_date = dtAny(ra, ['RemainingLateStartDate']);
   const rem_late_end_date   = dtAny(ra, ['RemainingLateFinishDate']);
+  const rem_start_date      = dtAny(ra, ['RemainingStartDate']);     // прямые REM даты
+  const rem_end_date        = dtAny(ra, ['RemainingFinishDate']);
+  const start_date          = dtAny(ra, ['StartDate']);              // RA-level Start/Finish
+  const finish_date         = dtAny(ra, ['FinishDate']);
 
   // прочее
   const pobs_id     = numAny(ra, ['OBSObjectId', 'ResponsibleManagerObjectId']);
   const skill       = numAny(ra, ['Proficiency', 'ProficiencyLevel', 'SkillLevel']);
-  const relag       = numAny(ra, ['RelagDrtnHrCnt', 'RelagDuration', 'Relag']);
+  const relag       = numAny(ra, ['RelagDrtnHrCnt', 'RelagDuration', 'Relag', 'PlannedLag', 'RemainingLag']); // + planned/rem lag
   const guid        = txtAny(ra, ['GUID', 'Guid']);
   const curv_id     = numAny(ra, ['CurveObjectId', 'SpreadCurveObjectId']);
   const unit_id     = numAny(ra, ['UnitOfMeasureObjectId', 'UOMObjectId', 'UnitObjectId']);
@@ -244,6 +249,19 @@ export function mapResAssignToTaskrsrcRow(
   const create_date = dtAny(ra, ['CreateDate', 'AddDate', 'DateCreated']);
   const hasHours    = txtAny(ra, ['HasRsrcHours', 'HasRsrchours']);
   const sum_id      = numAny(ra, ['TaskRsrcSumObjectId', 'TaskRsrcSummaryObjectId']);
+
+  const project_obj_id = numAny(ra, ['ProjectObjectId']);
+  const planned_curve  = txtAny(ra, ['PlannedCurve']);
+  const remaining_curve= txtAny(ra, ['RemainingCurve']);
+  const planned_drtn   = numAny(ra, ['PlannedDuration']);
+  const remaining_drtn = numAny(ra, ['RemainingDuration']);
+  const units_pct_complete_raw = numAny(ra, ['UnitsPercentComplete']);
+
+  const units_pct_complete = (units_pct_complete_raw != null)
+    ? clampPct(units_pct_complete_raw)
+    : ((target_qty != null && target_qty > 0 && (act_qty ?? null) != null)
+        ? clampPct((act_qty! / target_qty) * 100)
+        : null);
 
   return {
     // обязательные
@@ -261,7 +279,11 @@ export function mapResAssignToTaskrsrcRow(
     rate_type: rateType ? rateType.toString().toUpperCase() : null,
     cost_per_qty_source_type: cpqSrcType ?? null,
 
-    // нагрузки (единицы)
+    // RA флаги
+    is_activity_flagged: yn(isActFlagged),
+    driving_activity_dates_flag: yn(drivActDates),
+
+    // нагрузки
     remain_qty,
     target_qty,
     remain_qty_per_hr,
@@ -269,7 +291,7 @@ export function mapResAssignToTaskrsrcRow(
     act_reg_qty,
     act_ot_qty,
     act_qty,
-    cur_qty, // ← This Period Units, если есть в XML
+    cur_qty,             // This Period Units
 
     // стоимость
     cost_per_qty,
@@ -279,7 +301,8 @@ export function mapResAssignToTaskrsrcRow(
     act_reg_cost,
     act_ot_cost,
 
-    // прогресс по стоимости
+    // период
+    cur_cost,            // This Period Cost
     progress_cost_pct,
 
     // даты
@@ -291,6 +314,10 @@ export function mapResAssignToTaskrsrcRow(
     target_end_date,
     rem_late_start_date,
     rem_late_end_date,
+    rem_start_date,
+    rem_end_date,
+    start_date,
+    finish_date,
 
     // прочее
     pobs_id,
@@ -304,10 +331,19 @@ export function mapResAssignToTaskrsrcRow(
     create_date,
     has_rsrchours: yn(hasHours),
     taskrsrc_sum_id: sum_id,
+    project_obj_id,
+    planned_curve: planned_curve ?? null,
+    remaining_curve: remaining_curve ?? null,
+    planned_drtn,
+    remaining_drtn,
+    units_pct_complete,
   };
 }
 
-/** Синтетическое назначение из Activity.*Units для PrimaryResource */
+/** Синтетическое назначение из Activity.*Units для PrimaryResource
+ *  ВАЖНО: используйте ТОЛЬКО если по этой активности НЕТ реального ResourceAssignment.
+ *  И никогда не создавайте синтетику без PrimaryResourceObjectId.
+ */
 export function synthesizeTaskrsrcFromActivity(
   actEl: Element,
   maps: XmlLookupMaps
@@ -320,8 +356,12 @@ export function synthesizeTaskrsrcFromActivity(
 
   const task_id   = maps.actObjId_to_taskId.get(actObjId) ?? null;
   const proj_id   = maps.actObjId_to_projId.get(actObjId) ?? null;
+
   const primResId = toNum(get('PrimaryResourceObjectId'));
-  const rsrc_id   = primResId ? (maps.resObjId_to_rsrcId.get(primResId) ?? primResId) : null;
+  // ЖЁСТКИЙ ФИЛЬТР: без PrimaryResourceObjectId — не синтезируем, иначе rsrc_id=null и риск перезаписи
+  if (!Number.isFinite(primResId as number)) return null;
+
+  const rsrc_id   = (maps.resObjId_to_rsrcId.get(primResId as number) ?? (primResId as number));
 
   // Берём AC/REM/PLAN с уровня активности
   const actualUnits    = toNum(get('ActualLaborUnits')) ?? 0;
@@ -336,7 +376,7 @@ export function synthesizeTaskrsrcFromActivity(
                      ?? 0;
   }
 
-  // Генерируем стабильный отрицательный id, чтобы не пересечься с реальными ObjectId
+  // СИНТЕТИЧЕСКИЙ КЛЮЧ — отрицательный по задумке, чтобы не пересечься с реальными ObjectId
   const syntheticId = -(actObjId * 1_000_000 + (primResId ?? 0));
 
   const row: any = {
@@ -352,6 +392,8 @@ export function synthesizeTaskrsrcFromActivity(
     act_ot_qty: 0,
     act_qty: actualUnits,
     cur_qty: null, // без PeriodPerformance вычислить нельзя
+
+    _source: 'synthetic_activity_primary_resource'
   };
 
   return row as TASKRSRCRow;

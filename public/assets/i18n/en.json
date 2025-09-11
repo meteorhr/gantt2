@@ -4,6 +4,17 @@
     "subtitle":"A clear view of your project"
   },
     "dashboard": {
+      "unitsByResources": "Units by resources",
+      "period": "Period",
+      "metric": {
+        "units": "Metric (Units)"
+      },
+      "measures": {
+        "Budgeted": "Budgeted",
+        "Actual": "Actual",
+        "Remaining": "Remaining",
+        "AtCompletionUnits": "At Completion"
+      },
       "float": {
         "title": "Activity Total Float (days)",
         "bucket": "Activity Float",
@@ -280,6 +291,32 @@
       "SF": "Start to Finish"
     }
   },
+  
 
+  "hist": {
+    "series": {
+      "planned": "План",
+      "actual": "Факт",
+      "remaining": "Остаток",
+      "plannedCumulative": "План (накоп.)",
+      "actualCumulative": "Факт (накоп.)",
+      "remainingCumulative": "Остаток (накоп.)",
+      "baseline": "Базовая линия"
+    },
+    "axis": {
+      "left": "Помесячные",
+      "right": "Накопительные"
+    }
+  },
+  "projects": {
+    "cost": {
+      "prefix": {
+        "thousand": "тыс.",
+        "million":  "млн.",
+        "billion":  "млрд."
+      }
+    }
+  },
+  "units": "Units",
   "info": "ScheduleVision is fully compatible with Oracle® Primavera® P6®. It is an independently developed reader application created by Ruslan Khissamov. ScheduleVision is not a product of Oracle® and is neither endorsed, sponsored, nor affiliated with Oracle® Corporation. Oracle®, Primavera®, and P6® are registered trademarks of Oracle® Corporation and/or its affiliates."
 }
