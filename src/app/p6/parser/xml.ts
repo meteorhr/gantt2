@@ -253,6 +253,11 @@ export function parseP6XML(input: string): P6Document {
     };
     pushRow(T_PROJECT, rowProject);
 
+    // ⬇️ Для назначения TASK.rsrc_id через ResourceAssignment (на уровне проекта)
+    const taskId_to_actObjId = new Map<number, number>();
+    const projectTaskIds = new Set<number>();
+    const actObjId_to_resObjId = new Map<number, number>();
+
     // TASK (+ TASKPRED внутри Activity)
     const actNodes = Array.from(p.getElementsByTagName('Activity'));
     for (const a of actNodes) {
@@ -268,6 +273,12 @@ export function parseP6XML(input: string): P6Document {
       if (Number.isFinite(actObjId as number)) {
         maps.actObjId_to_taskId.set(actObjId as number, taskRow['task_id'] as number);
         maps.actObjId_to_projId.set(actObjId as number, projIdNum);
+      }
+      // Сохраняем обратное соответствие и набор task_id проекта
+      const tidNum = Number(taskRow['task_id']);
+      if (Number.isFinite(tidNum)) {
+        taskId_to_actObjId.set(tidNum, actObjId as number);
+        projectTaskIds.add(tidNum);
       }
 
       // связи-предшественники (вложенные)
@@ -343,9 +354,22 @@ export function parseP6XML(input: string): P6Document {
       const tid = tr['task_id'] as number;
       if (Number.isFinite(tid)) actHasAnyReal.add(tid);
 
+      // Связь ActivityObjectId → ResourceObjectId (первое вхождение побеждает)
+      const raActObjId = xmlNum(ra, 'ActivityObjectId') ?? Number(ra.getAttribute('ActivityObjectId'));
+      const raResObjId = xmlNum(ra, 'ResourceObjectId') ?? Number(ra.getAttribute('ResourceObjectId'));
+      if (
+        Number.isFinite(raActObjId as number) &&
+        Number.isFinite(raResObjId as number) &&
+        !actObjId_to_resObjId.has(raActObjId as number)
+      ) {
+        actObjId_to_resObjId.set(raActObjId as number, raResObjId as number);
+      }
+
       // сохраняем безопасно
       pushTaskrsrcSafe(tr);
     }
+
+    
 
     // 3) Досинтез только для активностей БЕЗ любых RA
     const actNodesForSynth = actNodes; // уже собраны выше
@@ -367,6 +391,22 @@ export function parseP6XML(input: string): P6Document {
       pushTaskrsrcSafe(synth as unknown as Record<string, P6Scalar>);
     }
 
+    // === Проставляем TASK.rsrc_id на основе ResourceAssignment ===
+    // Через ActivityObjectId → ResourceObjectId → rsrc_id (maps.resObjId_to_rsrcId)
+    if (!T_TASK.fields.includes('rsrc_id')) T_TASK.fields.push('rsrc_id');
+    for (const row of T_TASK.rows) {
+      const tid = Number(row['task_id']);
+      if (!Number.isFinite(tid) || !projectTaskIds.has(tid)) continue; // только строки текущего проекта
+      const actObjId = taskId_to_actObjId.get(tid);
+      if (actObjId == null) continue;
+      const resObjId = actObjId_to_resObjId.get(actObjId);
+      if (!Number.isFinite(resObjId as number)) continue;
+      const rsrcId = maps.resObjId_to_rsrcId.get(resObjId as number);
+      if (Number.isFinite(rsrcId as number)) {
+        row['rsrc_id'] = rsrcId as number;
+      }
+    }
+
     // 4) выгружаем store в таблицу (и поля расширяем на лету)
     for (const row of taskrsrcStore.values()) {
       pushRow(T_TASKRSRC, row);
@@ -379,6 +419,8 @@ export function parseP6XML(input: string): P6Document {
     const row = mapCalendarToCalendarRow(c, null);
     if (row) pushClndrUnique(row);
   }
+
+  
 
   // ===== Глобальные CURRTYPE (Currency) =====
   const curNodes = Array.from(xml.getElementsByTagName('Currency'));

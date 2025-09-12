@@ -100,7 +100,7 @@ export class DashboardTabComponent implements OnInit {
 
   // --- данные для графиков/таблиц
   /** Данные помесячного агрегата по ресурсам для <histogramPivotChart> */
-  histogramResult: MonthlyUnitsRow[] = [];
+  histogramUnitsResult: MonthlyUnitsRow[] = [];
 
   /** Конфиги спидометров */
   public readonly spi$ = new BehaviorSubject<GaugeConfig>(this.makeGauge(0));
@@ -116,6 +116,9 @@ export class DashboardTabComponent implements OnInit {
   /** простые флаги состояния */
   loading = false;
   error: string | null = null;
+
+  histogramCostResult: MonthlyUnitsRow[] = [];
+selectedMeasureCost: MeasureKey = 'Budgeted';
 
   /** выбор метрики */
   selectedMeasure: MeasureKey = 'Budgeted';
@@ -167,11 +170,22 @@ export class DashboardTabComponent implements OnInit {
     this.cdr.markForCheck();
 
     try {
-      this.histogramResult = await this.monthlyAgg.buildMonthlyUnits({
+      this.histogramUnitsResult = await this.monthlyAgg.buildMonthlyUnits({
         bucket: 'month',
         zeroFill: false,
         resourceOrder: 'name',
         desc: false,
+        mode: 'units',
+        rangeStart: this.startDate ? this.floorToLocalDate(this.startDate) : null,
+        rangeEnd:   this.endDate   ? this.floorToLocalDate(this.endDate)   : null,
+      });
+
+      this.histogramCostResult = await this.monthlyAgg.buildMonthlyUnits({
+        bucket: 'month',
+        zeroFill: false,
+        resourceOrder: 'name',
+        desc: false,
+        mode: 'cost',
         rangeStart: this.startDate ? this.floorToLocalDate(this.startDate) : null,
         rangeEnd:   this.endDate   ? this.floorToLocalDate(this.endDate)   : null,
       });

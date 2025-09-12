@@ -398,7 +398,7 @@
     <DefaultUnitsPerTime>1.0</DefaultUnitsPerTime>
     <Id>PIR</Id>
     <IsActive>1</IsActive>
-    <Name>РџРР  / Engineering</Name>
+    <Name>Engineering</Name>
     <ObjectId>173001</ObjectId>
     <ResourceType>Material</ResourceType>
     <UseTimesheets>0</UseTimesheets>

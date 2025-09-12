@@ -235,6 +235,7 @@
             </mat-card-content>
           </mat-card>
         </div>
+        @if (d?.summarize?.fileType !== 'xer') {
         <div>
           <mat-card class="table-card" appearance="outlined">
             <mat-card-header>
@@ -302,7 +303,7 @@
               <!-- Контент: график -->
               @if (!loading && !error) {
                 <histogramPivotChart
-                  [data]="histogramResult"
+                  [data]="histogramUnitsResult"
                   [height]="360"
                   [value]="selectedMeasure">
                 </histogramPivotChart>
@@ -311,6 +312,8 @@
           </mat-card>
           
         </div>
+        }
+
         <div class="tables">
           <!-- By Resource -->
           <mat-card class="table-card" appearance="outlined">
@@ -333,7 +336,104 @@
             </mat-card-content>
           </mat-card>
 
-          <!-- Cost loading -->
+
+
+        <mat-card class="table-card" appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>{{ 'dashboard.resource_loading' | transloco }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <table mat-table [dataSource]="[
+              { label: ('dashboard.actual_to_date_qty' | transloco), value: d.rsrcQtyActualToDate },
+              { label: ('dashboard.remaining_qty'     | transloco), value: d.rsrcQtyRemaining },
+              { label: ('dashboard.budgeted_qty'     | transloco), value: d.rsrcQtyBudgeted },
+              { label: ('dashboard.this_period_qty'  | transloco), value: d.rsrcQtyThisPeriod }
+            ]">
+              <ng-container matColumnDef="label">
+                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.units' | transloco }}</th>
+                <td mat-cell *matCellDef="let r">{{ r.label }}</td>
+              </ng-container>
+        
+              <ng-container matColumnDef="qty">
+                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.qty' | transloco }}</th>
+                <td mat-cell *matCellDef="let r">{{ (r.value ?? 0) | number:'1.0-2' }}</td>
+              </ng-container>
+        
+              <tr mat-header-row *matHeaderRowDef="['label','qty']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['label','qty'];"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
+        </div>
+                  <div>
+            
+  <mat-card class="table-card" appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>
+        {{ 'dashboard.costByResources' | transloco : { defaultValue: 'Cost by resources' } }}
+      </mat-card-title>
+
+      <div style="margin-left:auto; display:flex; gap:12px; align-items:center; flex-wrap: wrap;">
+        
+        <mat-form-field appearance="outline" style="min-width: 320px;">
+          <mat-label>
+            {{ 'dashboard.period' | transloco : { defaultValue: 'Period' } }}
+          </mat-label>
+
+          <mat-date-range-input [rangePicker]="pickerCost">
+            <input matStartDate [placeholder]="'common.start' | transloco : { defaultValue: 'Start' }"
+                   [value]="startDate" (dateChange)="onStartChange($event)" />
+            <input matEndDate [placeholder]="'common.end' | transloco : { defaultValue: 'End' }"
+                   [value]="endDate" (dateChange)="onEndChange($event)" />
+          </mat-date-range-input>
+
+          <mat-datepicker-toggle matSuffix [for]="pickerCost"></mat-datepicker-toggle>
+          <mat-date-range-picker #pickerCost></mat-date-range-picker>
+        </mat-form-field>
+
+        
+        <mat-form-field appearance="outline" style="min-width: 260px;">
+          <mat-label>
+            {{ 'dashboard.metric.cost' | transloco : { defaultValue: 'Metric (Cost)' } }}
+          </mat-label>
+          <mat-select [(value)]="selectedMeasureCost">
+            @for (m of measureOptions; track m) {
+              <mat-option [value]="m.key">
+                {{ 'dashboard.measures.' + m.label | transloco }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loading) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+
+      @if (error) {
+        <div class="hpc-error">
+          <mat-icon color="warn" aria-hidden="true">error_outline</mat-icon>
+          <span>{{ error }}</span>
+          <button mat-stroked-button color="primary" (click)="loadHistogram()">
+            {{ 'common.retry' | transloco : { defaultValue: 'Retry' } }}
+          </button>
+        </div>
+      }
+
+      @if (!loading && !error) {
+        <histogramPivotChart
+          [data]="histogramCostResult"
+          [height]="360"
+          [value]="selectedMeasureCost">
+        </histogramPivotChart>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>
+<div class="tables">
+                  <!-- Cost loading -->
           <mat-card class="table-card" appearance="outlined">
           <mat-card-header>
             <mat-card-title>{{ 'dashboard.cost_loading' | transloco }}</mat-card-title>
@@ -364,33 +464,6 @@
 
               <tr mat-header-row *matHeaderRowDef="['label','amount']"></tr>
               <tr mat-row *matRowDef="let row; columns: ['label','amount'];"></tr>
-            </table>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card class="table-card" appearance="outlined">
-          <mat-card-header>
-            <mat-card-title>{{ 'dashboard.resource_loading' | transloco }}</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <table mat-table [dataSource]="[
-              { label: ('dashboard.actual_to_date_qty' | transloco), value: d.rsrcQtyActualToDate },
-              { label: ('dashboard.remaining_qty'     | transloco), value: d.rsrcQtyRemaining },
-              { label: ('dashboard.budgeted_qty'     | transloco), value: d.rsrcQtyBudgeted },
-              { label: ('dashboard.this_period_qty'  | transloco), value: d.rsrcQtyThisPeriod }
-            ]">
-              <ng-container matColumnDef="label">
-                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.units' | transloco }}</th>
-                <td mat-cell *matCellDef="let r">{{ r.label }}</td>
-              </ng-container>
-        
-              <ng-container matColumnDef="qty">
-                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.qty' | transloco }}</th>
-                <td mat-cell *matCellDef="let r">{{ (r.value ?? 0) | number:'1.0-2' }}</td>
-              </ng-container>
-        
-              <tr mat-header-row *matHeaderRowDef="['label','qty']"></tr>
-              <tr mat-row *matRowDef="let row; columns: ['label','qty'];"></tr>
             </table>
           </mat-card-content>
         </mat-card>

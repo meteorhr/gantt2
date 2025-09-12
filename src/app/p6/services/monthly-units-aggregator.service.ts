@@ -10,7 +10,7 @@ export type MonthlyUnitsRow = {
     Budgeted: number;
     Actual: number;
     Remaining: number;
-    AtCompletionUnits: number; // Actual + Remaining
+    AtCompletionUnits: number; // Actual + Remaining (в режиме 'cost' — стоимость)
   }>;
 };
 
@@ -22,6 +22,8 @@ export type MonthlyUnitsOptions = {
   rangeEnd?: Date | null;
   /** Добавлять пустые месяцы (без ресурсов) в диапазоне */
   zeroFill?: boolean;               // default false
+  /** Режим агрегации: по количествам (units) или по стоимости (cost) */
+  mode?: 'units' | 'cost';          // default 'units'
   /** Чем сортировать ресурсы внутри месяца */
   resourceOrder?: 'name' | 'Budgeted' | 'Actual' | 'Remaining' | 'AtCompletionUnits'; // default 'name'
   /** Порядок сортировки */
@@ -42,15 +44,67 @@ export class MonthlyUnitsAggregatorService {
     const zeroFill = !!opts?.zeroFill;
     const resourceOrder = opts?.resourceOrder ?? 'name';
     const desc = !!opts?.desc;
+    const mode: 'units' | 'cost' = opts?.mode ?? 'units';
 
-    // 1) Получаем детальную гистограмму по ДНЯМ и по РЕСУРСАМ (это важно для качественной агрегации)
     const result = await this.hist.buildHistogram({
       bucket: 'day',                 // максимум детализации
       perResource: true,             // чтобы были ряды по каждому ресурсу
       rangeStart: opts?.rangeStart ?? null,
       rangeEnd: opts?.rangeEnd ?? null,
-      includeCost: false,            // сейчас считаем только Units, стоимость не нужна
+      includeCost: mode === 'cost',  // для режима cost просим стоимость
     });
+
+    if (mode === 'cost') {
+      const sample = (result?.data?.[1]?.points?.[0]) || (result?.data?.[0]?.points?.[0]);
+      const hasCost = sample && (('planned_cost' in sample) || ('actual_cost' in sample) || ('remaining_cost' in sample) || ('cost' in sample) || ('value_cost' in sample) || ('total_cost' in sample));
+      if (!hasCost) {
+        console.warn('[MonthlyUnitsAggregator] В режиме cost: не найдены cost-поля в histogram points. Проверьте, что HistogramService возвращает *_cost при includeCost=true.');
+      }
+    }
+
+    // Выбор источника значений по режиму (строгий cost без падения на generic поля)
+    const pickCost = (p: any, qty: number): number => {
+      // Частые ключи из HistogramService/TaskRsrc
+      const direct = p.planned_cost ?? p.actual_cost ?? p.remaining_cost ?? p.cost;
+      if (direct != null) return num(direct);
+      // Альтернативные наименования из разных реализаций
+      const alt = p.cost_planned ?? p.cost_actual ?? p.cost_remaining ?? p.value_cost ?? p.total_cost;
+      if (alt != null) return num(alt);
+      // Попробуем расчёт: qty * rate (если известна ставка)
+      const rate = p.unit_rate ?? p.price ?? p.cost_per_unit ?? null;
+      if (rate != null) return num(qty) * num(rate);
+      return 0;
+    };
+
+    const getPlanned = (p: any) => {
+      if (mode === 'cost') {
+        const q = num(p.planned_qty ?? p.planned ?? 0);
+        const v = p.planned_cost ?? p.cost_planned ?? null;
+        return v != null ? num(v) : pickCost(p, q);
+      } else {
+        return num(p.planned_qty ?? p.planned ?? 0);
+      }
+    };
+
+    const getActual = (p: any) => {
+      if (mode === 'cost') {
+        const q = num(p.actual_qty ?? p.actual ?? 0);
+        const v = p.actual_cost ?? p.cost_actual ?? null;
+        return v != null ? num(v) : pickCost(p, q);
+      } else {
+        return num(p.actual_qty ?? p.actual ?? 0);
+      }
+    };
+
+    const getRemain = (p: any) => {
+      if (mode === 'cost') {
+        const q = num(p.remaining_qty ?? p.remaining ?? 0);
+        const v = p.remaining_cost ?? p.cost_remaining ?? null;
+        return v != null ? num(v) : pickCost(p, q);
+      } else {
+        return num(p.remaining_qty ?? p.remaining ?? 0);
+      }
+    };
 
     // Справочник ресурсов: rid -> {code,name}
     const nameByRid = new Map<number, string>();
@@ -81,9 +135,9 @@ export class MonthlyUnitsAggregatorService {
         if (!row.has(resName)) row.set(resName, { Budgeted: 0, Actual: 0, Remaining: 0 });
         const acc = row.get(resName)!;
 
-        acc.Budgeted += num(p.planned_qty);
-        acc.Actual   += num(p.actual_qty);
-        acc.Remaining+= num(p.remaining_qty);
+        acc.Budgeted += getPlanned(p);
+        acc.Actual   += getActual(p);
+        acc.Remaining+= getRemain(p);
       }
     }
 
@@ -100,9 +154,9 @@ export class MonthlyUnitsAggregatorService {
         if (!row.has(resName)) row.set(resName, { Budgeted: 0, Actual: 0, Remaining: 0 });
         const acc = row.get(resName)!;
 
-        acc.Budgeted += num(p.planned_qty);
-        acc.Actual   += num(p.actual_qty);
-        acc.Remaining+= num(p.remaining_qty);
+        acc.Budgeted += getPlanned(p);
+        acc.Actual   += getActual(p);
+        acc.Remaining+= getRemain(p);
       }
     }
 
@@ -120,7 +174,7 @@ export class MonthlyUnitsAggregatorService {
 
       // Преобразуем Map -> массив и посчитаем AtCompletion
       let units = Array.from(row.entries()).map(([resource, acc]) => {
-        const AtCompletionUnits = acc.Actual + acc.Remaining;
+        const AtCompletionUnits = acc.Actual + acc.Remaining; // в режиме 'cost' — сумма стоимостей
         return { resource, Budgeted: fix(acc.Budgeted), Actual: fix(acc.Actual), Remaining: fix(acc.Remaining), AtCompletionUnits: fix(AtCompletionUnits) };
       });
 

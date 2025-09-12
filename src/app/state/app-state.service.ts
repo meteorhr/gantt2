@@ -17,11 +17,21 @@ export interface DashboardCount {
   value: string;   // код или rsrc_id как строка, '—' если пусто
   count: number;
 }
+
+export interface SummarizeVm {
+  /** Тип источника данных, например: 'xer', 'xml', 'json' */
+  fileType: string | null;
+  /** Произвольные дополнительные значения из SUMMARIZE */
+  values: Record<string, unknown>;
+}
+
 export interface DashboardVm {
   projectId: number;
   planStart: string | null;     // 'YYYY-MM-DD' или null
   planEnd: string | null;
   lastRecalc: string | null;    // last_recalc_date || last_tasksum_date || update_date
+
+  summarize: SummarizeVm;
 
   // ✨ Новые поля для таблицы Project Dates
   dataDate: string | null;           // PROJECT.next_data_date
@@ -321,6 +331,38 @@ export class AppStateService {
     return Number.isFinite(n) ? n : null;
   }
 
+  private async getSummarizeFromDb(): Promise<SummarizeVm> {
+    try {
+      const rows = await this.dexie.getRows('SUMMARIZE');
+      const list = (rows as any[]).map(r => ({
+        ...r,
+        params: r && r.params ? JSON.parse(String(r.params)) : {},
+      }));
+
+      // Собираем словарь ключ->значение
+      const values: Record<string, unknown> = {};
+      for (const r of list) {
+        const kRaw = (r?.name ?? r?.i18n ?? '').toString();
+        const v = r?.value ?? r?.val ?? r?.text ?? null;
+        if (kRaw) values[kRaw] = v;
+      }
+
+      // Популярные варианты ключей для типа файла
+      const keys = ['fileType', 'file_type', 'type', 'source', 'summarize.fileType'];
+      let fileType: string | null = null;
+      for (const k of keys) {
+        if (Object.prototype.hasOwnProperty.call(values, k)) {
+          const s = (values[k] ?? '').toString().trim();
+          if (s) { fileType = s; break; }
+        }
+      }
+
+      return { fileType, values };
+    } catch {
+      return { fileType: null, values: {} };
+    }
+  }
+
   private async buildDashboard(project_id: number): Promise<DashboardVm> {
     const pid = Number(project_id);
   
@@ -532,16 +574,20 @@ const progressCostPct =
       
     // Если at-completion исчезающе мал — тоже EAC
     if (!costValue) costValue = costActualToDate + costRemaining || costBudgeted;
-  
+
+    const summarize = await this.getSummarizeFromDb();
+
     return {
       projectId: pid,
       planStart,
       planEnd,
       lastRecalc,
-  
+
+      summarize,
+
       dataDate,
       mustFinish,
-  
+
       // ✨ Cost loading
       costValue,
       costActualToDate,
@@ -550,7 +596,7 @@ const progressCostPct =
       costThisPeriod,
 
       baseCurrency,
-  
+
       // Прогрессы
       progressSchedulePct,
       progressPhysicalPct,
@@ -572,7 +618,7 @@ const progressCostPct =
       },
 
       cpi: cpi,
-  
+
       // Группировки
       totalTasks,
       byStatus,
