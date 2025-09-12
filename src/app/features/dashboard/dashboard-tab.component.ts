@@ -221,10 +221,17 @@ selectedMeasureCost: MeasureKey = 'Budgeted';
 
   // ==== Диалоги (оставлены как есть) ====
   openSpiDialog(d: unknown): void {
-    this.dialog.open<any>(undefined as any, { width: '560px', data: d });
+    this.dialog.open(SpiDialogCmp, {
+      width: '560px',
+      data: d,
+    });
   }
+  
   openCpiDialog(d: unknown): void {
-    this.dialog.open<any>(undefined as any, { width: '560px', data: d });
+    this.dialog.open(CpiDialogCmp, {
+      width: '560px',
+      data: d,
+    });
   }
 
   /** Самый частый value:count из списка */

@@ -487,89 +487,147 @@ const progressCostPct =
     const sumKeys = (rows: any[], keys: string[]) =>
       rows.reduce((s, r) => s + firstNum(r, keys), 0);
   
-    // частые имена полей в XER для стоимостей в TASKRSRC
-    const K = {
-      budget: ['target_cost', 'budg_cost', 'target_total_cost', 'at_completion_total_cost'],
-      actual: ['act_cost', 'actual_cost', 'act_total_cost', 'act_this_cost_to_date'],
-      remain: ['remain_cost', 'remaining_cost', 'remain_total_cost'],
-      period: ['act_this_per_cost', 'this_per_cost'],
-      atComp: ['at_completion_cost', 'at_completion_total_cost'],
-    };
 
-    const baseCurrency = await this.getBaseCurrencyFromDb(p);
-  
-    let costBudgeted     = sumKeys(trs, K.budget);
-    let costActualToDate = sumKeys(trs, K.actual);
-    let costRemaining    = sumKeys(trs, K.remain);
-    let costThisPeriod   = sumKeys(trs, K.period);
-    let costValue        = sumKeys(trs, K.atComp);
-  
-    // 2) Если TASKRSRC пуст/нули — fallback: считаем от TASK * qty * def_cost_per_qty (PROJECT)
-    const isAllZero = (vals: number[]) => vals.every(v => v === 0);
-    if (trs.length === 0 || isAllZero([costBudgeted, costActualToDate, costRemaining, costThisPeriod, costValue])) {
-      const defCostPerQty = this.toNumberOrNull(p?.def_cost_per_qty) ?? 0;
-  
-      const get = (t: any, k: string) => this.toNumberOrNull(t?.[k]) ?? 0;
-      const fallbackBudgeted     = tasks.reduce((s, t) => s + get(t, 'target_work_qty') * defCostPerQty, 0);
-      const fallbackActual       = tasks.reduce((s, t) => s + get(t, 'act_work_qty')    * defCostPerQty, 0);
-      const fallbackRemainQty    = tasks.reduce((s, t) => {
-        const rem = this.toNumberOrNull(t?.remain_work_qty);
-        if (rem !== null) return s + rem;
-        const tgt = get(t, 'target_work_qty');
-        const act = get(t, 'act_work_qty');
-        return s + Math.max(0, tgt - act);
-      }, 0);
-      const fallbackThisPeriod   = tasks.reduce((s, t) => s + get(t, 'act_this_per_work_qty') * defCostPerQty, 0);
-  
-      costBudgeted     = fallbackBudgeted;
-      costActualToDate = fallbackActual;
-      costRemaining    = fallbackRemainQty * defCostPerQty;
-      costThisPeriod   = fallbackThisPeriod;
-      costValue        = costActualToDate + costRemaining; // EAC
-
-      
+   // Берём ПЕРВЫЙ доступный ключ из списка приоритетов на каждую строку
+function sumByPrecedence(rows: any[], keys: string[]): number {
+  let total = 0;
+  for (const r of rows) {
+    let picked: number | null = null;
+    for (const k of keys) {
+      const v = r?.[k];
+      if (v !== undefined && v !== null) {
+        const n = Number(v);
+        if (Number.isFinite(n)) { picked = n; break; }
+      }
     }
+    if (picked !== null) total += picked;
+  }
+  return total;
+}
 
-    // --- RESOURCE LOADING (qty) ---
-    const KQ = {
-      budget: ['target_qty', 'budg_qty', 'target_total_qty'],
-      actual: ['act_qty', 'actual_qty', 'act_total_qty', 'act_this_qty_to_date'],
-      remain: ['remain_qty', 'remaining_qty', 'remain_total_qty'],
-      period: ['act_this_per_qty', 'this_per_qty'],
-    };
+// --- RESOURCE LOADING (qty) ---  ✅ исправленный приоритет полей P6
+const KQ = {
+  // План на завершение (BAC) — приоритет тотальных/целевых
+  budget: ['target_total_qty', 'target_qty', 'budg_qty'],
 
-    let rsrcQtyBudgeted     = sumKeys(trs, KQ.budget);
-    let rsrcQtyActualToDate = sumKeys(trs, KQ.actual);
-    let rsrcQtyRemaining    = sumKeys(trs, KQ.remain);
-    let rsrcQtyThisPeriod   = sumKeys(trs, KQ.period);
+  // Факт "to date" — строго накопленные, периодические в самый низ
+  actual: ['act_total_qty', 'act_this_qty_to_date', 'actual_qty', 'act_qty'],
 
-    // Фоллбэк на TASK.*_work_qty, если в TASKRSRC всё пусто / отсутствует
-    if (trs.length === 0 || (rsrcQtyBudgeted + rsrcQtyActualToDate + rsrcQtyRemaining + rsrcQtyThisPeriod) === 0) {
-      const getN = (t: any, k: string) => this.toNumberOrNull(t?.[k]) ?? 0;
+  // Остаток — накопленные остатки, затем иные
+  remain: ['remain_total_qty', 'remaining_qty', 'remain_qty'],
 
-      const sumTargetWork  = tasks.reduce((s, t) => s + getN(t, 'target_work_qty'), 0);
-      const sumActWork     = tasks.reduce((s, t) => s + getN(t, 'act_work_qty'), 0);
-      const sumRemainWork  = tasks.reduce((s, t) => {
-        const rem = this.toNumberOrNull(t?.remain_work_qty);
-        if (rem !== null) return s + rem;
-        const tgt = getN(t, 'target_work_qty');
-        const act = getN(t, 'act_work_qty');
-        return s + Math.max(0, tgt - act);
-      }, 0);
-      const sumThisPerWork = tasks.reduce((s, t) => s + getN(t, 'act_this_per_work_qty'), 0);
+  // Текущий период
+  period: ['this_per_qty', 'act_this_per_qty', 'act_qty'],
+};
 
-      rsrcQtyBudgeted     = sumTargetWork;
-      rsrcQtyActualToDate = sumActWork;
-      rsrcQtyRemaining    = sumRemainWork;
-      rsrcQtyThisPeriod   = sumThisPerWork;
-    }
+let rsrcQtyBudgeted     = sumByPrecedence(trs, KQ.budget);
+let rsrcQtyActualToDate = sumByPrecedence(trs, KQ.actual);
+let rsrcQtyRemaining    = sumByPrecedence(trs, KQ.remain);
+let rsrcQtyThisPeriod   = sumByPrecedence(trs, KQ.period);
+
+// Фоллбэк на TASK.* если TASKRSRC пуст/нулевой
+if (trs.length === 0 || (rsrcQtyBudgeted + rsrcQtyActualToDate + rsrcQtyRemaining + rsrcQtyThisPeriod) === 0) {
+  const getN = (t: any, k: string) => {
+    const n = Number(t?.[k]); return Number.isFinite(n) ? n : 0;
+  };
+
+  const sumTargetWork = tasks.reduce((s, t) => s + getN(t, 'target_work_qty'), 0);
+  const sumActWork    = tasks.reduce((s, t) => s + getN(t, 'act_work_qty'), 0);
+  const sumRemainWork = tasks.reduce((s, t) => {
+    const rem = Number(t?.remain_work_qty);
+    if (Number.isFinite(rem)) return s + rem;
+    const tgt = getN(t, 'target_work_qty');
+    const act = getN(t, 'act_work_qty');
+    return s + Math.max(0, tgt - act);
+  }, 0);
+  const sumThisPerWork = tasks.reduce((s, t) => s + getN(t, 'act_this_per_work_qty'), 0);
+
+  rsrcQtyBudgeted     = sumTargetWork;
+  rsrcQtyActualToDate = sumActWork;
+  rsrcQtyRemaining    = sumRemainWork;
+  rsrcQtyThisPeriod   = sumThisPerWork;
+}
+
+function toNum(x: any): number { const n = Number(x); return Number.isFinite(n) ? n : 0; }
+function isAllZero(vals: number[]): boolean { return vals.every(v => v === 0); }
+
+// ================== COST LOADING (TASKRSRC) ==================
+/**
+ * Приоритеты полей подобраны так, чтобы:
+ * - Budgeted (BAC): брать целевые/плановые ИМЕННО накопленные в приоритете, без EAC;
+ * - Actual: брать строго накопленные поля вверху, периодические — только как низкий фоллбэк;
+ * - Remaining: накопленные остатки; если нет — вычислять как max(0, Budgeted - Actual);
+ * - Period: явные "this_per_*", затем возможно period-like;
+ * - AtCompletion (EAC): явные at_completion_*; если нет — Actual + Remaining.
+ */
+const KC = {
+  // План/бюджет (BAC), БЕЗ EAC. Исключаем at_completion_* из budget, чтобы не мешать семантику.
+  budget: ['target_total_cost', 'target_cost', 'budg_cost'],
+
+  // Факт "to date": накопленные поля выше, периодические — в самый низ.
+  actual: ['act_total_cost', 'act_this_cost_to_date', 'actual_cost', 'act_cost'],
+
+  // Остаток "to complete": накопленные остатки.
+  remain: ['remain_total_cost', 'remaining_cost', 'remain_cost'],
+
+  // За текущий период:
+  period: ['this_per_cost', 'act_this_per_cost', 'act_cost'],
+
+  // Явный EAC:
+  atComp: ['at_completion_total_cost', 'at_completion_cost'],
+};
+
+// Базовая валюта проекта (если нужно для меток/форматирования)
+const baseCurrency = await this.getBaseCurrencyFromDb(p);
+
+// Основной путь: TASKRSRC
+let costBudgeted      = sumByPrecedence(trs, KC.budget);
+let costActualToDate  = sumByPrecedence(trs, KC.actual);
+let costRemaining     = sumByPrecedence(trs, KC.remain);
+let costThisPeriod    = sumByPrecedence(trs, KC.period);
+let costValue         = sumByPrecedence(trs, KC.atComp); // EAC, если есть явное поле
+
+// Если нет явного Remaining — считаем как BAC - Actual (не отрицательное)
+if (costRemaining === 0 && (costBudgeted !== 0 || costActualToDate !== 0)) {
+  costRemaining = Math.max(0, costBudgeted - costActualToDate);
+}
+
+// Если нет явного EAC — считаем как Actual + Remaining
+if (costValue === 0) {
+  costValue = costActualToDate + costRemaining;
+}
+
+// ---------------- Fallback на TASK при пустых/нулевых TASKRSRC ----------------
+if (trs.length === 0 || isAllZero([costBudgeted, costActualToDate, costRemaining, costThisPeriod, costValue])) {
+  const defCostPerQty = toNum(p?.def_cost_per_qty);
+
+  const get = (t: any, k: string) => toNum(t?.[k]);
+
+  const fallbackBudgetedQty   = tasks.reduce((s, t) => s + get(t, 'target_work_qty'), 0);
+  const fallbackActualQty     = tasks.reduce((s, t) => s + get(t, 'act_work_qty'), 0);
+  const fallbackRemainQty     = tasks.reduce((s, t) => {
+    const rem = Number(t?.remain_work_qty);
+    if (Number.isFinite(rem)) return s + rem;
+    const tgt = get(t, 'target_work_qty');
+    const act = get(t, 'act_work_qty');
+    return s + Math.max(0, tgt - act);
+  }, 0);
+  const fallbackThisPerQty    = tasks.reduce((s, t) => s + get(t, 'act_this_per_work_qty'), 0);
+
+  // Стоимость как qty * дефолтная стоимость за qty (если в данных нет детальной стоимости по ресурсам)
+  costBudgeted     = fallbackBudgetedQty * defCostPerQty;
+  costActualToDate = fallbackActualQty   * defCostPerQty;
+  costRemaining    = fallbackRemainQty   * defCostPerQty;
+  costThisPeriod   = fallbackThisPerQty  * defCostPerQty;
+  costValue        = costActualToDate + costRemaining; // EAC
+}
 
     const cpi = await computeCPIFromDexie(this.dexie, pid);
 
     const spiRes = await computeSpiForProject(this.dexie, pid, {
       weight: 'work',            // можно переключить на 'equal'
       asOf:  dataDate ?? lastRecalc,
-      debug: true
+      debug: false
     });
       
     // Если at-completion исчезающе мал — тоже EAC

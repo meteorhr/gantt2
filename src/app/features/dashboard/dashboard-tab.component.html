@@ -235,7 +235,32 @@
             </mat-card-content>
           </mat-card>
         </div>
-        @if (d?.summarize?.fileType !== 'xer') {
+        <div class="kpis4">
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value-small">{{ d.rsrcQtyActualToDate | number:'1.0-2'  }}</div>
+              <div class="kpi-caption">{{ 'dashboard.actual_to_date_qty' | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value-small">{{ d.rsrcQtyRemaining | number:'1.0-2'  }}</div>
+              <div class="kpi-caption">{{ 'dashboard.remaining_qty'     | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value-small">{{  d.rsrcQtyBudgeted | number:'1.0-2'  }}</div>
+              <div class="kpi-caption">{{ 'dashboard.budgeted_qty'     | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value-small">{{ d.rsrcQtyThisPeriod | number:'1.0-2'  }}</div>
+              <div class="kpi-caption">{{ 'dashboard.this_period_qty'  | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+        </div>
         <div>
           <mat-card class="table-card" appearance="outlined">
             <mat-card-header>
@@ -312,58 +337,34 @@
           </mat-card>
           
         </div>
-        }
+        
 
-        <div class="tables">
-          <!-- By Resource -->
-          <mat-card class="table-card" appearance="outlined">
-            <mat-card-header>
-              <mat-card-title>{{ 'dashboard.table_by_resource' | transloco }}</mat-card-title>
-            </mat-card-header>
+
+        <div class="kpis4">
+          <mat-card class="kpi-card" appearance="outlined">
             <mat-card-content>
-              <table mat-table [dataSource]="d.byRsrcId">
-                <ng-container matColumnDef="value">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.resource' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ r.value }}</td>
-                </ng-container>
-                <ng-container matColumnDef="count">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
-              </table>
+              <div class="kpi-value-small">{{ d.costActualToDate | number:'1.0-2'  }}</div>
+              <div class="kpi-caption">{{ 'dashboard.actual_to_date' | transloco }}</div>
             </mat-card-content>
           </mat-card>
-
-
-
-        <mat-card class="table-card" appearance="outlined">
-          <mat-card-header>
-            <mat-card-title>{{ 'dashboard.resource_loading' | transloco }}</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <table mat-table [dataSource]="[
-              { label: ('dashboard.actual_to_date_qty' | transloco), value: d.rsrcQtyActualToDate },
-              { label: ('dashboard.remaining_qty'     | transloco), value: d.rsrcQtyRemaining },
-              { label: ('dashboard.budgeted_qty'     | transloco), value: d.rsrcQtyBudgeted },
-              { label: ('dashboard.this_period_qty'  | transloco), value: d.rsrcQtyThisPeriod }
-            ]">
-              <ng-container matColumnDef="label">
-                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.units' | transloco }}</th>
-                <td mat-cell *matCellDef="let r">{{ r.label }}</td>
-              </ng-container>
-        
-              <ng-container matColumnDef="qty">
-                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.qty' | transloco }}</th>
-                <td mat-cell *matCellDef="let r">{{ (r.value ?? 0) | number:'1.0-2' }}</td>
-              </ng-container>
-        
-              <tr mat-header-row *matHeaderRowDef="['label','qty']"></tr>
-              <tr mat-row *matRowDef="let row; columns: ['label','qty'];"></tr>
-            </table>
-          </mat-card-content>
-        </mat-card>
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value-small">{{  d.costRemaining | number:'1.0-2'  }}</div>
+              <div class="kpi-caption">{{ 'dashboard.remaining_cost'     | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value-small">{{  d.costBudgeted | number:'1.0-2'  }}</div>
+              <div class="kpi-caption">{{ 'dashboard.budgeted_cost'     | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
+          <mat-card class="kpi-card" appearance="outlined">
+            <mat-card-content>
+              <div class="kpi-value-small">{{ d.costThisPeriod | number:'1.0-2'  }}</div>
+              <div class="kpi-caption">{{ 'dashboard.this_period_cost'  | transloco }}</div>
+            </mat-card-content>
+          </mat-card>
         </div>
                   <div>
             
@@ -432,8 +433,89 @@
     </mat-card-content>
   </mat-card>
 </div>
+
 <div class="tables">
-                  <!-- Cost loading -->
+  <!-- By Resource -->
+  <mat-card class="table-card" appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>{{ 'dashboard.table_by_resource' | transloco }}</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <table mat-table [dataSource]="d.byRsrcId">
+        <ng-container matColumnDef="value">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.resource' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.value }}</td>
+        </ng-container>
+        <ng-container matColumnDef="count">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="table-card" appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>{{ 'dashboard.float.title' | transloco }}</mat-card-title>
+    </mat-card-header>
+  
+    <mat-card-content>
+      <table mat-table [dataSource]="[
+        { k: ('dashboard.float.rows.critical'      | transloco), v: d.floatSummary.critical },
+        { k: ('dashboard.float.rows.nearCritical'  | transloco), v: d.floatSummary.nearCritical },
+        { k: ('dashboard.float.rows.normal'        | transloco), v: d.floatSummary.normal },
+        { k: ('dashboard.float.rows.high'          | transloco), v: d.floatSummary.high },
+        { k: ('dashboard.float.rows.longestPath'   | transloco), v: d.floatSummary.longestPath },
+        { k: ('dashboard.float.rows.unknown'       | transloco), v: d.floatSummary.unknown },
+        { k: ('dashboard.float.rows.total'         | transloco), v: d.floatSummary.total }
+      ]">
+        <ng-container matColumnDef="k">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.float.bucket' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.k }}</td>
+        </ng-container>
+  
+        <ng-container matColumnDef="v">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.float.count' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.v }}</td>
+        </ng-container>
+  
+        <tr mat-header-row *matHeaderRowDef="['k','v']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['k','v'];"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+
+<!--
+<mat-card class="table-card" appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>{{ 'dashboard.resource_loading' | transloco }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <table mat-table [dataSource]="[
+      { label: ('dashboard.actual_to_date_qty' | transloco), value: d.rsrcQtyActualToDate },
+      { label: ('dashboard.remaining_qty'     | transloco), value: d.rsrcQtyRemaining },
+      { label: ('dashboard.budgeted_qty'     | transloco), value: d.rsrcQtyBudgeted },
+      { label: ('dashboard.this_period_qty'  | transloco), value: d.rsrcQtyThisPeriod }
+    ]">
+      <ng-container matColumnDef="label">
+        <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.units' | transloco }}</th>
+        <td mat-cell *matCellDef="let r">{{ r.label }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="qty">
+        <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.qty' | transloco }}</th>
+        <td mat-cell *matCellDef="let r">{{ (r.value ?? 0) | number:'1.0-2' }}</td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="['label','qty']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['label','qty'];"></tr>
+    </table>
+  </mat-card-content>
+</mat-card>
+-->
+                  <!-- Cost loading 
           <mat-card class="table-card" appearance="outlined">
           <mat-card-header>
             <mat-card-title>{{ 'dashboard.cost_loading' | transloco }}</mat-card-title>
@@ -467,37 +549,9 @@
             </table>
           </mat-card-content>
         </mat-card>
+        -->
 
-        <mat-card class="table-card" appearance="outlined">
-          <mat-card-header>
-            <mat-card-title>{{ 'dashboard.float.title' | transloco }}</mat-card-title>
-          </mat-card-header>
-        
-          <mat-card-content>
-            <table mat-table [dataSource]="[
-              { k: ('dashboard.float.rows.critical'      | transloco), v: d.floatSummary.critical },
-              { k: ('dashboard.float.rows.nearCritical'  | transloco), v: d.floatSummary.nearCritical },
-              { k: ('dashboard.float.rows.normal'        | transloco), v: d.floatSummary.normal },
-              { k: ('dashboard.float.rows.high'          | transloco), v: d.floatSummary.high },
-              { k: ('dashboard.float.rows.longestPath'   | transloco), v: d.floatSummary.longestPath },
-              { k: ('dashboard.float.rows.unknown'       | transloco), v: d.floatSummary.unknown },
-              { k: ('dashboard.float.rows.total'         | transloco), v: d.floatSummary.total }
-            ]">
-              <ng-container matColumnDef="k">
-                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.float.bucket' | transloco }}</th>
-                <td mat-cell *matCellDef="let r">{{ r.k }}</td>
-              </ng-container>
-        
-              <ng-container matColumnDef="v">
-                <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.float.count' | transloco }}</th>
-                <td mat-cell *matCellDef="let r">{{ r.v }}</td>
-              </ng-container>
-        
-              <tr mat-header-row *matHeaderRowDef="['k','v']"></tr>
-              <tr mat-row *matRowDef="let row; columns: ['k','v'];"></tr>
-            </table>
-          </mat-card-content>
-        </mat-card>
+
         
         </div>
       } @else {

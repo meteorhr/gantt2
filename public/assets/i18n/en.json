@@ -1,12 +1,18 @@
 {
+  "common": {
+    "start": "Start",
+    "end": "End"
+  },
   "app": {
     "title": "ScheduleVision",
     "subtitle":"A clear view of your project"
   },
     "dashboard": {
       "unitsByResources": "Units by resources",
+      "costByResources": "Cost by resources",
       "period": "Period",
       "metric": {
+        "cost": "Metric (Cost)",
         "units": "Metric (Units)"
       },
       "measures": {

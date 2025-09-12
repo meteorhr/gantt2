@@ -40,6 +40,14 @@
   align-items: start; /* чтобы карточки 1–2 не растягивались по высоте третьей колонки */
 }
 
+.kpis4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(200px, 1fr));
+  gap: 12px;
+  align-items: start; /* чтобы карточки 1–2 не растягивались по высоте третьей колонки */
+}
+
+
 
 
 
@@ -179,6 +187,13 @@ mat-card,
   letter-spacing: .2px;
 }
 
+.kpi-value-small {                 /* поддержка вашего текущего .value */
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: .2px;
+}
+
 .kpi-value-date {                 /* поддержка вашего текущего .value */
   font-size: 30px;
   font-weight: 700;
@@ -214,7 +229,7 @@ mat-card,
   top: 0;
   left: 0;
   bottom: 0;
-  background: #3f51b5;   /* цвет бара (можно заменить на theme) */
+  background: var(--mat-sys-primary) ;   /* #3f51b5 цвет бара (можно заменить на theme) */
   transition: width 0.3s ease;
 }
 
@@ -235,7 +250,7 @@ mat-card,
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: #fff;
   white-space: nowrap;
 }
