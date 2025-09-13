@@ -28,6 +28,8 @@ export type MonthlyUnitsOptions = {
   resourceOrder?: 'name' | 'Budgeted' | 'Actual' | 'Remaining' | 'AtCompletionUnits'; // default 'name'
   /** Порядок сортировки */
   desc?: boolean;                   // default false (по возрастанию)
+  /** Добавлять колонку 'UNASSIGNED' (неназначенные ресурсы = Overall − сумма назначенных) */
+  includeUnassigned?: boolean;     // default true
 };
 
 @Injectable({ providedIn: 'root' })
@@ -45,6 +47,7 @@ export class MonthlyUnitsAggregatorService {
     const resourceOrder = opts?.resourceOrder ?? 'name';
     const desc = !!opts?.desc;
     const mode: 'units' | 'cost' = opts?.mode ?? 'units';
+    const includeUnassigned = opts?.includeUnassigned !== false;
 
     const result = await this.hist.buildHistogram({
       bucket: 'day',                 // максимум детализации
@@ -120,6 +123,21 @@ export class MonthlyUnitsAggregatorService {
     const series = result.data?.slice(1) ?? []; // только ресурсные серии
     const inputPeriods = new Set<string>();
 
+    // Overall по периодам (для вычисления UNASSIGNED)
+    const overallByPeriod = new Map<string, { B: number; A: number; R: number }>();
+    if (includeUnassigned && result.data?.[0]?.points?.length) {
+      for (const p of result.data[0].points) {
+        const key = bucketOut === 'month' ? toMonth(p.period) : toYear(p.period);
+        const prev = overallByPeriod.get(key) ?? { B: 0, A: 0, R: 0 };
+        prev.B += getPlanned(p);
+        prev.A += getActual(p);
+        prev.R += getRemain(p);
+        overallByPeriod.set(key, prev);
+        // Учтём периоды даже если нет назначенных серий — чтобы UNASSIGNED появился
+        inputPeriods.add(key);
+      }
+    }
+
     for (const s of series) {
       const rid = s.rsrc_id;
       if (rid == null) continue;
@@ -138,6 +156,52 @@ export class MonthlyUnitsAggregatorService {
         acc.Budgeted += getPlanned(p);
         acc.Actual   += getActual(p);
         acc.Remaining+= getRemain(p);
+      }
+    }
+
+    // Хелпер: если в строке уже есть реальный ресурс с названием "UNASSIGNED" — подберём безопасный ключ
+    const resolveUnassignedKey = (row: Map<string, { Budgeted: number; Actual: number; Remaining: number }>): string => {
+      let base = 'UNASSIGNED';
+      if (!row.has(base)) return base;
+      // попробуем вариант с пометкой
+      base = 'UNASSIGNED (auto)';
+      if (!row.has(base)) return base;
+      // финально — добавляем звездочки, пока не найдём свободный ключ
+      let i = 1;
+      let key = `${base}*`;
+      while (row.has(key)) {
+        i++;
+        key = `${base}${'*'.repeat(i)}`;
+      }
+      return key;
+    };
+
+    // 3.1) Добавим 'UNASSIGNED' = Overall − сумма назначенных (неназначенные ресурсы)
+    if (includeUnassigned && series.length > 0 && overallByPeriod.size > 0) {
+      for (const per of inputPeriods) {
+        const ov = overallByPeriod.get(per) ?? { B: 0, A: 0, R: 0 };
+        // сумма назначенных по периоду
+        const row = byPeriod.get(per) ?? new Map<string, { Budgeted: number; Actual: number; Remaining: number }>();
+        let sumB = 0, sumA = 0, sumR = 0;
+        for (const acc of row.values()) {
+          sumB += acc.Budgeted;
+          sumA += acc.Actual;
+          sumR += acc.Remaining;
+        }
+        const dB = ov.B - sumB;
+        const dA = ov.A - sumA;
+        const dR = ov.R - sumR;
+        // добавляем только если есть значимая разница (игнорируем микроскопические ошибки округления)
+        if (Math.abs(dB) > 1e-9 || Math.abs(dA) > 1e-9 || Math.abs(dR) > 1e-9) {
+          if (!byPeriod.has(per)) byPeriod.set(per, new Map());
+          const m = byPeriod.get(per)!;
+          const key = resolveUnassignedKey(m);
+          if (!m.has(key)) m.set(key, { Budgeted: 0, Actual: 0, Remaining: 0 });
+          const acc = m.get(key)!;
+          acc.Budgeted += dB;
+          acc.Actual   += dA;
+          acc.Remaining+= dR;
+        }
       }
     }
 

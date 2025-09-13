@@ -1,0 +1,19 @@
+<div #host class="doughunt-root">
+  <!-- SVG вставляется сюда D3-ем -->
+
+  <!-- Легенда снизу -->
+  <div class="legend">
+    @for (item of items; track item.value) {
+      <button
+        type="button"
+        class="legend-item"
+        [class.inactive]="!isActive(item.value)"
+        (click)="onLegendToggle(item.value)">
+        <span class="dot" [style.backgroundColor]="colorFor(item.value)"></span>
+        <span class="label">{{ (translocoPrefix + item.value) | transloco }}</span>
+      </button>
+    }
+  </div>
+
+  <div #tooltip class="tooltip" [class.visible]="tooltipVisible"></div>
+</div>

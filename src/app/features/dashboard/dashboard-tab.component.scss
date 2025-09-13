@@ -277,3 +277,54 @@ mat-card,
 .status-TK_Inactive {
   background-color: #d32f2f; // красный — Inactive
 }
+
+.kpis4-card {
+  padding: 0;                /* контент управляется .kpis4-grid */
+  border-radius: 12px;
+}
+
+/* сетка на 4 равные колонки */
+.kpis4-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+}
+
+/* ячейка KPI */
+.kpi-cell {
+  position: relative;
+  padding: 16px 20px;
+  min-height: 88px;          /* визуальный баланс */
+  box-sizing: border-box;
+}
+
+/* вертикальный разделитель между ячейками */
+.kpi-cell + .kpi-cell::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.12); /* цвет разделителя как у mat-divider */
+}
+
+/* подпись (верхняя строка, мелкая, с многоточием) */
+.kpi-title {
+  font-size: 14px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 8px;
+}
+
+/* значение (крупная цифра) */
+.kpi-value {
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  color: rgba(0, 0, 0, 0.87);
+}

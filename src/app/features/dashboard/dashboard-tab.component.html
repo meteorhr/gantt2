@@ -10,7 +10,33 @@
       </div>
     } @else {
       @if (wm.dashboard(); as d) {
-        <!-- KPIs -->
+
+<div>
+  <mat-card class="kpis4-card" appearance="outlined">
+    <div class="kpis4-grid">
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.start_date' | transloco }}</div>
+        <div class="kpi-value">{{ d.planStart | date: 'mediumDate' }}</div>
+      </div>
+
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.data_date' | transloco }}</div>
+        <div class="kpi-value">{{ d.dataDate | date: 'mediumDate' }}</div>
+      </div>
+
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.end_date' | transloco }}</div>
+        <div class="kpi-value">{{ d.planEnd | date: 'mediumDate' }}</div>
+      </div>
+
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.must_finish' | transloco }}</div>
+        <div class="kpi-value">{{ d.mustFinish | date: 'mediumDate' }}</div>
+      </div>
+    </div>
+  </mat-card>
+  
+</div>
 
 <div class="kpis">
   <!-- SPI -->
@@ -49,71 +75,8 @@
     </mat-card-actions>
   </mat-card>
 
-  <!-- Третий столбец: три карточки вертикально -->
-  <div class="kpi-stack">
-    <mat-card class="kpi-card" style="height: 157px" appearance="outlined">
-      <mat-card-content>
-        <div class="kpi-value">{{ d.totalTasks }}</div>
-        <div class="kpi-caption">{{ 'dashboard.total_tasks' | transloco }}</div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="kpi-card" style="height: 156px; margin: 0" appearance="outlined">
-      <mat-card-content>
-        <div class="kpi-value">{{ nonEmptyRsrcCount() }}</div>
-        <div class="kpi-caption">{{ 'dashboard.distinct_resources' | transloco }}</div>
-      </mat-card-content>
-    </mat-card>
-    <!--
-    <mat-card class="kpi-card" appearance="outlined">
-      <mat-card-content>
-        <div class="kpi-value-date">{{ d.lastRecalc || '—' }}</div>
-        <div class="kpi-caption">{{ 'dashboard.last_recalc' | transloco }}</div>
-      </mat-card-content>
-    </mat-card>
-    -->
-  </div>
-</div>
-
-
-
-        <!-- ТАБЛИЦЫ -->
-        <div class="tables">
-
-          <!-- Project Dates -->
-          <mat-card class="table-card" appearance="outlined">
-            <mat-card-header>
-              <mat-card-title>{{ 'dashboard.project_dates' | transloco }}</mat-card-title>
-            </mat-card-header>
-          
-            <mat-card-content>
-              <table mat-table [dataSource]="[
-                { label: ('dashboard.start_date'  | transloco), date: (d.planStart  || '—') },
-                { label: ('dashboard.data_date'   | transloco), date: (d.dataDate   || '—') },
-                { label: ('dashboard.end_date'    | transloco), date: (d.planEnd    || '—') },
-                { label: ('dashboard.must_finish' | transloco), date: (d.mustFinish || '—') }
-              ]">
-          
-                <!-- Колонка 'Key' -->
-                <ng-container matColumnDef="label">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.key' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ r.label }}</td>
-                </ng-container>
-          
-                <!-- Колонка 'Date' -->
-                <ng-container matColumnDef="date">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.date' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ r.date }}</td>
-                </ng-container>
-          
-                <tr mat-header-row *matHeaderRowDef="['label','date']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['label','date'];"></tr>
-              </table>
-            </mat-card-content>
-          </mat-card>
-
-          <!-- Progress -->
-          <mat-card class="table-card" appearance="outlined">
+            <!-- Progress -->
+          <mat-card class="kpi-card" appearance="outlined" style="height: 326px;">
             <mat-card-header>
               <mat-card-title>{{ 'dashboard.progress' | transloco }}</mat-card-title>
             </mat-card-header>
@@ -141,126 +104,243 @@
                 <tr mat-row *matRowDef="let row; columns: ['label','percent'];"></tr>
               </table>
             </mat-card-content>
+            
           </mat-card>
+
+  <!-- Третий столбец: три карточки вертикально 
+  <div class="kpi-stack">
+    <mat-card class="kpi-card" style="height: 157px" appearance="outlined">
+      <mat-card-content>
+        <div class="kpi-value">{{ d.totalTasks }}</div>
+        <div class="kpi-caption">{{ 'dashboard.total_tasks' | transloco }}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="kpi-card" style="height: 156px; margin: 0" appearance="outlined">
+      <mat-card-content>
+        <div class="kpi-value">{{ nonEmptyRsrcCount() }}</div>
+        <div class="kpi-caption">{{ 'dashboard.distinct_resources' | transloco }}</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+  -->
+</div>
+
+<div class="tables">
+
+        
+
+
 
           <!-- By Status + TOTAL -->
 <mat-card class="table-card" appearance="outlined">
   <mat-card-header>
     <mat-card-title>{{ 'dashboard.table_by_status' | transloco }}</mat-card-title>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+      <button mat-icon-button (click)="toggleStatusView()"
+              [matTooltip]="showStatusChart
+                ? ('dashboard.show_table' | transloco : { defaultValue: 'Show table' })
+                : ('dashboard.show_chart' | transloco : { defaultValue: 'Show chart' })">
+        <mat-icon aria-hidden="true">
+          {{ showStatusChart ? 'table_chart' : 'donut_small' }}
+        </mat-icon>
+      </button>
+    </div>
   </mat-card-header>
   <mat-card-content>
-    <table mat-table [dataSource]="d.byStatus">
-      <ng-container matColumnDef="value">
-        <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.status' | transloco }}</th>
-        <td mat-cell *matCellDef="let r" >
+    @if (showStatusChart) {
+      <doughunt
+        [data]="d.byStatus"
+         [colors]="statusColors"
+         [translocoPrefix]="'task.status_code.'"
+        [size]="240">
+      </doughunt>
+    } @else {
+      <table mat-table [dataSource]="d.byStatus">
+        <ng-container matColumnDef="value">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.status' | transloco }}</th>
+          <td mat-cell *matCellDef="let r" >
             <span class="status-badge" [ngClass]="'status-' + r.value">
-    {{ ('task.status_code.' + r.value) | transloco }}
-  </span>
-        </td>
-        <td mat-footer-cell *matFooterCellDef>{{ 'dashboard.total' | transloco }}</td>
-      </ng-container>
+              {{ 'task.status_code.' + r.value | transloco  }}
+            </span>
+          </td>
+          <td mat-footer-cell *matFooterCellDef>{{ 'dashboard.total' | transloco }}</td>
+        </ng-container>
 
-      <ng-container matColumnDef="count">
-        <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
-        <td mat-cell *matCellDef="let r">{{ r.count }}</td>
-        <td mat-footer-cell *matFooterCellDef>{{ d.totalTasks }}</td>
-      </ng-container>
+        <ng-container matColumnDef="count">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+          <td mat-footer-cell *matFooterCellDef>{{ d.totalTasks }}</td>
+        </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
-      <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
-      <tr mat-footer-row *matFooterRowDef="['value','count']"></tr>
-    </table>
+        <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+        <tr mat-footer-row *matFooterRowDef="['value','count']"></tr>
+      </table>
+    }
   </mat-card-content>
 </mat-card>
           <!-- By Task Type -->
-          <mat-card class="table-card" appearance="outlined">
-            <mat-card-header>
-              <mat-card-title>{{ 'dashboard.table_by_task_type' | transloco }}</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <table mat-table [dataSource]="d.byTaskType">
-                <ng-container matColumnDef="value">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.task' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ ('task.task_type.' + r.value) | transloco }}</td>
-                </ng-container>
-                <ng-container matColumnDef="count">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
-              </table>
-            </mat-card-content>
-          </mat-card>
+<mat-card class="table-card" appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>{{ 'dashboard.table_by_task_type' | transloco }}</mat-card-title>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+      <button mat-icon-button (click)="toggleTypeView()"
+              [matTooltip]="showTypeChart
+                ? ('dashboard.show_table' | transloco : { defaultValue: 'Show table' })
+                : ('dashboard.show_chart' | transloco : { defaultValue: 'Show chart' })">
+        <mat-icon aria-hidden="true">{{ showTypeChart ? 'table_chart' : 'donut_small' }}</mat-icon>
+      </button>
+    </div>
+  </mat-card-header>
+  <mat-card-content>
+    @if (showTypeChart) {
+      <doughunt
+        [data]="d.byTaskType"
+        [colors]="typeColors"
+         [translocoPrefix]="'task.task_type.'"
+        
+        [size]="240">
+      </doughunt>
+    } @else {
+      <table mat-table [dataSource]="d.byTaskType">
+        <ng-container matColumnDef="value">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.type' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">
+            {{ 'task.task_type.' + r.value | transloco  }}
+          </td>
+          <td mat-footer-cell *matFooterCellDef>{{ 'dashboard.total' | transloco }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="count">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+          <td mat-footer-cell *matFooterCellDef>{{ d.totalTasks }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+        <tr mat-footer-row *matFooterRowDef="['value','count']"></tr>
+      </table>
+    }
+  </mat-card-content>
+</mat-card>
 
           <!-- By Priority -->
-          <mat-card class="table-card" appearance="outlined">
-            <mat-card-header>
-              <mat-card-title>{{ 'dashboard.table_by_priority' | transloco }}</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <table mat-table [dataSource]="d.byPriorityType">
-                <ng-container matColumnDef="value">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.priority' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ ('task.priority_type.' + r.value) | transloco }}</td>
-                </ng-container>
-                <ng-container matColumnDef="count">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
-              </table>
-            </mat-card-content>
-          </mat-card>
+<mat-card class="table-card" appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>{{ 'dashboard.table_by_priority' | transloco }}</mat-card-title>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+      <button mat-icon-button (click)="togglePriorityView()"
+              [matTooltip]="showPriorityChart
+                ? ('dashboard.show_table' | transloco : { defaultValue: 'Show table' })
+                : ('dashboard.show_chart' | transloco : { defaultValue: 'Show chart' })">
+        <mat-icon aria-hidden="true">{{ showPriorityChart ? 'table_chart' : 'donut_small' }}</mat-icon>
+      </button>
+    </div>
+  </mat-card-header>
+  <mat-card-content>
+    @if (showPriorityChart) {
+      <doughunt
+        [data]="d.byPriorityType"
+        [colors]="priorityColors"
+        [translocoPrefix]="'task.priority_type.'"
+        [size]="240">
+      </doughunt>
+    } @else {
+      <table mat-table [dataSource]="d.byPriorityType">
+        <ng-container matColumnDef="value">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.priority' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">
+            {{ 'task.priority_type.' + r.value | transloco  }}
+          </td>
+          <td mat-footer-cell *matFooterCellDef>{{ 'dashboard.total' | transloco }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="count">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+          <td mat-footer-cell *matFooterCellDef>{{ d.totalTasks }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+        <tr mat-footer-row *matFooterRowDef="['value','count']"></tr>
+      </table>
+    }
+  </mat-card-content>
+</mat-card>
 
           <!-- By Duration -->
-          <mat-card class="table-card" appearance="outlined">
-            <mat-card-header>
-              <mat-card-title>{{ 'dashboard.table_by_duration_type' | transloco }}</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <table mat-table [dataSource]="d.byDurationType">
-                <ng-container matColumnDef="value">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.duration' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ ('task.duration_type.' + r.value) | transloco }}</td>
-                </ng-container>
-                <ng-container matColumnDef="count">
-                  <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
-                  <td mat-cell *matCellDef="let r">{{ r.count }}</td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
-              </table>
-            </mat-card-content>
-          </mat-card>
+<mat-card class="table-card" appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>{{ 'dashboard.table_by_duration_type' | transloco }}</mat-card-title>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+      <button mat-icon-button (click)="toggleDurationTypeView()"
+              [matTooltip]="showDurationTypeChart
+                ? ('dashboard.show_table' | transloco : { defaultValue: 'Show table' })
+                : ('dashboard.show_chart' | transloco : { defaultValue: 'Show chart' })">
+        <mat-icon aria-hidden="true">{{ showDurationTypeChart ? 'table_chart' : 'donut_small' }}</mat-icon>
+      </button>
+    </div>
+  </mat-card-header>
+  <mat-card-content>
+    @if (showDurationTypeChart) {
+      <doughunt
+        [data]="d.byDurationType"
+        [colors]="durationTypeColors"
+        [translocoPrefix]="'task.duration_type.'"
+        [size]="240">
+      </doughunt>
+    } @else {
+      <table mat-table [dataSource]="d.byDurationType">
+        <ng-container matColumnDef="value">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.duration_type' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">
+            {{ ('task.duration_type.' + r.value) | transloco  }}
+          </td>
+          <td mat-footer-cell *matFooterCellDef>{{ 'dashboard.total' | transloco }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="count">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.count' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.count }}</td>
+          <td mat-footer-cell *matFooterCellDef>{{ d.totalTasks }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['value','count']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['value','count'];"></tr>
+        <tr mat-footer-row *matFooterRowDef="['value','count']"></tr>
+      </table>
+    }
+  </mat-card-content>
+</mat-card>
         </div>
-        <div class="kpis4">
-          <mat-card class="kpi-card" appearance="outlined">
-            <mat-card-content>
-              <div class="kpi-value-small">{{ d.rsrcQtyActualToDate | number:'1.0-2'  }}</div>
-              <div class="kpi-caption">{{ 'dashboard.actual_to_date_qty' | transloco }}</div>
-            </mat-card-content>
-          </mat-card>
-          <mat-card class="kpi-card" appearance="outlined">
-            <mat-card-content>
-              <div class="kpi-value-small">{{ d.rsrcQtyRemaining | number:'1.0-2'  }}</div>
-              <div class="kpi-caption">{{ 'dashboard.remaining_qty'     | transloco }}</div>
-            </mat-card-content>
-          </mat-card>
-          <mat-card class="kpi-card" appearance="outlined">
-            <mat-card-content>
-              <div class="kpi-value-small">{{  d.rsrcQtyBudgeted | number:'1.0-2'  }}</div>
-              <div class="kpi-caption">{{ 'dashboard.budgeted_qty'     | transloco }}</div>
-            </mat-card-content>
-          </mat-card>
-          <mat-card class="kpi-card" appearance="outlined">
-            <mat-card-content>
-              <div class="kpi-value-small">{{ d.rsrcQtyThisPeriod | number:'1.0-2'  }}</div>
-              <div class="kpi-caption">{{ 'dashboard.this_period_qty'  | transloco }}</div>
-            </mat-card-content>
-          </mat-card>
-        </div>
+        <div>
+  <mat-card class="kpis4-card" appearance="outlined">
+    <div class="kpis4-grid">
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.actual_to_date_qty' | transloco }}</div>
+        <div class="kpi-value">{{ d.rsrcQtyActualToDate | number:'1.0-2' }}</div>
+      </div>
+
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.remaining_qty' | transloco }}</div>
+        <div class="kpi-value">{{ d.rsrcQtyRemaining | number:'1.0-2' }}</div>
+      </div>
+
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.budgeted_qty' | transloco }}</div>
+        <div class="kpi-value">{{ d.rsrcQtyBudgeted | number:'1.0-2' }}</div>
+      </div>
+
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.this_period_qty' | transloco }}</div>
+        <div class="kpi-value">{{ d.rsrcQtyThisPeriod | number:'1.0-2' }}</div>
+      </div>
+    </div>
+  </mat-card>
+</div>
         <div>
           <mat-card class="table-card" appearance="outlined">
             <mat-card-header>
@@ -339,33 +419,32 @@
         </div>
         
 
+        <div>
+  <mat-card class="kpis4-card" appearance="outlined">
+    <div class="kpis4-grid">
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.actual_to_date' | transloco }}</div>
+        <div class="kpi-value">{{ d.costActualToDate | number:'1.0-2' }}</div>
+      </div>
 
-        <div class="kpis4">
-          <mat-card class="kpi-card" appearance="outlined">
-            <mat-card-content>
-              <div class="kpi-value-small">{{ d.costActualToDate | number:'1.0-2'  }}</div>
-              <div class="kpi-caption">{{ 'dashboard.actual_to_date' | transloco }}</div>
-            </mat-card-content>
-          </mat-card>
-          <mat-card class="kpi-card" appearance="outlined">
-            <mat-card-content>
-              <div class="kpi-value-small">{{  d.costRemaining | number:'1.0-2'  }}</div>
-              <div class="kpi-caption">{{ 'dashboard.remaining_cost'     | transloco }}</div>
-            </mat-card-content>
-          </mat-card>
-          <mat-card class="kpi-card" appearance="outlined">
-            <mat-card-content>
-              <div class="kpi-value-small">{{  d.costBudgeted | number:'1.0-2'  }}</div>
-              <div class="kpi-caption">{{ 'dashboard.budgeted_cost'     | transloco }}</div>
-            </mat-card-content>
-          </mat-card>
-          <mat-card class="kpi-card" appearance="outlined">
-            <mat-card-content>
-              <div class="kpi-value-small">{{ d.costThisPeriod | number:'1.0-2'  }}</div>
-              <div class="kpi-caption">{{ 'dashboard.this_period_cost'  | transloco }}</div>
-            </mat-card-content>
-          </mat-card>
-        </div>
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.remaining_cost' | transloco }}</div>
+        <div class="kpi-value">{{ d.costRemaining | number:'1.0-2' }}</div>
+      </div>
+
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.budgeted_cost' | transloco }}</div>
+        <div class="kpi-value">{{ d.costBudgeted | number:'1.0-2' }}</div>
+      </div>
+
+      <div class="kpi-cell">
+        <div class="kpi-title">{{ 'dashboard.this_period_cost' | transloco }}</div>
+        <div class="kpi-value">{{ d.costThisPeriod | number:'1.0-2' }}</div>
+      </div>
+    </div>
+  </mat-card>
+</div>
+  
                   <div>
             
   <mat-card class="table-card" appearance="outlined">

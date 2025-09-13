@@ -8,6 +8,8 @@
     "subtitle":"A clear view of your project"
   },
     "dashboard": {
+      "show_table": "Show table",
+      "show_chart": "Show chart",
       "unitsByResources": "Units by resources",
       "costByResources": "Cost by resources",
       "period": "Period",

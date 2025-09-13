@@ -42,6 +42,8 @@ import {
 } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { DoughuntComponent } from '../../widget/doughunt/doughunt.component';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 type MeasureKey = 'Budgeted' | 'Actual' | 'Remaining' | 'AtCompletionUnits';
 
@@ -70,6 +72,7 @@ interface GaugeConfig {
     MatTableModule,
     MatIconModule,
     MatChipsModule,
+    MatTooltipModule,
     MatDividerModule,
     MatProgressBarModule,
     MatProgressSpinnerModule,
@@ -79,7 +82,7 @@ interface GaugeConfig {
     MatSelectModule,
     MatDatepickerModule,
     MatNativeDateModule,
-
+    DoughuntComponent,
     SpeedometerComponent,
     HistogramPivotChartComponent,
   ],
@@ -112,6 +115,61 @@ export class DashboardTabComponent implements OnInit {
     if (!d?.byRsrcId) return 0;
     return d.byRsrcId.filter((x: { value: string }) => x.value !== '—').length;
   });
+
+  readonly statusColors: Record<string, string> = {
+    TK_Active:    '#1976d2', // синий — In Progress
+    TK_Suspend:   '#fbc02d', // жёлтый — Suspended
+    TK_Complete:  '#388e3c', // зелёный — Completed
+    TK_Inactive:  '#d32f2f', // красный — Inactive
+    TK_NotStart:  '#9e9e9e'
+  };
+
+  // Переключатели вида
+public showTypeChart: boolean = true;
+public showPriorityChart: boolean = true;
+public showDurationTypeChart: boolean = true;
+
+// Необязательные цветовые карты (если хочешь переопределить палитры пончиков)
+public typeColors: Record<string, string> = {
+  TT_Task: '#1976d2',       // базовая задача — синий
+  TT_Rsrc: '#0288d1',       // ресурсозависимая — голубой
+  TT_LOE: '#7b1fa2',        // LOE — фиолетовый
+  TT_WBS: '#8d6e63',        // WBS Summary — коричневый
+  TT_Mile: '#fbc02d',       // Start Milestone — жёлтый
+  TT_StartMile: '#fbc02d',  // Start Milestone — жёлтый
+  TT_FinMile: '#fb8c00',    // Finish Milestone — оранжевый
+  TT_Hammock: '#388e3c',    // Hammock — зелёный
+  TT_Tmpl: '#9e9e9e'        // Template Activity — серый
+};
+public priorityColors: Record<string, string> = {
+  "PT_VeryLow": "#388e3c",   // тёмно-зелёный
+  "PT_Low": "#7cb342",       // салатовый
+  "PT_Normal": "#fbc02d",    // жёлтый
+  "PT_High": "#fb8c00",      // оранжевый
+  "PT_VeryHigh": "#e53935",  // красный
+  "PT_Top": "#b71c1c"        // бордовый
+};
+public durationTypeColors: Record<string, string> = {
+  "DT_FixedDUR2": "#7b1fa2",
+  "DT_FixedDUR": "#8e24aa",
+  "DT_FixedDrtn": "#9c27b0",
+  "DT_FixedUnits": "#ab47bc",
+  "DT_FixedUnitsTime": "#ba68c8",
+  "DT_FixedWork": "#ce93d8",
+  "DT_FixedRate": "#e1bee7",
+  "DT_None": "#bdbdbd"
+};
+
+// Хендлеры переключения
+public toggleTypeView(): void { this.showTypeChart = !this.showTypeChart; }
+public togglePriorityView(): void { this.showPriorityChart = !this.showPriorityChart; }
+public toggleDurationTypeView(): void { this.showDurationTypeChart = !this.showDurationTypeChart; }
+
+  public showStatusChart: boolean = true;
+
+  public toggleStatusView(): void {
+    this.showStatusChart = !this.showStatusChart;
+  }
 
   /** простые флаги состояния */
   loading = false;
@@ -176,6 +234,7 @@ selectedMeasureCost: MeasureKey = 'Budgeted';
         resourceOrder: 'name',
         desc: false,
         mode: 'units',
+         includeUnassigned: true,
         rangeStart: this.startDate ? this.floorToLocalDate(this.startDate) : null,
         rangeEnd:   this.endDate   ? this.floorToLocalDate(this.endDate)   : null,
       });
@@ -186,6 +245,7 @@ selectedMeasureCost: MeasureKey = 'Budgeted';
         resourceOrder: 'name',
         desc: false,
         mode: 'cost',
+         includeUnassigned: true,
         rangeStart: this.startDate ? this.floorToLocalDate(this.startDate) : null,
         rangeEnd:   this.endDate   ? this.floorToLocalDate(this.endDate)   : null,
       });
