@@ -124,7 +124,7 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
   private legendPad = 12;
   private legendW = 160;
   private plotW = 0;
-
+  private basePlotW = 0; 
   private visByRes = new Map<string, boolean>();
   private lastAdapted: Adapted | null = null;
 
@@ -226,20 +226,16 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
     const visibleRes = adapted.resources.filter(r => this.visByRes.get(r));
     const rows: RowObj[] = adapted.rows;
   
-    // --- Вертикальные масштабы (не зависят от ширины) ---
-    // Для левой оси нужен стек (для max по барам)
+    // стек для левой оси
     const stackGenForY = d3.stack<RowObj>()
       .keys(visibleRes)
       .value((d, key) => Number.isFinite(d[key]) ? (d[key] as number) : 0);
     const stackedVisible = stackGenForY(rows);
   
     const maxYBars = d3.max(stackedVisible, s => d3.max(s, d => d[1])) ?? 0;
-    const yLeft = d3.scaleLinear()
-      .domain([0, maxYBars > 0 ? maxYBars * 1.1 : 1])
-      .range([this.innerH, 0])
-      .nice();
+    const yLeft = d3.scaleLinear().domain([0, maxYBars > 0 ? maxYBars * 1.1 : 1]).range([this.innerH, 0]).nice();
   
-    // Кумулятив по видимым — для правой оси
+    // кумулятив и правая ось
     const totalsPerPeriodVisible = adapted.periods.map(p => {
       const r = rows.find(x => x.label === p)!;
       return visibleRes.reduce((s, k) => s + (r[k] ?? 0), 0);
@@ -247,27 +243,21 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
     const cumul: number[] = [];
     totalsPerPeriodVisible.reduce((acc, v) => { const nv = acc + v; cumul.push(nv); return nv; }, 0);
   
-    const yRight = d3.scaleLinear()
-      .domain([0, d3.max(cumul) ?? 1])
-      .range([this.innerH, 0])
-      .nice();
+    const yRight = d3.scaleLinear().domain([0, d3.max(cumul) ?? 1]).range([this.innerH, 0]).nice();
   
-    // --- СУЖАЕМ ПОЛЕ ГРАФИКА под правую подпись ---
-    const neededRight = this.measureRightGutter(yRight, 'Units (cumulative)');
+    // ---- локальная ширина поля графика ----
+    let plotW = this.basePlotW;
+    const neededRight = this.measureRightGutter(yRight, 'Units (cumulative)', plotW);
     const shrink = Math.max(0, neededRight - this.rightGutterRelaxPx);
-    this.plotW = Math.max(0, this.plotW - shrink);
+    plotW = Math.max(0, plotW - shrink);
   
-    // --- Горизонтальная шкала с обновлённой шириной ---
-    const x = d3.scaleBand<string>()
-      .domain(adapted.periods)
-      .range([0, this.plotW])
-      .paddingInner(0.25);
+    // ось X с учётом локальной ширины
+    const x = d3.scaleBand<string>().domain(adapted.periods).range([0, plotW]).paddingInner(0.25);
   
     const xAxis = d3.axisBottom(x);
-    const yAxisLeft = d3.axisLeft(yLeft).ticks(6).tickFormat(this.fmt as any);
+    const yAxisLeft  = d3.axisLeft(yLeft).ticks(6).tickFormat(this.fmt as any);
     const yAxisRight = d3.axisRight(yRight).ticks(6).tickFormat(this.fmt as any);
   
-    // Оси
     this.plotG.append('g')
       .attr('class', 'x-axis')
       .attr('transform', `translate(0,${this.innerH})`)
@@ -277,12 +267,9 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
       .attr('text-anchor', 'end');
   
     this.plotG.append('g').attr('class', 'y-axis-left').call(yAxisLeft);
-    this.plotG.append('g')
-      .attr('class', 'y-axis-right')
-      .attr('transform', `translate(${this.plotW},0)`)
-      .call(yAxisRight);
+    this.plotG.append('g').attr('class', 'y-axis-right').attr('transform', `translate(${plotW},0)`).call(yAxisRight);
   
-    // Бары (используем тот же стек, но с x/width)
+    // бары
     const barW = x.bandwidth();
     const stackGenForBars = d3.stack<RowObj>()
       .keys(visibleRes)
@@ -290,10 +277,7 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
     const stackedForBars = stackGenForBars(rows);
   
     const layers = this.plotG.selectAll('.layer').data(stackedForBars, (d: any) => d.key);
-    const layersEnter = layers.enter()
-      .append('g')
-      .attr('class', 'layer')
-      .attr('fill', (d: any) => color(d.key)!);
+    const layersEnter = layers.enter().append('g').attr('class', 'layer').attr('fill', (d: any) => color(d.key)!);
   
     layersEnter.selectAll('rect')
       .data(d => d, (d: any) => (d.data as RowObj).label)
@@ -312,20 +296,14 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
       .on('mousemove', (ev) => this.moveTip(ev))
       .on('mouseout', () => this.hideTip());
   
-    // Линия кумулятива
+    // линия кумулятива
     const pairs: [string, number][] = adapted.periods.map((p, i) => [p, cumul[i]]);
     const line = d3.line<[string, number]>()
       .x(([lbl]) => (x(lbl)! + barW / 2))
-      .y(([,v]) => yRight(v))
+      .y(([, v]) => yRight(v))
       .curve(d3.curveMonotoneX);
   
-    this.plotG.append('path')
-      .attr('class', 'cum-line')
-      .attr('fill', 'none')
-      .attr('stroke', '#444')
-      .attr('stroke-width', 2)
-      .attr('d', line(pairs) as string);
-  
+    this.plotG.append('path').attr('class', 'cum-line').attr('fill', 'none').attr('stroke', '#444').attr('stroke-width', 2).attr('d', line(pairs) as string);
     this.plotG.selectAll('.cum-dot')
       .data(pairs)
       .enter()
@@ -339,13 +317,13 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
       .on('mousemove', (ev) => this.moveTip(ev))
       .on('mouseout', () => this.hideTip());
   
-    // Подписи осей (всегда снаружи)
-    this.addYAxisLabelSmart(true,  'Units (periodic)');
-    this.addYAxisLabelSmart(false, 'Units (cumulative)');
+    // подписи осей (используем ТЕКУЩУЮ локальную ширину)
+    this.addYAxisLabelSmart(true,  'Units (periodic)',   plotW);
+    this.addYAxisLabelSmart(false, 'Units (cumulative)', plotW);
   
-    // Сдвигаем легенду левее, если нужно (чтобы не наезжала на левую подпись)
     this.positionLegendHost();
   }
+  
   
 
   /* ===== Легенда слева: SVG внутри прокручиваемого контейнера ===== */
@@ -415,7 +393,7 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
   }
 
   /* ===== Умная подпись осей по Y + вычисление «гуттера» слева ===== */
-  private addYAxisLabelSmart(isLeft: boolean, text: string) {
+  private addYAxisLabelSmart(isLeft: boolean, text: string, plotW: number) {
     const axisSel = this.plotG.select(isLeft ? '.y-axis-left' : '.y-axis-right');
     if (axisSel.empty()) return;
   
@@ -423,20 +401,14 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
     const tickMaxW = ticks.length ? Math.max(...ticks.map(t => t.getBBox().width)) : 0;
     const padTicks = 8;
   
-    const tmp = this.plotG.append('text')
-      .attr('font-size', '10px')
-      .attr('visibility', 'hidden')
-      .text(text);
+    const tmp = this.plotG.append('text').attr('font-size', '10px').attr('visibility', 'hidden').text(text);
     const labelH = (tmp.node() as SVGTextElement).getBBox().height;
     tmp.remove();
   
     this.plotG.select(isLeft ? '.y-axis-label-left' : '.y-axis-label-right').remove();
   
-    const baseX = isLeft
-      ? - (tickMaxW + padTicks + labelH / 2)
-      : this.plotW + tickMaxW + padTicks + labelH / 2;
-  
-    const x = isLeft ? baseX : baseX + this.rightYAxisLabelShiftPx; // <- добавили сдвиг вправо
+    const baseX = isLeft ? -(tickMaxW + padTicks + labelH / 2) : plotW + tickMaxW + padTicks + labelH / 2;
+    const x = isLeft ? baseX : baseX + this.rightYAxisLabelShiftPx;
     const y = this.innerH / 2;
   
     this.plotG.append('text')
@@ -451,6 +423,7 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
       this.leftYAxisGutterPx = Math.ceil(tickMaxW + padTicks + labelH + 4);
     }
   }
+  
 
   /* ===== Адаптация входных данных ===== */
 
@@ -670,18 +643,20 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
   private setSize(totalWidth: number, totalHeight: number) {
     this.outerW = Math.max(0, totalWidth - this.margin.left - this.margin.right);
     this.innerH = Math.max(0, totalHeight - this.margin.top - this.margin.bottom);
-
+  
     const minLegend = 140, maxLegend = 240;
     this.legendW = Math.max(minLegend, Math.min(maxLegend, Math.floor(this.outerW * 0.22)));
-
-    this.plotW = Math.max(0, this.outerW - this.legendW - this.legendPad);
+  
+    // базовая ширина поля графика
+    this.basePlotW = Math.max(0, this.outerW - this.legendW - this.legendPad);
+    this.plotW     = this.basePlotW; // можно оставить для совместимости, но НЕ менять далее
+  
     this.g.attr('transform', `translate(${this.margin.left},${this.margin.top})`);
     this.plotG.attr('transform', `translate(${this.legendW + this.legendPad},0)`);
-
+  
     this.svg.attr('width', totalWidth).attr('height', totalHeight);
     this.sizeLegendHost();
   }
-
   private wrapWidth(): number {
     const el = this.wrapRef?.nativeElement as HTMLDivElement | undefined;
     return Math.max(0, el?.clientWidth ?? 0);
@@ -689,28 +664,20 @@ export class HistogramPivotChartComponent implements AfterViewInit, OnChanges, O
 
   private rightYAxisLabelShiftPx = 8; 
   /** Сколько пикселей нужно справа под ось и подпись 'text' */
-  private measureRightGutter(yRight: d3.ScaleLinear<number, number>, text: string): number {
-    const padTicks = 8;   // отступ от тиков до подписи
-    const extra     = 4;  // небольшой запас
+  private measureRightGutter(yRight: d3.ScaleLinear<number, number>, text: string, plotW: number): number {
+    const padTicks = 8;
+    const extra = 4;
   
-    // ширина тиков
-    const tmpAxis = this.plotG.append('g')
-      .attr('opacity', 0)
-      .attr('transform', `translate(${this.plotW},0)`);
+    const tmpAxis = this.plotG.append('g').attr('opacity', 0).attr('transform', `translate(${plotW},0)`);
     tmpAxis.call(d3.axisRight(yRight).ticks(6).tickFormat(this.fmt as any));
     const ticks = tmpAxis.selectAll<SVGTextElement, unknown>('text').nodes();
     const tickMaxW = ticks.length ? Math.max(...ticks.map(t => t.getBBox().width)) : 0;
     tmpAxis.remove();
   
-    // ВЫСОТА подписи (вертикального текста)
-    const tmpLabel = this.plotG.append('text')
-      .attr('font-size', '10px')
-      .attr('visibility', 'hidden')
-      .text(text);
+    const tmpLabel = this.plotG.append('text').attr('font-size', '10px').attr('visibility', 'hidden').text(text);
     const labelH = (tmpLabel.node() as SVGTextElement).getBBox().height;
     tmpLabel.remove();
   
-    // добавили this.rightYAxisLabelShiftPx
     return Math.ceil(tickMaxW + padTicks + labelH + extra + this.rightYAxisLabelShiftPx);
   }
 }
