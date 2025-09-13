@@ -51,6 +51,21 @@ function yn(raw: string | null | undefined): 'Y' | 'N' {
   return 'N';
 }
 
+function flag10YN(v: 'Y' | 'N'): 1 | 0 { return v === 'Y' ? 1 : 0; }
+
+// Нормализация статуса WBS в укрупнённые категории — удобно для DCMA-дашборда
+type WbsStatusNorm = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUSPENDED' | 'INACTIVE' | 'UNKNOWN';
+function normWbsStatus(code: string | null | undefined): WbsStatusNorm {
+  switch ((code ?? '').trim()) {
+    case 'TK_NotStart': return 'NOT_STARTED';
+    case 'TK_Active': return 'IN_PROGRESS';
+    case 'TK_Suspend': return 'SUSPENDED';
+    case 'TK_Complete': return 'COMPLETED';
+    case 'TK_Inactive': return 'INACTIVE';
+    default: return 'UNKNOWN';
+  }
+}
+
 // ---------- status: text → code (как в task.mapper) ----------
 const DICT_STATUS_CODE = {
   TK_NotStart: 'Not Started',
@@ -110,6 +125,10 @@ export function mapWbsToProjwbsRow(w: Element, projId: number): Record<string, P
     seq_num: numAny(w, 'SequenceNumber'),
     proj_node_flag: projNodeFlag,
     sum_data_flag: sumDataFlag,
+    // — дополнительные поля для DCMA-дашбордов/фильтров (не ломают контракт):
+    proj_node_flag10: flag10YN(projNodeFlag),        // 1/0 вместо 'Y'/'N'
+    sum_data_flag10: flag10YN(sumDataFlag),          // 1/0 вместо 'Y'/'N'
+    wbs_status_norm: normWbsStatus(statusCode),      // укрупнённая категория статуса
 
     // --- статус/ревьюер/категории/OBS ---
     status_code: statusCode,

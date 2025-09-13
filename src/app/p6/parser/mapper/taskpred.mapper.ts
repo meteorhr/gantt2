@@ -41,6 +41,16 @@ function dtAny(el: Element, tags: string[]): Date | null {
   }
   return null;
 }
+function normUnits(v: string | null | undefined): string | null {
+  if (!v) return null;
+  const s = v.trim().toLowerCase();
+  if (['h', 'hr', 'hrs', 'hour', 'hours'].includes(s)) return 'HOURS';
+  if (['d', 'day', 'days'].includes(s)) return 'DAYS';
+  if (['w', 'wk', 'wks', 'week', 'weeks'].includes(s)) return 'WEEKS';
+  if (['mo', 'mon', 'mons', 'month', 'months'].includes(s)) return 'MONTHS';
+  return s.toUpperCase();
+}
+function flag10(v: boolean | null): 1 | 0 | null { return v == null ? null : (v ? 1 : 0); }
 
 /** Type (текст/аббревиатуры) → XER-код PR_* */
 function toPredTypeCode(v: string | null | undefined): string | null {
@@ -91,10 +101,15 @@ export function mapPredLinkToTaskpredRow(
   const typeTxt = txtAny(linkEl, ['Type', 'RelationshipType']);
   const pred_type = toPredTypeCode(typeTxt) ?? (typeTxt || null);
   const lag_hr_cnt = numAny(linkEl, ['Lag', 'LagDuration']);
+  const lag_units_raw = txtAny(linkEl, ['LagUnits', 'LagUnit', 'DurationUnits']);
+  const lag_units = normUnits(lag_units_raw);
+  const lag_raw = txtAny(linkEl, ['Lag', 'LagDuration']);
 
   // проекты (на случай межпроектных связей)
   const succ_proj = numAny(linkEl, ['SuccessorProjectObjectId']);
   const pred_proj = numAny(linkEl, ['PredecessorProjectObjectId']);
+  const successor_code = txtAny(linkEl, ['SuccessorActivityId', 'SuccessorActivityCode', 'SuccessorId']);
+  const predecessor_code = txtAny(linkEl, ['PredecessorActivityId', 'PredecessorActivityCode', 'PredecessorId']);
 
   // доп. атрибуты, если встречаются в экспорте
   const comments   = txtAny(linkEl, ['Comments', 'Comment', 'Notes', 'Note']);
@@ -110,6 +125,11 @@ export function mapPredLinkToTaskpredRow(
     ? (objId as number)
     : hash32ToNum(`${task_id}|${pred_task_id}|${pred_type ?? 'UNK'}|${lag_hr_cnt ?? 0}|${succ_proj ?? ''}|${pred_proj ?? ''}`);
 
+  const resolvedSuccProjId = Number.isFinite(succ_proj as number) ? (succ_proj as number) : (Number.isFinite(projId) ? projId : null);
+  const isExternal = (Number.isFinite(pred_proj as number) && Number.isFinite(resolvedSuccProjId as number))
+    ? ((pred_proj as number) !== (resolvedSuccProjId as number))
+    : null;
+
   // формируем строго по TaskPredRow
   return {
     task_pred_id,
@@ -117,10 +137,15 @@ export function mapPredLinkToTaskpredRow(
     proj_id: Number.isFinite(succ_proj as number) ? (succ_proj as number) : (Number.isFinite(projId) ? projId : (null as any)), // proj_id обязателен по модели
     pred_task_id: pred_task_id as number,
     pred_proj_id: Number.isFinite(pred_proj as number) ? (pred_proj as number) : null,
+    successor_code: successor_code ?? null,
+    predecessor_code: predecessor_code ?? null,
     pred_type,
     lag_hr_cnt: lag_hr_cnt ?? null,
+    lag_raw: lag_raw ?? null,
+    lag_units: lag_units ?? null,
     comments: comments ?? null,
     float_path: float_path ?? null,
+    is_external_link: flag10(isExternal),
     aref: arefDate ?? null,
     arls: arlsDate ?? null,
   };

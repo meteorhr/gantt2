@@ -29,6 +29,12 @@ export const APP_ROUTES: Routes = [
         loadComponent: () =>
           import('./features/gantt/gantt-tab.component').then(m => m.GanttTabComponent),
       },
+            {
+        path: 'dcma',
+        title: 'DCMA Checks',
+        loadComponent: () =>
+          import('./features/dcma/dcma-tab.component').then(m => m.DcmaChecksComponent),
+      },
       { path: '', pathMatch: 'full', redirectTo: 'summary' },
     ],
   },

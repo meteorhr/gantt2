@@ -45,6 +45,8 @@ export interface TaskRow extends XERRowBase {
   external_early_start_date: Date | string | null;
   external_late_end_date: Date | string | null;
 
+  
+
   // Единицы/продолжительности/флоаты/процент
   act_work_qty: number | null;
   act_equip_qty: number | null;

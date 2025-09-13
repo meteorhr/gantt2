@@ -16,4 +16,5 @@ export interface CALENDARRow extends XERRowBase {
   /** Personal Calendar */     rsrc_private?: string | number | null; // P6 EPPM only
   /** Work Hours Per Week */   week_hr_cnt?: number | null;
   /** Work Hours Per Year */   year_hr_cnt?: number | null;
+                                hours_per_day_eff?: number | null; // вычисляемое поле: эффективные часы в день (учитывает day_hr_cnt, week_hr_cnt, month_hr_cnt, year_hr_cnt)
 }

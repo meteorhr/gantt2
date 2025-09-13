@@ -53,6 +53,42 @@ function ynOrNum(el: Element, tags: string[]): string | number | null {
   return Number.isFinite(n2 as number) ? (n2 as number) : null;
 }
 
+function flag10FromYnOrNum(v: string | number | null): 1 | 0 | null {
+  if (v == null) return null;
+  if (typeof v === 'number') return v > 0 ? 1 : 0;
+  return v === 'Y' ? 1 : 0;
+}
+
+function round2(n: number): number { return Math.round(n * 100) / 100; }
+
+// Эффективные часы/день и часы/неделя по доступным полям, без изменения исходной логики
+function calcHoursPerDay(day: number | null, week: number | null, month: number | null, year: number | null): number | null {
+  if (day != null && day > 0) return round2(day);
+  if (week != null && week > 0) return round2(week / 5);                 // предположим 5 раб. дней
+  if (month != null && month > 0) return round2(month / 21.667);         // ≈ 4.333 недели * 5 дней
+  if (year != null && year > 0) return round2(year / 260);               // 52 недели * 5 дней
+  return null;
+}
+function calcHoursPerWeek(day: number | null, week: number | null, month: number | null, year: number | null): number | null {
+  if (week != null && week > 0) return round2(week);
+  const hpday = calcHoursPerDay(day, null, null, null);
+  if (hpday != null) return round2(hpday * 5);
+  if (month != null && month > 0) return round2((month / 21.667) * 5);
+  if (year != null && year > 0) return round2((year / 260) * 5);
+  return null;
+}
+
+// Нормализованный «scope» календаря, полезно для DCMA-дашборда
+function scopeNorm(proj_id: number | null, rsrc_private: string | number | null): 'GLOBAL' | 'PROJECT' | 'RESOURCE' | 'UNKNOWN' {
+  if (proj_id != null && Number.isFinite(proj_id)) return 'PROJECT';
+  if (rsrc_private != null) {
+    const f = flag10FromYnOrNum(rsrc_private);
+    if (f === 1) return 'RESOURCE';
+    if (f === 0) return 'GLOBAL';
+  }
+  return 'UNKNOWN';
+}
+
 /* ===== mapper ===== */
 export function mapCalendarToCalendarRow(
   c: Element,
@@ -90,6 +126,19 @@ export function mapCalendarToCalendarRow(
 
   const rsrc_private = ynOrNum(c, ['ResourcePrivate','RsrcPrivate','Personal','IsPersonal']);
 
+  const hours_per_day_eff = calcHoursPerDay(day_hr_cnt ?? null, week_hr_cnt ?? null, month_hr_cnt ?? null, year_hr_cnt ?? null);
+  const hours_per_week_eff = calcHoursPerWeek(day_hr_cnt ?? null, week_hr_cnt ?? null, month_hr_cnt ?? null, year_hr_cnt ?? null);
+  const hours_per_day_source = ((): string | null => {
+    if (day_hr_cnt != null && day_hr_cnt > 0) return 'DAY';
+    if (week_hr_cnt != null && week_hr_cnt > 0) return 'WEEK/5';
+    if (month_hr_cnt != null && month_hr_cnt > 0) return 'MONTH/21.667';
+    if (year_hr_cnt != null && year_hr_cnt > 0) return 'YEAR/260';
+    return null;
+  })();
+  const default_flag10 = flag10FromYnOrNum(default_flag);
+  const rsrc_private10 = flag10FromYnOrNum(rsrc_private);
+  const scope_norm = scopeNorm(proj_id as number | null, rsrc_private);
+
   return {
     clndr_id: clndr_id as number,
     base_clndr_id: base_clndr_id ?? null,
@@ -104,5 +153,13 @@ export function mapCalendarToCalendarRow(
     clndr_data,
     proj_id,
     rsrc_private,
+
+    // === DCMA-friendly derived fields (добавочные, не меняют контракт) ===
+    default_flag10,
+    rsrc_private10,
+    scope_norm,
+    hours_per_day_eff: hours_per_day_eff ?? null,
+    hours_per_week_eff: hours_per_week_eff ?? null,
+    hours_per_day_source: hours_per_day_source,
   };
 }

@@ -157,6 +157,27 @@ function toCode(reverse: Map<string, string>, value: string | null | undefined):
   return reverse.get(key) ?? null;
 }
 
+/* -------------------- milestone & boolean helpers -------------------- */
+export function isMilestoneCode(code?: string | null): boolean {
+  const k = (code ?? '').trim();
+  return k === 'TT_StartMile' || k === 'TT_FinMile' || k === 'TT_Mile';
+}
+export function isStartMilestoneCode(code?: string | null): boolean {
+  const k = (code ?? '').trim();
+  return k === 'TT_StartMile' || k === 'TT_Mile';
+}
+export function isFinishMilestoneCode(code?: string | null): boolean {
+  const k = (code ?? '').trim();
+  return k === 'TT_FinMile' || k === 'TT_Mile';
+}
+function toBoolYN(v: string | null | undefined): boolean | null {
+  if (v == null) return null;
+  const s = String(v).trim().toLowerCase();
+  if (s === 'y' || s === 'yes' || s === 'true' || s === '1') return true;
+  if (s === 'n' || s === 'no' || s === 'false' || s === '0') return false;
+  return null;
+}
+
 /* -------------------- main mapper -------------------- */
 export function mapActivityToTaskRow(a: Element, projId: number): Record<string, P6Scalar> {
   const taskId = num(a, 'ObjectId'); // PK
@@ -231,6 +252,7 @@ export function mapActivityToTaskRow(a: Element, projId: number): Record<string,
   const floatPath = numAny(a, ['FloatPath']);
   const floatPathOrder = numAny(a, ['FloatPathOrder']);
   const onLongestPathRaw = txt(a, 'OnLongestPath'); // 'Y'/'N' или 'true'/'false'
+  const onLongestPath = toBoolYN(onLongestPathRaw);
 
   const row: Record<string, P6Scalar> = {
     // Идентификаторы/общие (ключи первыми)
@@ -329,7 +351,15 @@ export function mapActivityToTaskRow(a: Element, projId: number): Record<string,
     // Longest Path маркеры
     float_path: floatPath,
     float_path_order: floatPathOrder,
-    OnLongestPath: onLongestPathRaw || null,
+    OnLongestPath: onLongestPathRaw || null, // Сохраняем исходное строковое значение под P6Scalar
+    // Доп. нормализованные поля (без изменения существующей логики/контракта)
+    OnLongestPath_bool: onLongestPath === null ? null : (onLongestPath ? 1 : 0), // 1/0/null — числовой вид
+    OnLongestPath_norm: onLongestPath === null ? null : (onLongestPath ? 'Y' : 'N'), // 'Y'/'N'/null — строковый вид
+
+    // Удобные флаги-вехи (для DCMA Logic/визуализаций)
+    is_milestone: taskTypeCode == null ? null : (isMilestoneCode(taskTypeCode) ? 1 : 0),
+    is_start_milestone: taskTypeCode == null ? null : (isStartMilestoneCode(taskTypeCode) ? 1 : 0),
+    is_finish_milestone: taskTypeCode == null ? null : (isFinishMilestoneCode(taskTypeCode) ? 1 : 0),
 
     // Проценты/трудозатраты для агрегаторов
     act_work_qty: num(a, 'ActualLaborUnits'),

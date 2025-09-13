@@ -1,7 +1,11 @@
 {
   "common": {
     "start": "Start",
-    "end": "End"
+    "end": "End",
+        "loading": "Calculating…",
+    "list": "List",
+    "dq": "Data quality (DQ)",
+    "close": "Close"
   },
   "app": {
     "title": "ScheduleVision",
@@ -326,6 +330,86 @@
       }
     }
   },
+  "dcma": {
+  "summary": {
+    "title": "DCMA 14 — Summary"
+  },
+  "table": {
+    "check": "#",
+    "metric": "Check",
+    "description": "Metric",
+    "percent": "% / Value",
+    "passed": "Passed",
+    "details": "Details",
+    "btnDetails": "Details"
+  },
+
+  "details": {
+    "strictLogic": "Strict logic mode enabled"
+  },
+  "c1": {
+    "missingAny": "Missing Any (%)",
+    "missingTriplet": "Missing Pred/Succ/Both",
+    "missingPred": "Missing Predecessor",
+    "missingSucc": "Missing Successor"
+  },
+  "c2": {
+    "leads": "Leads",
+    "leadsList": "Leads"
+  },
+  "c3": {
+    "lags": "Lags",
+    "lagsList": "Lags"
+  },
+  "c4": {
+    "fsPercent": "FS %",
+    "nonFs": "Non-FS"
+  },
+  "c5": {
+    "hard": "Hard",
+    "hardList": "Hard constraints"
+  },
+  "c6": {
+    "highFloat": "High Float"
+  },
+  "c7": {
+    "negativeFloat": "Negative Float"
+  },
+  "c8": {
+    "highDuration": "High Duration"
+  },
+  "c9": {
+    "invalidForecast": "Invalid Forecast",
+    "invalidActual": "Invalid Actual",
+    "forecastList": "9a — Forecast",
+    "actualList": "9b — Actual"
+  },
+  "c10": {
+    "withoutResources": "Without resources"
+  },
+  "c11": {
+    "missed": "Missed"
+  },
+  "c12": {
+    "criticalTasks": "Critical tasks",
+    "singleChain": "Single chain",
+    "endsAtPf": "Ends at PF",
+    "startNodes": "Start nodes",
+    "endNodes": "End nodes"
+  },
+  "c13": {
+    "cpl": "CPL",
+    "ptf": "PTF",
+    "cpli": "CPLI"
+  },
+  "c14": {
+    "bei": "BEI",
+    "ge095": "≥0.95",
+    "plannedNotCompleted": "Planned but not completed",
+    "completedAhead": "Completed ahead of plan"
+  }
+  }
+,
   "units": "Units",
   "info": "ScheduleVision is fully compatible with Oracle® Primavera® P6®. It is an independently developed reader application created by Ruslan Khissamov. ScheduleVision is not a product of Oracle® and is neither endorsed, sponsored, nor affiliated with Oracle® Corporation. Oracle®, Primavera®, and P6® are registered trademarks of Oracle® Corporation and/or its affiliates."
 }

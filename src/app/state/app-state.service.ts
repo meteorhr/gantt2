@@ -107,9 +107,9 @@ export class AppStateService {
 
   // Gantt config
   readonly refLines = signal([
-    { name: 'Current', date: new Date(), color: 'red' },
-    { name: 'Baseline start', date: '2025-12-01', color: '#ff3b30', dash: [6, 4] },
-    { name: 'Gate 2', date: new Date('2026-03-15'), color: 'teal' },
+  //  { name: 'Current', date: new Date(), color: 'red' },
+  //  { name: 'Baseline start', date: '2025-12-01', color: '#ff3b30', dash: [6, 4] },
+  //  { name: 'Gate 2', date: new Date('2026-03-15'), color: 'teal' },
   ]);
 
   readonly columns = signal<ColumnDef[]>([
@@ -136,8 +136,10 @@ export class AppStateService {
   // Tabs VM
   readonly tabsVm = computed(() => ([
     { link: 'summary' as const,   i18n: 'xer_summary',        disabled: false },
+    { link: 'dcma' as const,     i18n: 'DCMA 14',   disabled: !this.isReady() },
     { link: 'dashboard' as const, i18n: 'dashboard.title',          disabled: !this.isReady() },
     { link: 'gantt' as const,     i18n: 'activities_gantt',   disabled: !this.isReady() },
+
   ]));
   readonly tabs$ = toObservable(this.tabsVm);
 
