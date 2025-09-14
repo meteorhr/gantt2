@@ -26,9 +26,6 @@
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in oklab, var(--mat-sys-outline) 24%, transparent);
-  background: color-mix(in oklab, var(--mat-sys-surface) 88%, transparent);
 }
 .grow { flex: 1 1 auto; }
 

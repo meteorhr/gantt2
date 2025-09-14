@@ -1,12 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import {
-  DcmaCheck1Service,
   DcmaCheck1Result,
   DcmaCheck2Result,
   DcmaCheck3Result,
@@ -21,33 +20,40 @@ import {
   DcmaCheck12Result,
   DcmaCheck13Result,
   DcmaCheck14Result,
-} from '../../p6/services/dcma.service';
+} from '../../p6/services/dcma.model';
+import { DcmaCheck1Service } from '../../p6/services/dcma.service';
 import { AppStateService } from '../../state/app-state.service';
 import { TranslocoModule } from '@jsverse/transloco';
 import { DcmaDetailsDialogComponent } from './dialog/dcma-dialog.component';
+import { DcmaInfoDialogComponent } from './dialog/dcma-dialog-info.component';
+
+
 
 interface DcmaRow { check: number; metric: string; description: string; percent?: number | null; passed: boolean; result: any; }
-
-
-
 
 @Component({
   standalone: true,
   selector: 'app-dcma-checks',
-  imports: [CommonModule, MatTableModule, MatIconModule, MatButtonModule, MatDialogModule, TranslocoModule, DcmaDetailsDialogComponent],
+  imports: [CommonModule, MatTableModule, MatIconModule, MatButtonModule, MatDialogModule, TranslocoModule],
   styleUrls: ['./dcma-tab.component.scss'],
   template: `
     <div class="dash-viewport">
-      <h3>{{ 'dcma.summary.title' | transloco }} (proj_id={{ projId() }})</h3>
-      @if (loading()) { <p>{{ 'dcma.common.loading' | transloco }}</p> } @else {
+      <h3>{{ 'dcma.summary.title' | transloco }}</h3>
+      @if (loading()) { <p>{{ 'common.loading' | transloco }}</p> } @else {
         <table mat-table [dataSource]="rows()" class="mat-elevation-z1 fullw">
           <ng-container matColumnDef="check">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.check' | transloco }}</th>
             <td mat-cell *matCellDef="let r">{{ r.check }}</td>
+            
           </ng-container>
           <ng-container matColumnDef="metric">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.metric' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">{{ r.metric }}</td>
+            <td mat-cell *matCellDef="let r">
+              <button mat-button aria-label="Info" (click)="openInfo(r)">
+                {{ r.metric }}
+                <mat-icon>info</mat-icon>
+              </button>
+            </td>
           </ng-container>
           <ng-container matColumnDef="description">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.description' | transloco }}</th>
@@ -61,9 +67,12 @@ interface DcmaRow { check: number; metric: string; description: string; percent?
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.passed' | transloco }}</th>
             <td mat-cell *matCellDef="let r"><mat-icon [ngClass]="r.passed ? 'ok' : 'bad'">{{ r.passed ? 'check_circle' : 'cancel' }}</mat-icon></td>
           </ng-container>
+
           <ng-container matColumnDef="details">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.details' | transloco }}</th>
-            <td mat-cell *matCellDef="let r"><button mat-button (click)="openDetails(r)"><mat-icon>list</mat-icon> {{ 'dcma.table.btnDetails' | transloco }}</button></td>
+            <td mat-cell *matCellDef="let r">
+              <button mat-button (click)="openDetails(r)"><mat-icon>list</mat-icon> {{ 'dcma.table.btnDetails' | transloco }}
+            </button></td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
@@ -149,6 +158,14 @@ export class DcmaChecksComponent {
       width: '900px',
       maxWidth: '900px',
       data: { title: `DCMA Check ${row.check} — ${row.metric}`, check: row.check, result: row.result, strictLogic: row.check === 1 },
+    });
+  }
+
+  openInfo(row: any) {
+    this.dialog.open(DcmaInfoDialogComponent, {
+      width: '640px',
+      maxWidth: '80vw',
+      data: { check: row.check },
     });
   }
 

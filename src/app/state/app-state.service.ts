@@ -136,7 +136,7 @@ export class AppStateService {
   // Tabs VM
   readonly tabsVm = computed(() => ([
     { link: 'summary' as const,   i18n: 'xer_summary',        disabled: false },
-    { link: 'dcma' as const,     i18n: 'DCMA 14',   disabled: !this.isReady() },
+    { link: 'dcma' as const,      i18n: 'DCMA_14',   disabled: !this.isReady() },
     { link: 'dashboard' as const, i18n: 'dashboard.title',          disabled: !this.isReady() },
     { link: 'gantt' as const,     i18n: 'activities_gantt',   disabled: !this.isReady() },
 

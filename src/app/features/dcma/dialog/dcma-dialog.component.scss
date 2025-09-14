@@ -1,0 +1,31 @@
+
+.content { max-height: unset; overflow: visible; }
+.badge { display:inline-block; margin: 0 16px 0 16px ; padding:10px; border-radius: 12px; background:#e3f2fd; color:#0d47a1; font-size:12px; }
+.table-scroll{
+    max-height:60vh;
+    overflow:auto;
+}
+
+.table-viewport {
+  max-height: 60vh;
+  height: 60vh;
+  overflow: auto;
+  display: block;
+}
+
+/* Заголовок таблицы остаётся липким внутри viewport */
+.sticky-header .mat-mdc-header-row {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--mat-sys-background);
+}
+
+/* Шапка вкладок — липкая */
+:host ::ng-deep .mat-mdc-tab-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--mat-sys-background);
+}
+

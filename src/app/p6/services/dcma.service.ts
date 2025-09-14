@@ -1,470 +1,41 @@
 import { Injectable, inject } from '@angular/core';
 import { P6DexieService } from '../dexie.service';
 import { CALENDARRow } from '../models';
+import { DcmaCheck10Item, DcmaCheck10Result, DcmaCheck11Item, DcmaCheck11Result, DcmaCheck12Result, DcmaCheck13Result, DcmaCheck14Result, DcmaCheck1Item, DcmaCheck1Options, DcmaCheck1Result, DcmaCheck2LinkItem, DcmaCheck2Result, DcmaCheck3LinkItem, DcmaCheck3Result, DcmaCheck4NonFsItem, DcmaCheck4Result, DcmaCheck5Item, DcmaCheck5Result, DcmaCheck6Item, DcmaCheck6Result, DcmaCheck7Item, DcmaCheck7Result, DcmaCheck8Item, DcmaCheck8Result, DcmaCheck9ActualItem, DcmaCheck9ForecastItem, DcmaCheck9Result, TaskPredRow, TaskRow, TaskRsrcRow } from './dcma.model';
+import { isCriticalTaskRow } from '../../state/p6-float.util';
 
-/** Минимальные типы под XER/XML таблицы, используемые в расчёте */
-export interface TaskRow {
-  task_id: number;              // уникальный ID активности
-  proj_id: number;              // ID проекта
-  clndr_id: number;          
-  task_code?: string;           // код активности (Activity ID)
-  task_name?: string;           // наименование
-  wbs_id?: number | string;     // WBS (для удобной фильтрации/вывода)
-  task_type?: string;           // TT_Task | TT_Mile | TT_StartMile | TT_FinMile | TT_LOE | TT_WBS | ...
-  status_code?: string;         // Not Started/In Progress/Completed/...
-  cstr_type?: string;
-  cstr_date?: string | Date | null;
-  total_float_hr_cnt?: number | null;
-  remain_dur_hr_cnt?: number | null;
-  orig_dur_hr_cnt?: number | null;
-  early_start_date?: string | Date | null;
-  early_end_date?: string | Date | null;
-  late_start_date?: string | Date | null;
-  late_end_date?: string | Date | null;
-  act_start_date?: string | Date | null;
-  act_end_date?: string | Date | null;
-  // Возможные поля базового плана (разные XER/XML схемы)
-  bl1_finish_date?: string | Date | null;
-  bl_finish_date?: string | Date | null;
-  baseline_finish_date?: string | Date | null;
-  target_end_date?: string | Date | null;
-  target_finish_date?: string | Date | null;
-}
+/**
+ * Нормализует тип зависимости P6/XER/XML к одному из: FS/SS/FF/SF.
+ * Поддерживает коды из разных источников (включая PR_* из XER),
+ * числовые коды (0/1/2/3), и текстовые формы.
+ */
+function normalizeLinkType(v: any): 'FS' | 'SS' | 'FF' | 'SF' | 'UNKNOWN' {
+  if (v == null) return 'UNKNOWN';
+  const s = String(v).trim().toUpperCase();
+  if (!s) return 'UNKNOWN';
 
-export interface DcmaCheck5Item {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  cstr_type?: string;                 // исходное значение P6
-  cstr_date?: string | Date | null;
-  isHard: boolean;                    // true, если нормализация распознала MS/MF
-  normType?: string;                  // HARD_MS/HARD_MF/soft-variants/UNKNOWN
-  hasDate?: boolean;                  // указана ли дата ограничения
-}
+  const M: Record<string, 'FS' | 'SS' | 'FF' | 'SF'> = {
+    // Finish-to-Start
+    'FS': 'FS', 'PR_FS': 'FS', 'FS_REL': 'FS', '0': 'FS',
+    'FINISH-TO-START': 'FS', 'FINISH TO START': 'FS', 'FINISHTOSTART': 'FS', 'FINISH START': 'FS',
 
-export interface DcmaCheck5Result {
-  proj_id: number;
-  totalWithConstraints: number;     // активностей с любым распознанным ограничением
-  hardCount: number;                // активностей с HARD_MS/HARD_MF
-  softCount: number;                // активностей с любым soft-типом
-  hardPercent: number;              // % Hard от totalWithConstraints
-  threshold5PercentExceeded: boolean; // >5% — внимание
-  details?: {
-    hardList: DcmaCheck5Item[];
-    softList: DcmaCheck5Item[];
-    byType?: Record<ConstraintNorm, number>; // распределение по нормализованным типам
-    dq?: {
-      unknownType: number;          // нераспознанных типов (не попали в знаменатель)
-      missingDateForHard: number;   // HARD_* без даты
-      missingDateForSoft: number;   // SOFT_* без даты
-      excludedWbs: number;          // исключённые WBS summary
-    };
+    // Start-to-Start
+    'SS': 'SS', 'PR_SS': 'SS', 'SS_REL': 'SS', '1': 'SS',
+    'START-TO-START': 'SS', 'START TO START': 'SS', 'STARTTOSTART': 'SS', 'START START': 'SS',
+
+    // Finish-to-Finish
+    'FF': 'FF', 'PR_FF': 'FF', 'FF_REL': 'FF', '2': 'FF',
+    'FINISH-TO-FINISH': 'FF', 'FINISH TO FINISH': 'FF', 'FINISHTOFINISH': 'FF', 'FINISH FINISH': 'FF',
+
+    // Start-to-Finish
+    'SF': 'SF', 'PR_SF': 'SF', 'SF_REL': 'SF', '3': 'SF',
+    'START-TO-FINISH': 'SF', 'START TO FINISH': 'SF', 'STARTTOFINISH': 'SF', 'START FINISH': 'SF',
   };
-}
 
-export interface DcmaCheck6Item {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  total_float_hr_cnt: number;      // TF в часах
-  total_float_days_8h: number;     // TF в днях по календарю задачи (деление на hours_per_day_used)
-  hours_per_day_used?: number;     // часы/день, взятые из календаря активности
-}
-
-export interface DcmaCheck7Item {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  total_float_hr_cnt: number;   // TF в часах (отрицательный)
-  total_float_days_8h: number;  // TF в днях по календарю задачи (деление на hours_per_day_used)
-  hours_per_day_used?: number;  // часы/день из календаря задачи
-}
-
-export interface DcmaCheck7Result {
-  proj_id: number;
-  totalEligible: number;          // задачи, участвующие в проверке (без WBS)
-  negativeFloatCount: number;     // TF < 0
-  hasNegativeFloat: boolean;      // должно быть false
-  details?: { 
-    items: DcmaCheck7Item[];
-    dq?: {
-      unknownUnits: number;       // TotalFloatUnits не распознаны
-      missingTf: number;          // нет TF ни в часах, ни в паре (TotalFloat, TotalFloatUnits)
-      excludedWbs: number;        // исключённые WBS summary
-    };
-  };
-}
-
-export interface TaskPredRow {
-  task_id: number;              // Successor (к кому ведёт связь)
-  pred_task_id: number;         // Predecessor (от кого идёт связь)
-  pred_type?: string;           // FS/SS/FF/SF (как в XML), в XER может быть код типа
-  lag_hr_cnt?: number | null;   // лаг в часах (в XER часто в часах)
-  lag_units?: string | null;   // нормализованные единицы (HOURS/DAYS/WEEKS/MONTHS/...)
-  lag_raw?: string | null;     // исходное текстовое значение лага (если не часы)
-  predecessor_code?: string;   // для деталей (если есть в маппере)
-  successor_code?: string;     // для деталей (если есть в маппере)
-}
-
-export interface TaskRsrcRow {
-  task_id: number;
-  rsrc_id?: number | string;
-  role_id?: number | string;
-  qty?: number | null;
-}
-
-export interface DcmaCheck1Options {
-  /** Типы активностей, которые исключаем из DCMA Logic eligibility (из знаменателя). */
-  excludeTypes?: string[];
-  /** Типы, считающиеся вехами (для автопроставления причин исключений). */
-  milestoneTypes?: string[];
-  /** Исключать COMPLETED из знаменателя (некоторые заказчики так требуют). */
-  excludeCompleted?: boolean;
-  /** Исключать LOE/Hammock/обслуживающие типы из знаменателя. */
-  excludeLoEAndHammock?: boolean;
-  /** Считать стартовые/финишные вехи допустимыми «открытыми концами» и не включать их в нарушения. */
-  treatMilestonesAsExceptions?: boolean;
-  /** Включать подробные списки. */
-  includeLists?: boolean;
-  /** Заказной маппинг статусов в нормализованные (NOT_STARTED/IN_PROGRESS/COMPLETED). */
-  statusMap?: Record<string, 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'>;
-  /** Игнорировать связи, где противоположный конец LOE/Hammock, при определении hasPred/hasSucc. */
-  ignoreLoEAndHammockLinksInLogic?: boolean;
-  /** Вывести раздел Data Quality (DQ) и счётчики исключений. */
-  includeDQ?: boolean;
-}
-
-export interface DcmaCheck1Item {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  wbs_id?: number | string;
-  task_type?: string;
-  status_code?: string;
-  status_norm?: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'UNKNOWN';
-  hasPredecessor: boolean;
-  hasSuccessor: boolean;
-  isMilestone: boolean;
-  /** Причины/смягчающие обстоятельства для отсутствия предшественника/преемника */
-  reasonMissingPred?: 'StartMilestone' | 'ProjectStart' | 'ExternalLink' | 'ExceptionByRule' | 'None';
-  reasonMissingSucc?: 'FinishMilestone' | 'ProjectFinish' | 'ExternalLink' | 'ExceptionByRule' | 'None';
-  /** Исключён ли из знаменателя по правилам (Completed/LoE/Hammock/Milestone исключения) */
-  excludedFromEligible?: boolean;
-}
-
-export interface DcmaCheck1Result {
-  proj_id: number;
-  /** Исходный eligible (до исключений по правилам) */
-  totalEligibleRaw: number;
-  /** Итоговый eligible после исключений (denominator DCMA) */
-  totalEligible: number;
-  missingPredecessor: number;
-  missingSuccessor: number;
-  missingBoth: number;
-  /** Уникальные активности, у которых отсутствует хотя бы один из концов логики (после исключений) */
-  uniqueMissingAny: number;
-  percentMissingAny: number; // % от totalEligible
-  /** Сколько нарушителей допускается по правилу 5% (округление вверх) */
-  threshold5PercentValue?: number;
-  threshold5PercentExceeded: boolean;
-  details?: {
-    items: DcmaCheck1Item[];
-    missingPredList: DcmaCheck1Item[];
-    missingSuccList: DcmaCheck1Item[];
-    missingBothList: DcmaCheck1Item[];
-    exclusions?: {
-      excludedWbs: number;
-      excludedCompleted: number;
-      excludedLoEOrHammock: number;
-      excludedByType: Record<string, number>;
-    };
-    dq?: {
-      duplicateLinks: number;
-      selfLoops: number;
-      orphanLinks: number;
-    };
-  };
-}
-
-export interface DcmaCheck2LinkItem {
-  predecessor_task_id: number;
-  successor_task_id: number;
-  predecessor_code?: string;
-  predecessor_name?: string;
-  successor_code?: string;
-  successor_name?: string;
-  link_type?: string;        // FS/SS/FF/SF
-  lag_hr_cnt: number;        // лаг в часах (отрицательный = lead)
-  lag_days_8h: number;       // лаг, пересчитанный в днях (деление на hours_per_day_used)
-  lag_units?: string | null;   // юниты из XER/XML
-  lag_raw?: string | null;     // сырой текст из XER/XML
-  hours_per_day_used?: number; // часы/день по календарю преемника
-}
-
-export interface DcmaCheck2Result {
-  proj_id: number;
-  totalRelationships: number;    // общее число связей внутри проекта (после дедупликации)
-  leadCount: number;             // количество связей с отрицательным лагом
-  leadPercent: number;           // % lead-связей от totalRelationships
-  thresholdZeroViolated: boolean; // true, если есть хотя бы один lead
-  details?: {
-    leads: DcmaCheck2LinkItem[]; // подробный список lead-связей
-    dq?: {                       // диагностические счётчики качества данных
-      duplicateLinks: number;    // удалённых дублей
-      selfLoops: number;         // отброшенных самосвязей
-      externalLinks: number;     // отброшенных внешних связей (за пределами проекта)
-    };
-  };
-}
-
-export interface DcmaCheck3LinkItem {
-  predecessor_task_id: number;
-  successor_task_id: number;
-  predecessor_code?: string;
-  predecessor_name?: string;
-  successor_code?: string;
-  successor_name?: string;
-  link_type?: string;        // FS/SS/FF/SF
-  lag_hr_cnt: number;        // лаг в часах (положительный = lag)
-  lag_days_8h: number;       // лаг, пересчитанный в днях (деление на hours_per_day_used)
-  lag_units?: string | null; // юниты из XER/XML
-  lag_raw?: string | null;   // сырой текст из XER/XML
-  hours_per_day_used?: number; // часы/день по календарю преемника
-}
-
-export interface DcmaCheck3Result {
-  proj_id: number;
-  totalRelationships: number;     // общее число связей внутри проекта
-  lagCount: number;                // количество связей с положительным лагом
-  lagPercent: number;              // % lag-связей от totalRelationships
-  threshold5PercentExceeded: boolean; // true, если доля lag > 5%
-  details?: {
-    lags: DcmaCheck3LinkItem[];    // подробный список lag-связей
-    dq?: {
-      duplicateLinks: number;
-      selfLoops: number;
-      externalLinks: number;
-    };
-  };
-}
-
-export interface DcmaCheck4NonFsItem {
-  predecessor_task_id: number;
-  successor_task_id: number;
-  predecessor_code?: string;
-  successor_code?: string;
-  link_type: 'FS' | 'SS' | 'FF' | 'SF' | 'UNKNOWN';
-}
-
-export interface DcmaCheck4Result {
-  proj_id: number;
-  totalRelationships: number;
-  countFS: number;
-  countSS: number;
-  countFF: number;
-  countSF: number;
-  percentFS: number;                 // % FS от totalRelationships
-  fsThreshold90Failed: boolean;      // true, если percentFS < 90
-  details?: { 
-    nonFsList: DcmaCheck4NonFsItem[];
-    dq?: {
-      duplicateLinks: number;
-      selfLoops: number;
-      externalLinks: number;
-      unknownType: number;
-    };
-  };
-}
-
-export interface DcmaCheck6Result {
-  proj_id: number;
-  totalEligible: number;         // eligible-активности (исключая WBS Summary)
-  highFloatCount: number;        // TF > 44 дней
-  highFloatPercent: number;
-  threshold5PercentExceeded: boolean;
-  details?: { 
-    items: DcmaCheck6Item[];
-    dq?: {
-      unknownUnits: number;      // TotalFloatUnits не распознаны
-      missingTf: number;         // нет TF ни в часах, ни в паре (TotalFloat, TotalFloatUnits)
-      excludedWbs: number;       // исключённые WBS
-    };
-  };
-}
-
-export interface DcmaCheck7Item {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  total_float_hr_cnt: number;
-  total_float_days_8h: number;
+  return M[s] ?? 'UNKNOWN';
 }
 
 
-export interface DcmaCheck8Item {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  remain_dur_hr_cnt: number;    // оставшаяся длительность в часах
-  remain_dur_days_8h: number;   // в днях по календарю задачи (деление на hours_per_day_used)
-  hours_per_day_used?: number;  // часы/день из календаря активности
-}
-
-export interface DcmaCheck8Result {
-  proj_id: number;
-  totalEligible: number;        // незавершённые задачи (исключая WBS)
-  highDurationCount: number;    // незавершённые с Remaining > 44 дней
-  highDurationPercent: number;  // % от незавершённых
-  threshold5PercentExceeded: boolean;
-  details?: { 
-    items: DcmaCheck8Item[];
-    dq?: {
-      excludedWbs: number;
-      excludedCompleted: number;     // сколько отброшено как Completed при формировании знаменателя
-      excludedLoEOrHammock: number;  // если исключили LOE/Hammock из знаменателя
-      missingRemainDur: number;      // отсутствует Remaining Duration в часах и альтернативных полях
-      negativeRemainDur: number;     // Remaining < 0 (отброшены из расчёта)
-      usedAltRemainField: number;    // взяли Remaining из альтернативных полей (rem_drtn_hr_cnt/RemainingDuration/RemainingDurationHours)
-    };
-  };
-}
-
-export interface DcmaCheck9ForecastItem {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  early_start_date?: string | Date | null;
-  early_end_date?: string | Date | null;
-  late_start_date?: string | Date | null;
-  late_end_date?: string | Date | null;
-}
-
-export interface DcmaCheck9ActualItem {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  act_start_date?: string | Date | null;
-  act_end_date?: string | Date | null;
-}
-
-export interface DcmaCheck9Result {
-  proj_id: number;
-  dataDateISO: string;                 // ISO дата статуса проекта
-  invalidForecastCount: number;        // 9a: ES/EF/LS/LF < Data Date (для незавершённых)
-  invalidActualCount: number;          // 9b: AS/AF > Data Date
-  hasInvalidDates: boolean;            // должно быть false
-  details?: {
-    forecast: DcmaCheck9ForecastItem[];
-    actual: DcmaCheck9ActualItem[];
-    dq?: {
-      tasksCheckedForecast: number;    // сколько задач прошло проверку 9a
-      tasksCheckedActual: number;      // сколько задач прошло проверку 9b
-      missingForecastFields: number;   // где все ES/EF/LS/LF отсутствуют
-      missingActualFields: number;     // где AS и AF отсутствуют
-      parseErrors: number;             // ошибки парсинга дат
-    };
-  };
-}
-
-export interface DcmaCheck10Item {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  eff_dur_hr_cnt: number;      // эффективная длительность (часы) для порога 1 день
-  eff_dur_days: number;        // eff_dur_hr_cnt / hours_per_day_used
-  hours_per_day_used?: number; // часы/день (из календаря задачи или фолбэк)
-}
-
-export interface DcmaCheck10Result {
-  proj_id: number;
-  hoursPerDay: number;                 // глобальный фолбэк на случай отсутствия календаря
-  totalEligible: number;               // задачи с длительностью ≥ 1 дня (и не WBS)
-  withoutResourceCount: number;        // без назначенных ресурсов (TASKRSRC)
-  percentWithoutResource: number;      // % от totalEligible
-  details?: {
-    items: DcmaCheck10Item[];          // список задач без ресурсов
-    dq?: {
-      excludedWbs: number;             // исключённые WBS summary
-      excludedMilestones: number;      // исключённые вехи
-      excludedLoEOrHammock: number;    // исключённые LOE/Hammock (если применено)
-      missingDuration: number;         // нет данных по длительности
-      negativeDuration: number;        // отрицательная длительность
-      usedAltDurationField: number;    // использовали альтернативные поля для длительности
-      calendarFallbackCount: number;   // сколько задач использовало фолбэк часов/день (нет валидного календаря)
-    };
-  };
-}
-
-export interface DcmaCheck11Item {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  act_finish?: string | Date | null;
-  baseline_finish?: string | Date | null;
-}
-
-export interface DcmaCheck11Result {
-  proj_id: number;
-  totalCompleted: number;                // завершённых (без WBS)
-  evaluatedCompleted: number;            // завершённых, у которых есть BL Finish и AF → участвуют в расчёте
-  missedCount: number;                   // AF > BL Finish среди evaluatedCompleted
-  missedPercent: number;                 // % от evaluatedCompleted
-  threshold5PercentExceeded: boolean;    // >5% — внимание
-  details?: {
-    items: DcmaCheck11Item[];            // только нарушители (AF > BL)
-    dq?: {
-      excludedWbs: number;               // исключено WBS
-      missingBaselineFinish: number;     // завершённых без BL Finish — не смогли оценить
-      missingActualFinish: number;       // завершённых без AF — не смогли оценить
-      baselineFieldUsage?: Record<string, number>; // статистика использованных BL полей
-    };
-  };
-};
-
-export interface DcmaCheck12Result {
-  proj_id: number;
-  simulatedDelayDays: number;           // имитация добавления длительности (дней)
-  criticalCount: number;                // размер множества «критических» (TF≈0)
-  floatThresholdHours: number;          // порог TF для отбора критических (часы)
-  startNodesOnCP: number;               // узлы КП без предшественников в КП
-  endNodesOnCP: number;                 // узлы КП без преемников в КП
-  isSingleChain: boolean;               // на КП ровно 1 стартовый и 1 конечный узел
-  reachedProjectFinish: boolean;        // конечный узел КП совпадает с проектным финишем (по forecast)
-  testPassLikely: boolean;              // эвристический вывод: true => тест вероятно пройдёт
-  details?: {
-    criticalTaskIds: number[];
-    dq?: {
-      duplicateLinks: number;           // удалённые дубликаты связей при построении подграфа
-      selfLoops: number;                // отброшенные самосвязи
-      externalLinks: number;            // отброшенные внешние связи
-      components: number;               // количество компонент связности в подграфе КП
-    };
-  };
-}
-
-export interface DcmaCheck13Result {
-  proj_id: number;
-  dataDateISO?: string;                 // дата статуса (PROJECT)
-  forecastFinishISO?: string;           // прогнозный финиш проекта (по задачам)
-  baselineFinishISO?: string | null;    // базовый финиш проекта (по задачам)
-  criticalPathLengthDays?: number | null; // CPL (дни) = (ForecastFinish - DataDate)
-  projectTotalFloatDays?: number | null;  // PTF (дни) = (BaselineFinish - ForecastFinish)
-  cpli?: number | null;                 // (CPL + PTF) / CPL
-  cpliWithin5pct?: boolean | null;      // цель ≈ 1.0 (±5%)
-}
-
-export interface DcmaCheck14Result {
-  proj_id: number;
-  dataDateISO: string;                 // дата статуса проекта
-  plannedToComplete: number;           // задачи, которые по БП должны быть завершены к DD
-  actuallyCompleted: number;           // фактически завершённые к DD
-  bei: number | null;                  // BEI = actuallyCompleted / plannedToComplete
-  beiWithin95pct: boolean | null;      // цель ≈ 1.0 (не ниже 0.95)
-  details?: {
-    plannedButNotCompleted: Array<{ task_id: number; task_code?: string; task_name?: string; baseline_finish?: string | Date | null }>; // BL<=DD, AF отсутствует/в будущем
-    completedAheadOfPlan: Array<{ task_id: number; task_code?: string; task_name?: string; act_finish?: string | Date | null; baseline_finish?: string | Date | null }>; // AF<=DD, но BL>DD
-  };
-}
 
 @Injectable({ providedIn: 'root' })
 export class DcmaCheck1Service {
@@ -890,8 +461,15 @@ export class DcmaCheck1Service {
     const hasProject = projRows.some(p => p.proj_id === projId);
     if (!hasProject) throw new Error(`Проект с proj_id=${projId} не найден в PROJECT.`);
 
+    // Новый блок: фильтрация задач, исключение служебных типов, определение критических с помощью util
     const tasksInProject = (taskRows || []).filter(t => t.proj_id === projId);
-    const taskIdSet = new Set<number>(tasksInProject.map(t => t.task_id));
+
+    // Исключаем служебные типы из анализа КП
+    const EXCLUDE_TYPES = new Set(['TT_WBS','TT_LOE','TT_HAMMOCK','TT_SUMMARY','TT_TMPL','TT_Tmpl']);
+    const isExcludedType = (t: TaskRow) => EXCLUDE_TYPES.has(((t.task_type ?? '').trim().toUpperCase()));
+    const baseTasks = tasksInProject.filter(t => !isExcludedType(t) && (t.status_code ?? '').toString().toUpperCase() !== 'TK_INACTIVE');
+
+    const taskIdSet = new Set<number>(baseTasks.map(t => t.task_id));
 
     // Индекс календарей и HPD для задач
     const calById = new Map<string | number, CALENDARRow>();
@@ -908,33 +486,17 @@ export class DcmaCheck1Service {
       return (typeof h === 'number' && h > 0) ? h : hoursPerDayFallback;
     };
 
-    // Преобразование TF в часы: используем total_float_hr_cnt, иначе TotalFloat(+Units) c HPD
-    const toNum = (v: unknown): number | null => {
-      if (v == null) return null; const n = (typeof v === 'number') ? v : Number(String(v).replace(/[\s,]+/g, ''));
-      return Number.isFinite(n) ? n : null;
-    };
-    const tfHours = (t: TaskRow): number => {
-      const hpd = getHpd(t);
-      const tfH = toNum((t as any).total_float_hr_cnt);
-      if (tfH != null) return tfH;
-      const tfRaw = toNum((t as any).TotalFloat);
-      if (tfRaw == null) return 0; // отсутствует — считаем 0, чтобы не выкидывать из подграфа потенциально критичные
-      const u0 = String((t as any).TotalFloatUnits ?? '').trim().toUpperCase();
-      if (!u0 || u0 === 'H' || u0 === 'HR' || u0 === 'HRS' || u0 === 'HOUR' || u0 === 'HOURS') return tfRaw;
-      if (u0 === 'D' || u0 === 'DAY' || u0 === 'DAYS') return tfRaw * hpd;
-      if (u0 === 'W' || u0 === 'WK' || u0 === 'WKS' || u0 === 'WEEK' || u0 === 'WEEKS') return tfRaw * hpd * 5;
-      if (u0 === 'MO' || u0 === 'MON' || u0 === 'MONS' || u0 === 'MONTH' || u0 === 'MONTHS') return tfRaw * hpd * 21.667;
-      if (u0 === 'Y' || u0 === 'YR' || u0 === 'YRS' || u0 === 'YEAR' || u0 === 'YEARS') return tfRaw * hpd * 260;
-      return 0;
-    };
-
     // Если порог не задан — возьмём 0.5 * медианные HPD по проекту (надёжнее чем константа)
-    const projectHpds = tasksInProject.map(t => getHpd(t)).filter(h => typeof h === 'number' && h > 0).sort((a,b)=>a-b);
+    const projectHpds = baseTasks.map(t => getHpd(t)).filter(h => typeof h === 'number' && h > 0).sort((a,b)=>a-b);
     const medianHpd = projectHpds.length ? projectHpds[Math.floor(projectHpds.length/2)] : hoursPerDayFallback;
     const floatThresholdHours = floatThresholdHoursOpt ?? Math.max(1, Math.round(0.5 * medianHpd));
 
-    // Критические задачи: |TF| ≤ порог
-    const criticalTasks = tasksInProject.filter(t => Math.abs(tfHours(t)) <= floatThresholdHours);
+    // Критические задачи определяем через общий util с допуском (epsilonHours)
+    const criticalTasks = baseTasks.filter(t => {
+      const hpd = getHpd(t);
+      const eps = Math.max(1, Math.round(hpd * 0.05));
+      return isCriticalTaskRow(t as any, { hoursPerDay: hpd, epsilonHours: eps });
+    });
     const criticalIds = new Set<number>(criticalTasks.map(t => t.task_id));
 
     // Построение подграфа по связям внутри проекта (дедупликация и DQ)
@@ -948,10 +510,9 @@ export class DcmaCheck1Service {
       const predId = l.pred_task_id;
       if (!(taskIdSet.has(succId) && taskIdSet.has(predId))) { dqExternal++; continue; }
       if (succId === predId) { dqSelf++; continue; }
-      const key = `${succId}|${predId}`; // тип/лаг не важны для связности КП
+      const key = `${succId}|${predId}`;
       if (seen.has(key)) { dqDuplicate++; continue; }
       seen.add(key);
-      // Добавляем ребро только если обе вершины — критические
       if (criticalIds.has(succId) && criticalIds.has(predId)) {
         edges.push({ pred: predId, succ: succId });
       }
@@ -997,7 +558,7 @@ export class DcmaCheck1Service {
     const dayUTC = (d: Date): number => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 
     let projectForecastFinish: Date | null = null;
-    for (const t of tasksInProject) {
+    for (const t of baseTasks) {
       const ef = toDate((t as any).early_end_date) || toDate((t as any).late_end_date) || toDate((t as any).act_end_date);
       if (ef && (!projectForecastFinish || ef > projectForecastFinish)) projectForecastFinish = ef;
     }
@@ -1063,6 +624,43 @@ export class DcmaCheck1Service {
       const MS_IN_DAY = 24 * 3600 * 1000;
       return (A - B) / MS_IN_DAY;
     };
+    // Новый helper для расчёта дат проекта — гарантирует non-null Baseline Finish (fallback к прогнозу)
+    const resolveProjectDates = (proj: any, tasks: TaskRow[]) => {
+      let forecastFinish: Date | null = null;
+      for (const t of tasks) {
+        const ef = toDateStrict((t as any).early_end_date);
+        const lf = toDateStrict((t as any).late_end_date);
+        const af = toDateStrict((t as any).act_end_date);
+        const candidate = ef || lf || af || null;
+        if (candidate && (!forecastFinish || candidate > forecastFinish)) forecastFinish = candidate;
+      }
+
+      const BL_FIELDS = ['bl1_finish_date','bl_finish_date','baseline_finish_date','target_end_date','target_finish_date'];
+      let baselineFinish: Date | null = null;
+      for (const t of tasks) {
+        for (const k of BL_FIELDS) {
+          const d = toDateStrict((t as any)[k]);
+          if (d && (!baselineFinish || d > baselineFinish)) baselineFinish = d;
+        }
+      }
+
+      // Fallback #1: если нет baselineFinish, но есть критические задачи по простому признаку TF<=0, приравниваем к прогнозу
+      if (!baselineFinish) {
+        const critTasks = tasks.filter(tt => {
+          const tfh = (tt as any).total_float_hr_cnt; // часы
+          const tfr = (tt as any).TotalFloat;         // сырое TF (часы/дни — знак важен)
+          const tfv = (tfh != null ? Number(tfh) : (tfr != null ? Number(tfr) : null));
+          return tfv != null && !Number.isNaN(tfv) && tfv <= 0;
+        });
+        if (critTasks.length && forecastFinish) baselineFinish = forecastFinish;
+      }
+
+      // Fallback #2: самый надёжный — если baseline не удалось определить вовсе, но прогноз есть —
+      // считаем PTF==0 (baseline=forecast) для совместимости XER/XML.
+      if (!baselineFinish && forecastFinish) baselineFinish = forecastFinish;
+
+      return { forecastFinish, baselineFinish };
+    };
 
     const [taskRows, projRowsRaw] = await Promise.all([
       this.dexie.getRows('TASK') as Promise<TaskRow[]>,
@@ -1080,26 +678,8 @@ export class DcmaCheck1Service {
 
     // Фильтруем задачи проекта
     const tasksInProject = (taskRows || []).filter(t => t.proj_id === projId);
-
-    // Forecast Project Finish — максимум EF (fallback LF, затем AF)
-    let forecastFinish: Date | null = null;
-    for (const t of tasksInProject) {
-      const ef = toDateStrict((t as any).early_end_date);
-      const lf = toDateStrict((t as any).late_end_date);
-      const af = toDateStrict((t as any).act_end_date);
-      const candidate = ef || lf || af || null;
-      if (candidate && (!forecastFinish || candidate > forecastFinish)) forecastFinish = candidate;
-    }
-
-    // Baseline Project Finish — максимум из возможных BL‑полей
-    const BL_FIELDS = ['bl1_finish_date','bl_finish_date','baseline_finish_date','target_end_date','target_finish_date'];
-    let baselineFinish: Date | null = null;
-    for (const t of tasksInProject) {
-      for (const k of BL_FIELDS) {
-        const d = toDateStrict((t as any)[k]);
-        if (d && (!baselineFinish || d > baselineFinish)) baselineFinish = d;
-      }
-    }
+    // Используем helper для дат проекта
+    const { forecastFinish, baselineFinish } = resolveProjectDates(proj, tasksInProject);
 
     const base: DcmaCheck13Result = { proj_id: projId } as DcmaCheck13Result;
 
@@ -2375,20 +1955,7 @@ export function isHardConstraint(norm: ConstraintNorm): boolean {
   return norm === 'HARD_MS' || norm === 'HARD_MF';
 }
   export type LinkType = 'FS' | 'SS' | 'FF' | 'SF' | 'UNKNOWN';
-export function normalizeLinkType(v: unknown): LinkType {
-  const s0 = (typeof v === 'string' ? v : String(v ?? '')).trim().toUpperCase();
-  if (s0 === 'FS' || s0 === '0') return 'FS';
-  if (s0 === 'SS' || s0 === '1') return 'SS';
-  if (s0 === 'FF' || s0 === '2') return 'FF';
-  if (s0 === 'SF' || s0 === '3') return 'SF';
-  // убираем пробелы/дефисы и проверяем словесные формы
-  const s = s0.replace(/[\s\-]/g, '');
-  if (s === 'FINISHTOSTART')  return 'FS';
-  if (s === 'STARTTOSTART')   return 'SS';
-  if (s === 'FINISHTOFINISH') return 'FF';
-  if (s === 'STARTTOFINISH')  return 'SF';
-  return 'UNKNOWN';
-}
+
 /** Вспомогательная: округление до 2 знаков (для процента) */
 function round2(n: number): number {
   return Math.round(n * 100) / 100; 

@@ -7,6 +7,7 @@
     "dq": "Data quality (DQ)",
     "close": "Close"
   },
+  "DCMA_14": "DCMA 14",
   "app": {
     "title": "ScheduleVision",
     "subtitle":"A clear view of your project"
@@ -331,9 +332,131 @@
     }
   },
   "dcma": {
+    "info": {
+      "check": {
+        "goal": "Цель проверки",
+        "check": "Правило проверки",
+        "importanceMetrics": "Важность для метрик",
+        "frequency": "Частота проверки",
+        "description": "Описание",
+        "1": {
+          "title": "Check 1: Logic",
+          "goal": "Оценка полноты логических связей между задачами календарно-сетевого графика.",
+          "check": "Все незавершённые задачи должны иметь как минимум одну связь с предшественником и одну с последователем. Исключение составляют только начальные и завершающие события, если они технически обоснованы.",
+          "importanceMetrics": "Высокая. Без логических связей график не способен выполнять свою ключевую функцию – быть основой принятия решений и контроля проекта.",
+          "frequency": "При составлении и при каждой корректировке графика.",
+          "description": "Первый критерий проверки в протоколе DCMA 14 Schedule Assessment – это Логика. Проверка гарантирует, что все активности в плане проекта имеют предшественников и последователей. Стандарт DCMA допускает, что максимум 5% всех задач проекта могут не иметь предшественника, последователя или обоих. Обычно в эту категорию попадают стартовые и финишные вехи, однако существуют проектные техники, позволяющие минимизировать их количество. Отсутствие связей между задачами нарушает логическую целостность графика, делает невозможным корректный расчёт критического пути и анализ резервов времени. Некорректное определение связей «предшественник – последователь» может негативно повлиять на даты ключевых проектных вех." 
+        },
+        "2": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "3": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "4": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "5": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "6": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "7": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "8": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "9": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "10": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "11": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "12": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "13": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        },
+        "14": {
+          "title": "",
+          "goal": "",
+          "check": "",
+          "importanceMetrics": "",
+          "frequency": "",
+          "description": ""
+        }
+      }
+    },
   "summary": {
     "title": "DCMA 14 — Summary"
   },
+
   "table": {
     "check": "#",
     "metric": "Check",

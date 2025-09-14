@@ -47,16 +47,6 @@ export  interface Node {
   
   float_path?: string | null;
   float_path_order?: number | null;
-
-  
-  
-  
-  
-  
-
-  
-  
-      
       
      
   name: string;
