@@ -2,7 +2,7 @@
   "common": {
     "start": "Start",
     "end": "End",
-        "loading": "Calculating…",
+    "loading": "Calculating…",
     "list": "List",
     "dq": "Data quality (DQ)",
     "close": "Close"
@@ -10,119 +10,118 @@
   "DCMA_14": "DCMA 14",
   "app": {
     "title": "ScheduleVision",
-    "subtitle":"A clear view of your project"
+    "subtitle": "A clear view of your project"
   },
-    "dashboard": {
-      "show_table": "Show table",
-      "show_chart": "Show chart",
-      "unitsByResources": "Units by resources",
-      "costByResources": "Cost by resources",
-      "period": "Period",
-      "metric": {
-        "cost": "Metric (Cost)",
-        "units": "Metric (Units)"
-      },
-      "measures": {
-        "Budgeted": "Budgeted",
-        "Actual": "Actual",
-        "Remaining": "Remaining",
-        "AtCompletionUnits": "At Completion"
-      },
-      "float": {
-        "title": "Activity Total Float (days)",
-        "bucket": "Activity Float",
-        "count": "Count",
-        "rows": {
-          "critical": "Critical (TF < 1)",
-          "nearCritical": "Near Critical (TF < 21)",
-          "normal": "Normal Float",
-          "high": "High Float (TF > 49)",
-          "longestPath": "Longest Path",
-          "unknown": "Unknown TF",
-          "total": "Total"
-        }
-      },
-      "spi": {
-        "title": "SPI (EV / PV)",
-        "as_of": "As of {{date}}",
-        "table": {
-          "metric": "Metric",
-          "amount": "Amount"
-        },
-        "rows": {
-          "ev": "EV",
-          "pv": "PV",
-          "spi": "SPI"
-        },
-        "method_label": "Method: {{method}}"
-      },
-      "cpi": {
-        "title": "CPI (EV / AC)",
-        "as_of": "As of {{date}}",
-        "table": {
-          "metric": "Metric",
-          "amount": "Amount"
-        },
-        "rows": {
-          "ev": "EV",
-          "ac": "AC",
-          "cpi": "CPI"
-        },
-        "method_label": "Method: {{method}}"
-      },
-      "open_table": "Open detailed report",
-      "project_dates": "Project dates",
-      "start_date": "Start Date",
-      "data_date": "Data Date",
-      "end_date": "End Date",
-      "must_finish": "Must Finish",
-      "key": "Key",
-      "date": "Date",
-      "cost_loading": "Cost loading",
-      "cost_value": "Cost (value)",
-      "actual_to_date": "Actual to date",
-      "remaining_cost": "Remaining cost",
-      "budgeted_cost": "Budgeted cost",
-      "this_period_cost": "This period cost",
-      "cost": "Cost",
-      "amount": "Amount",
-      "progress": "Progress",
-      "schedule": "Schedule",
-      "physical": "Physical",
-      "total": "Total",
-      "resource_loading": "Resource loading (qty)",
-      "actual_to_date_qty": "Actual to date (qty)",
-      "remaining_qty": "Remaining qty",
-      "budgeted_qty": "Budgeted qty",
-      "this_period_qty": "This period qty",
-      "qty": "Qty",
-      "units": "Units",
-      "calculating": "Calculating metrics…",
-      "title": "Dashboard",
-      "project": "Project",
-      "planned_dates": "Planned dates",
-      "from_project_note": "from PROJECT",
-      "last_recalc": "Last recalculation",
-      "last_recalc_note": "",
-      "total_tasks": "Total Activity",
-      "distinct_resources": "Distinct resources ",
-      "statuses": "Statuses",
-      "groups_suffix": "groups",
-      "table_by_status": "Activity by Status",
-      "status": "Status",
-      "table_by_task_type": "Activity by Type",
-      "task": "Task",
-      "table_by_priority": "Activity by Priority",
-      "priority": "Priority",
-      "table_by_duration_type": "Activity by Duration Type",
-      "duration": "Duration",
-      "table_by_resource": "Activity by Resource",
-      "resource": "Resource",
-      "value": "Value",
+  "dashboard": {
+    "show_table": "Show table",
+    "show_chart": "Show chart",
+    "unitsByResources": "Units by resources",
+    "costByResources": "Cost by resources",
+    "period": "Period",
+    "metric": {
+      "cost": "Metric (Cost)",
+      "units": "Metric (Units)"
+    },
+    "measures": {
+      "Budgeted": "Budgeted",
+      "Actual": "Actual",
+      "Remaining": "Remaining",
+      "AtCompletionUnits": "At Completion"
+    },
+    "float": {
+      "title": "Activity Total Float (days)",
+      "bucket": "Activity Float",
       "count": "Count",
-      "empty": "No data for dashboard."
-    }
-,
+      "rows": {
+        "critical": "Critical (TF < 1)",
+        "nearCritical": "Near Critical (TF < 21)",
+        "normal": "Normal Float",
+        "high": "High Float (TF > 49)",
+        "longestPath": "Longest Path",
+        "unknown": "Unknown TF",
+        "total": "Total"
+      }
+    },
+    "spi": {
+      "title": "SPI (EV / PV)",
+      "as_of": "As of {{date}}",
+      "table": {
+        "metric": "Metric",
+        "amount": "Amount"
+      },
+      "rows": {
+        "ev": "EV",
+        "pv": "PV",
+        "spi": "SPI"
+      },
+      "method_label": "Method: {{method}}"
+    },
+    "cpi": {
+      "title": "CPI (EV / AC)",
+      "as_of": "As of {{date}}",
+      "table": {
+        "metric": "Metric",
+        "amount": "Amount"
+      },
+      "rows": {
+        "ev": "EV",
+        "ac": "AC",
+        "cpi": "CPI"
+      },
+      "method_label": "Method: {{method}}"
+    },
+    "open_table": "Open detailed report",
+    "project_dates": "Project dates",
+    "start_date": "Start Date",
+    "data_date": "Data Date",
+    "end_date": "End Date",
+    "must_finish": "Must Finish",
+    "key": "Key",
+    "date": "Date",
+    "cost_loading": "Cost loading",
+    "cost_value": "Cost (value)",
+    "actual_to_date": "Actual to date",
+    "remaining_cost": "Remaining cost",
+    "budgeted_cost": "Budgeted cost",
+    "this_period_cost": "This period cost",
+    "cost": "Cost",
+    "amount": "Amount",
+    "progress": "Progress",
+    "schedule": "Schedule",
+    "physical": "Physical",
+    "total": "Total",
+    "resource_loading": "Resource loading (qty)",
+    "actual_to_date_qty": "Actual to date (qty)",
+    "remaining_qty": "Remaining qty",
+    "budgeted_qty": "Budgeted qty",
+    "this_period_qty": "This period qty",
+    "qty": "Qty",
+    "units": "Units",
+    "calculating": "Calculating metrics…",
+    "title": "Dashboard",
+    "project": "Project",
+    "planned_dates": "Planned dates",
+    "from_project_note": "from PROJECT",
+    "last_recalc": "Last recalculation",
+    "last_recalc_note": "",
+    "total_tasks": "Total Activities",
+    "distinct_resources": "Distinct resources",
+    "statuses": "Statuses",
+    "groups_suffix": "groups",
+    "table_by_status": "Activity by Status",
+    "status": "Status",
+    "table_by_task_type": "Activity by Type",
+    "task": "Task",
+    "table_by_priority": "Activity by Priority",
+    "priority": "Priority",
+    "table_by_duration_type": "Activity by Duration Type",
+    "duration": "Duration",
+    "table_by_resource": "Activity by Resource",
+    "resource": "Resource",
+    "value": "Value",
+    "count": "Count",
+    "empty": "No data for dashboard."
+  },
   "intro": {
     "p1": "My name is Ruslan Khisamov, I am a project manager specializing in capital project management in the mining and metallurgical industry. Oracle Primavera P6 is the industry standard for planning, coordination, and control of complex projects.",
     "p2": "To view an Oracle Primavera P6 XER file, special software, licenses, and additional configuration are required. This reduces data accessibility and complicates fast managerial decision-making.",
@@ -134,10 +133,10 @@
       "title": "Upload XER or XML File",
       "desc": "Choose an Oracle Primavera P6 XER or XML file for local processing and viewing. All processing is done in your browser, and no data is sent to the server.",
       "btn": "Select XER or XML File",
-      "btn_aria": "Upload XER or XML file from local device" ,
-    "demo_btn": "Load demo data",
-    "demo_btn_aria": "Load bundled demo .xer, .xml file"
-  }
+      "btn_aria": "Upload XER or XML file from local device",
+      "demo_btn": "Load demo data",
+      "demo_btn_aria": "Load bundled demo .xer, .xml file"
+    }
   },
   "security": {
     "title": "Security and Privacy",
@@ -150,16 +149,15 @@
     },
     "outro": "Thus, working with projects in ScheduleVision is safe, private, and fully under your control."
   },
-    "xer_upload_title": "Upload XER or XML file",
+  "xer_upload_title": "Upload XER or XML file",
   "xer_upload_desc": "To get started, upload a .xer or .xml file from your device. The local database will be cleared on page load.",
   "xer_upload_btn": "Choose .xer or .xml file",
   "xer_reload_file": "Reload .xer or .xml file",
   "xer_upload_hint": "If you want to switch the dataset, reload a .xer or .xml file.",
   "loading": "Loading…",
-    "activities_gantt": "Activities",
-    "xer_summary": "Summary",
-    
-    "task": {
+  "activities_gantt": "Activities",
+  "xer_summary": "Summary",
+  "task": {
     "task_type": {
       "TT_Task": "Task",
       "TT_Rsrc": "Resource Dependent",
@@ -171,7 +169,6 @@
       "TT_Hammock": "Hammock",
       "TT_Tmpl": "Template Activity"
     },
-
     "status_code": {
       "TK_NotStart": "Not Started",
       "TK_Active": "In Progress",
@@ -179,7 +176,6 @@
       "TK_Complete": "Completed",
       "TK_Inactive": "Inactive"
     },
-
     "duration_type": {
       "DT_FixedDUR2": "Fixed Duration",
       "DT_FixedDUR": "Fixed Duration",
@@ -190,13 +186,11 @@
       "DT_FixedRate": "Fixed Rate",
       "DT_None": "None"
     },
-
     "complete_pct_type": {
       "CP_Drtn": "Duration % Complete",
       "CP_Units": "Units % Complete",
       "CP_Phys": "Physical % Complete"
     },
-
     "priority_type": {
       "PT_VeryLow": "Very Low",
       "PT_Low": "Low",
@@ -217,86 +211,82 @@
     "fileType": "File type",
     "table": {
       "SUMMARIZE": "Summarize",
-        "count": "{{rows}} rows, {{fields}} fields",
-        "rowsFields": "{{rows}} rows, {{fields}} fields",
-        "ACCOUNT": "Cost Accounts",
-        "ACTVCODE": "Activity Code Values",
-        "ACTVTYPE": "Activity Types",
-        "APPLYACTOPTIONS": "Apply Actual Options",
-        "ASSIGNMENT": "Assignment Code Assignments",
-        "ASGNMNTCATTYPE": "Assignment Codes",
-        "ASGNMNTCATVAL": "Assignment Code Values",
-        "BUDGCHNG": "Budget Changes",
-        "CALENDAR": "Calendars",
-        "COSTTYPE": "Expense Categories",
-        "CURRTYPE": "Currency Types",
-        "DOCCATG": "Document Categories",
-        "DOCSTAT": "Document Statuses",
-        "DOCUMENT": "Work Products and Documents",
-        "FINDATES": "Financial Periods",
-        "FUNDSRC": "Funding Sources",
-        "ISSUHIST": "Notification History",
-        "MEMOTYPE": "Notebook Topics",
-        "OBS": "OBS",
-        "PCATTYPE": "Project Codes",
-        "PCATVAL": "Project Code Values",
-        "PHASE": "Phase",
-        "PROJCOST": "Project Expenses",
-        "PROJECT":"Projects",
-        "PROJEST": "Estimate History",
-        "PROJFUND": "Project Funding Assignments",
-        "PROJISSU": "Issues",
-        "PROJPCAT": "Project Code Assignments",
-        "PROJTHRS": "Thresholds",
-        "PROJWBS": "WBS",
-        "PRORISK": "Risks",
-        "RCATTYPE": "Resource Codes",
-        "RCATVAL": "Resource Code Values",
-        "RISKTYPE": "Risk Types",
-        "ROLECATTYPE": "Role Codes",
-        "ROLECATVAL": "Role Code Values",
-        "ROLELIMIT": "Role Limits",
-        "ROLERATE": "Role Rates",
-        "ROLERCAT": "Role Code Assignments",
-        "ROLES": "Roles",
-        "RSRC": "Resources",
-        "RSRCCURV": "Resource Curves",
-        "RSRCCURVDATA": "Resource Curve Data",
-        "RSRCLEVELLIST": "Resource Level List",
-        "RSRCRATE": "Resource Rates",
-        "RSRCRCAT": "Resource Code Assignments",
-        "RSRCROLE": "Resource Role Assignments",
-        "SCHEDOPTIONS": "Schedule Options",
-        "SHIFT": "Shift Names",
-        "SHIFTPER": "Shifts",
-        "TASK": "Activities",
-        "TASKACTV": "Activity Code Assignments",
-        "TASKDOC": "Document Assignments",
-        "TASKFDBK": "Activity Feedback",
-        "TASKFIN": "Activity Past Period Actuals",
-        "TASKMEMO": "Activity Notebook",
-        "TASKNOTE": "Activity Notes to Resources",
-        "TASKPRED": "Activity Relationships",
-        "TASKPROC": "Activity Steps",
-        "TASKRSRC": "Activity Resource Assignments",
-        "TASKUSER": "Activity Owners",
-        "THRSPARM": "Threshold Parameters",
-        "TRSRCFIN": "Activity Resource Assignment Past Period Actuals",
-        "UDFTYPE": "User Defined Fields",
-        "UDFVALUE": "User Defined Field Values",
-        "UMEASURE": "Units of Measure",
-        "WBSBUDG": "Spending and Benefit Plans",
-        "WBSMEMO": "EPS, Project and WBS Notebook",
-        "WBSRSRC_QTY": "WBS Resource Quantities",
-        "WBSRSRC": "WBS Resource",
-        "WBSSTEP": "WBS Milestones",
-        "projrisk": "Project risks"
+      "count": "{{rows}} rows, {{fields}} fields",
+      "rowsFields": "{{rows}} rows, {{fields}} fields",
+      "ACCOUNT": "Cost Accounts",
+      "ACTVCODE": "Activity Code Values",
+      "ACTVTYPE": "Activity Types",
+      "APPLYACTOPTIONS": "Apply Actual Options",
+      "ASSIGNMENT": "Assignment Code Assignments",
+      "ASGNMNTCATTYPE": "Assignment Codes",
+      "ASGNMNTCATVAL": "Assignment Code Values",
+      "BUDGCHNG": "Budget Changes",
+      "CALENDAR": "Calendars",
+      "COSTTYPE": "Expense Categories",
+      "CURRTYPE": "Currency Types",
+      "DOCCATG": "Document Categories",
+      "DOCSTAT": "Document Statuses",
+      "DOCUMENT": "Work Products and Documents",
+      "FINDATES": "Financial Periods",
+      "FUNDSRC": "Funding Sources",
+      "ISSUHIST": "Notification History",
+      "MEMOTYPE": "Notebook Topics",
+      "OBS": "OBS",
+      "PCATTYPE": "Project Codes",
+      "PCATVAL": "Project Code Values",
+      "PHASE": "Phase",
+      "PROJCOST": "Project Expenses",
+      "PROJECT": "Projects",
+      "PROJEST": "Estimate History",
+      "PROJFUND": "Project Funding Assignments",
+      "PROJISSU": "Issues",
+      "PROJPCAT": "Project Code Assignments",
+      "PROJTHRS": "Thresholds",
+      "PROJWBS": "WBS",
+      "PRORISK": "Risks",
+      "RCATTYPE": "Resource Codes",
+      "RCATVAL": "Resource Code Values",
+      "RISKTYPE": "Risk Types",
+      "ROLECATTYPE": "Role Codes",
+      "ROLECATVAL": "Role Code Values",
+      "ROLELIMIT": "Role Limits",
+      "ROLERATE": "Role Rates",
+      "ROLERCAT": "Role Code Assignments",
+      "ROLES": "Roles",
+      "RSRC": "Resources",
+      "RSRCCURV": "Resource Curves",
+      "RSRCCURVDATA": "Resource Curve Data",
+      "RSRCLEVELLIST": "Resource Level List",
+      "RSRCRATE": "Resource Rates",
+      "RSRCRCAT": "Resource Code Assignments",
+      "RSRCROLE": "Resource Role Assignments",
+      "SCHEDOPTIONS": "Schedule Options",
+      "SHIFT": "Shift Names",
+      "SHIFTPER": "Shifts",
+      "TASK": "Activities",
+      "TASKACTV": "Activity Code Assignments",
+      "TASKDOC": "Document Assignments",
+      "TASKFDBK": "Activity Feedback",
+      "TASKFIN": "Activity Past Period Actuals",
+      "TASKMEMO": "Activity Notebook",
+      "TASKNOTE": "Activity Notes to Resources",
+      "TASKPRED": "Activity Relationships",
+      "TASKPROC": "Activity Steps",
+      "TASKRSRC": "Activity Resource Assignments",
+      "TASKUSER": "Activity Owners",
+      "THRSPARM": "Threshold Parameters",
+      "TRSRCFIN": "Activity Resource Assignment Past Period Actuals",
+      "UDFTYPE": "User Defined Fields",
+      "UDFVALUE": "User Defined Field Values",
+      "UMEASURE": "Units of Measure",
+      "WBSBUDG": "Spending and Benefit Plans",
+      "WBSMEMO": "EPS, Project and WBS Notebook",
+      "WBSRSRC_QTY": "WBS Resource Quantities",
+      "WBSRSRC": "WBS Resource",
+      "WBSSTEP": "WBS Milestones",
+      "projrisk": "Project risks"
     }
   },
-  
-
-
-
   "links": {
     "predType": {
       "FS": "Finish to Start",
@@ -305,158 +295,156 @@
       "SF": "Start to Finish"
     }
   },
-  
-
   "hist": {
     "series": {
-      "planned": "План",
-      "actual": "Факт",
-      "remaining": "Остаток",
-      "plannedCumulative": "План (накоп.)",
-      "actualCumulative": "Факт (накоп.)",
-      "remainingCumulative": "Остаток (накоп.)",
-      "baseline": "Базовая линия"
+      "planned": "Planned",
+      "actual": "Actual",
+      "remaining": "Remaining",
+      "plannedCumulative": "Planned (cumulative)",
+      "actualCumulative": "Actual (cumulative)",
+      "remainingCumulative": "Remaining (cumulative)",
+      "baseline": "Baseline"
     },
     "axis": {
-      "left": "Помесячные",
-      "right": "Накопительные"
+      "left": "Monthly",
+      "right": "Cumulative"
     }
   },
   "projects": {
     "cost": {
       "prefix": {
-        "thousand": "тыс.",
-        "million":  "млн.",
-        "billion":  "млрд."
+        "thousand": "k",
+        "million": "M",
+        "billion": "B"
       }
     }
   },
   "dcma": {
     "info": {
       "check": {
-        "goal": "Цель проверки",
-        "check": "Правило проверки",
-        "importanceMetrics": "Важность для метрик",
-        "frequency": "Частота проверки",
-        "description": "Описание",
+        "goal": "Goal",
+        "check": "Check rule",
+        "importanceMetrics": "Importance for metrics",
+        "frequency": "Frequency",
+        "description": "Description",
         "1": {
           "title": "Check 1: Logic",
-          "goal": "Оценка полноты логических связей между задачами календарно-сетевого графика.",
-          "check": "Все незавершённые задачи должны иметь как минимум одну связь с предшественником и одну с последователем. Исключение составляют только начальные и завершающие события, если они технически обоснованы.",
-          "importanceMetrics": "Высокая. Без логических связей график не способен выполнять свою ключевую функцию – быть основой принятия решений и контроля проекта.",
-          "frequency": "При составлении и при каждой корректировке графика.",
-          "description": "Первый критерий проверки в протоколе DCMA 14 Schedule Assessment – это Логика. Проверка гарантирует, что все активности в плане проекта имеют предшественников и последователей. Стандарт DCMA допускает, что максимум 5% всех задач проекта могут не иметь предшественника, последователя или обоих. Обычно в эту категорию попадают стартовые и финишные вехи, однако существуют проектные техники, позволяющие минимизировать их количество. Отсутствие связей между задачами нарушает логическую целостность графика, делает невозможным корректный расчёт критического пути и анализ резервов времени. Некорректное определение связей «предшественник – последователь» может негативно повлиять на даты ключевых проектных вех." 
+          "goal": "Assess completeness of logical relationships between schedule activities.",
+          "check": "All unfinished activities must have at least one predecessor and one successor. Only justified project start and finish events may be exceptions.",
+          "importanceMetrics": "High. Without proper logic the schedule cannot support decision‑making and control.",
+          "frequency": "When creating and at every update of the schedule.",
+          "description": "<p>The first DCMA 14 check ensures that every activity in the project has both predecessors and successors. DCMA allows at most 5% of activities to lack a predecessor, a successor, or both—typically limited to justified start/finish milestones.</p><p>Missing links break schedule logic, prevent a correct critical path calculation, and distort float analysis. Incorrect predecessor–successor definitions can shift key milestone dates.</p>"
         },
         "2": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 2: Leads",
+          "goal": "Identify and eliminate negative lags that distort execution sequence.",
+          "check": "Find relationships with negative lag (leads), e.g., Finish‑Start with −30 days.",
+          "importanceMetrics": "High. Leads distort float and critical path calculations and reduce schedule transparency.",
+          "frequency": "During creation, updating, and correction of the schedule.",
+          "description": "<p>A lead is an overlap (negative lag) between two linked activities such that the successor may start before the predecessor finishes. In tools it appears as a negative value in the \"Lag\" field.</p><p>DCMA 14 prohibits the use of leads. They mask logic, complicate float and critical path calculations, and may be interpreted inconsistently.</p><p>Preferred alternatives:</p><ul><li>Use Start‑Start with a positive lag,</li><li>or insert an intermediate activity representing the overlap explicitly.</li></ul>"
         },
         "3": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 3: Lags",
+          "goal": "Control the use of positive lags in logic.",
+          "check": "Analyze links with positive lag (e.g., FS +5 days) — their presence, count, and duration.",
+          "importanceMetrics": "High. Positive lags hide real work and reduce transparency and manageability.",
+          "frequency": "When forming, updating, and adjusting the schedule.",
+          "description": "<p>A lag is a positive time offset between predecessor finish and successor start. DCMA 14 permits lags but limits them to no more than 5% of project links.</p><p>Best practice is to replace lags with explicit activities so scope and duration are visible and controllable. Use lags only with strong justification.</p>"
         },
         "4": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 4: Relationship Types",
+          "goal": "Standardize dependencies and ensure a correct technological sequence of work.",
+          "check": "Share of Finish‑Start (FS) links. DCMA 14 requires at least 90% of links to be FS.",
+          "importanceMetrics": "Medium. Excessive SS, FF, and especially SF links reduce transparency and may distort the critical path.",
+          "frequency": "When creating, editing, and updating the schedule.",
+          "description": "<p>DCMA favors FS links for clarity and controllability. SS and FF are acceptable in justified cases; SF should be rare and isolated.</p>"
         },
         "5": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 5: Hard Constraints",
+          "goal": "Eliminate fixed dates that block schedule recalculation and reduce flexibility.",
+          "check": "Count activities with hard constraints (Mandatory Start/Finish). DCMA recommends no more than 5% of all constraints.",
+          "importanceMetrics": "High. Hard constraints make the schedule rigid and may break critical path calculation.",
+          "frequency": "During creation, editing, and every update.",
+          "description": "<p>Constraints define whether an activity obeys the schedule algorithm. Types:</p><ul><li><strong>Hard:</strong> Mandatory Start, Mandatory Finish.</li><li><strong>Soft:</strong> As Late As Possible; Start On/Before/After; Finish On/Before/After.</li></ul><p>DCMA 14 requires keeping hard constraints under 5% and favoring soft constraints, which preserve flexibility and correct analysis.</p>"
         },
         "6": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 6: High Float",
+          "goal": "Detect tasks with excessive or unjustified float.",
+          "check": "Count activities whose total float exceeds the threshold. DCMA cites >44 calendar days (often ~60 workdays in other methods) as a limit for no more than 5% of activities.",
+          "importanceMetrics": "Medium. Excessive float may hide missing logic or link issues (checked elsewhere).",
+          "frequency": "After schedule formation and on updates.",
+          "description": "<p>Total Float is how long an activity may slip without impacting key milestones. High float often indicates missing links or logic errors. Such \"dangling\" activities hinder risk analysis, distort the critical path, and reduce manageability. Reduce high‑float counts by refining logic.</p>"
         },
         "7": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 7: Negative Float",
+          "goal": "Identify activities already violating dates.",
+          "check": "Presence of activities with negative total float.",
+          "importanceMetrics": "High. Negative float signals slippage and demands immediate corrective action.",
+          "frequency": "After formation and before each update.",
+          "description": "<p>Negative float commonly arises from hard constraints fixing dates regardless of logic, causing milestone breaches. Remove hard constraints or correct logic and status dates to restore feasibility.</p>"
         },
         "8": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 8: High Duration",
+          "goal": "Increase manageability and detail of work packages.",
+          "check": "Unfinished tasks longer than 44 workdays should be ≤5% of all activities.",
+          "importanceMetrics": "Medium. Very long activities hide true sequencing and hinder control.",
+          "frequency": "Before baselining and on updates.",
+          "description": "<p>Over‑long activities usually bundle multiple steps, hide internal logic, and complicate monitoring and acceptance. Decompose to a manageable level to improve transparency and critical path accuracy.</p>"
         },
         "9": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 9: Invalid Dates",
+          "goal": "Ensure correct status and schedule actualization.",
+          "check": "Actual dates must not be later than the Data Date; forecast dates must not be earlier than the Data Date.",
+          "importanceMetrics": "High. Invalid dates distort progress and indices (e.g., BEI).",
+          "frequency": "At every update and reporting cycle.",
+          "description": "<p>Two groups:</p><ul><li><strong>9a. Forecast:</strong> early/late dates in the past often appear with negative float.</li><li><strong>9b. Actual:</strong> actual start/finish in the future (after Data Date) is invalid.</li></ul><p>Validate dates each cycle to keep the schedule reliable.</p>"
         },
         "10": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 10: Resources",
+          "goal": "Verify completeness of the resource model.",
+          "check": "All activities with duration ≥1 day should have assigned resources or cost (labor, material, equipment, or cost type).",
+          "importanceMetrics": "High. Without resources the schedule cannot represent effort, cost, or loading.",
+          "frequency": "After resource planning and at each update.",
+          "description": "<p>Each ≥1‑day activity should have at least one resource. Some tasks may lack corporate resources (e.g., client approvals), but this check highlights gaps that could skew loading and cost control.</p>"
         },
         "11": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 11: Missed Tasks",
+          "goal": "Assess execution against the baseline; identify late finishes.",
+          "check": "Completed activities that finished later than their baseline finish should be ≤5%.",
+          "importanceMetrics": "High. Late finishes indicate discipline and management issues.",
+          "frequency": "At each project meeting during execution.",
+          "description": "<p><strong>Baseline Execution Index (BEI)</strong></p><p>Formula:</p><p><code>BEI = Completed activities / Activities planned complete by the Data Date</code></p><p><strong>Interpretation:</strong></p><ul><li>BEI = 1 → on plan.</li><li>BEI < 1 → behind plan.</li><li>BEI > 1 → ahead of plan (verify data).</li></ul><p><strong>Why BEI matters:</strong></p><ol><li>Objective view of execution independent of cost/units.</li><li>Quick gauge of team discipline.</li><li>Useful for contractor KPIs and status assessment.</li></ol>"
         },
         "12": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 12: Critical Path Test",
+          "goal": "Test sensitivity of project finish to changes on the critical path.",
+          "check": "If any critical activity’s duration is increased (e.g., +600 days), the project finish must slip by the same amount. A mismatch implies missing links and a broken critical chain.",
+          "importanceMetrics": "High. A non‑responsive critical path means the schedule is not a controllable model.",
+          "frequency": "After each logic change or task insertion.",
+          "description": "The critical path must drive the project finish. If prolonging a critical task does not shift the finish, the logic is broken and requires detailed review."
         },
         "13": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 13: Critical Path Length Index (CPLI)",
+          "goal": "Evaluate realism of completing on time versus the baseline.",
+          "check": "Compute CPLI (balance between critical path length and available float). DCMA target is 1.0 ±5%.",
+          "importanceMetrics": "High. Low CPLI indicates high risk of late completion despite normal progress.",
+          "frequency": "Monthly, especially when revising dates and updates.",
+          "description": "<p>CPLI interpretation:</p><ul><li>> 1 — ahead with time reserve;</li><li>= 1 — on plan;</li><li>< 1 — at risk;</li><li>< 0.95 — systemic delay requiring action.</li></ul>"
         },
         "14": {
-          "title": "",
-          "goal": "",
-          "check": "",
-          "importanceMetrics": "",
-          "frequency": "",
-          "description": ""
+          "title": "Check 14 Baseline Execution Index (BEI)",
+          "goal": "Assess how actual execution matches the plan as of the status date.",
+          "check": "Number of completed activities relative to those planned complete by the report date.",
+          "importanceMetrics": "High. BEI highlights schedule slippage and the need for corrective actions.",
+          "frequency": "At each project meeting, at least monthly.",
+          "description": "<p>DCMA 14 treats BEI < 0.95 as delay requiring analysis.</p><ul><li>BEI = 1 — on plan.</li><li>BEI > 1 — ahead (validate data).</li><li>BEI < 1 — behind plan.</li><li>BEI < 0.95 — systemic delay.</li></ul><p><strong>Why BEI:</strong></p><ol><li>Transparent picture of execution independent of cost/units.</li><li>Assesses team discipline.</li><li>Supports contractor KPIs and schedule risk forecasting.</li></ol>"
         }
       }
     },
+
   "summary": {
     "title": "DCMA 14 — Summary"
   },
-
   "table": {
     "check": "#",
     "metric": "Check",
@@ -466,7 +454,6 @@
     "details": "Details",
     "btnDetails": "Details"
   },
-
   "details": {
     "strictLogic": "Strict logic mode enabled"
   },
@@ -531,8 +518,7 @@
     "plannedNotCompleted": "Planned but not completed",
     "completedAhead": "Completed ahead of plan"
   }
-  }
-,
+},
   "units": "Units",
   "info": "ScheduleVision is fully compatible with Oracle® Primavera® P6®. It is an independently developed reader application created by Ruslan Khissamov. ScheduleVision is not a product of Oracle® and is neither endorsed, sponsored, nor affiliated with Oracle® Corporation. Oracle®, Primavera®, and P6® are registered trademarks of Oracle® Corporation and/or its affiliates."
 }

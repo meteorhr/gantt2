@@ -79,6 +79,7 @@ const P6_PRIMARY_KEYS: Record<string, string> = {
     WBSMEMO: 'wbs_memo_id',
     WBSRSRC_QTY: 'week_start',
     WBSSTEP: 'wbs_step_id',
+    DASHBOARD: 'id'
 };
 
 /**
@@ -100,6 +101,7 @@ class P6Db extends Dexie {
     this.version(1).stores({}); // пустая схема; object stores будут добавляться динамически через апгрейды
   }
 }
+
 
 @Injectable({ providedIn: 'root' })
 export class P6DexieService {
@@ -201,18 +203,33 @@ export class P6DexieService {
     // Доп. мета (fields/updatedAt/count) при необходимости можно вынести в отдельный служебный store.
   }
 
+  /** Сохранить таблицу в указанный store (storeName), вычисляя ключ по базовому имени (baseTableName). */
+  private async saveTableAs(storeName: string, baseTableName: string, rows: any[], fields: string[] = []): Promise<void> {
+    const keyPath = this.resolveKeyPath(baseTableName, rows);
+    let data = rows;
+    if (keyPath === '_id') {
+      data = rows.map((r, i) => ({ ...r, _id: i + 1 }));
+    }
+    await this.ensureStore(storeName, keyPath);
+    const table = this.db.table(storeName) as Table<any, any>;
+    await table.clear();
+    if (data.length) {
+      await table.bulkPut(data);
+    }
+  }
+
   /**
-   * Сохранить весь документ XER:
-   * - Для каждой таблицы создать отдельный object store по имени table.name
-   * - Ключ выбирать по маппингу/автоопределению
-   * - Сами строки — содержимое table.rows
+   * Сохранить весь документ:
+   * - Если options.prefix пустой — сохраняем как стандартные stores (имена = исходные названия таблиц)
+   * - Если options.prefix задан — сохраняем в stores с именами `${prefix}${TableName}`
    */
-  async saveDocument(doc: P6Document): Promise<void> {
-    // Разные стора — независимые транзакции; пишем последовательно.
+  async saveDocument(doc: P6Document, options?: { prefix?: string }): Promise<void> {
+    const prefix = (options?.prefix ?? '').trim();
     for (const [name, table] of Object.entries(doc.tables)) {
       const rows = Array.isArray(table.rows) ? table.rows : [];
       const fields = Array.isArray(table.fields) ? table.fields : [];
-      await this.saveTable(name, rows, fields);
+      const storeName = prefix ? `${prefix}${name}` : name;
+      await this.saveTableAs(storeName, name, rows, fields);
     }
   }
 
@@ -236,6 +253,49 @@ export class P6DexieService {
       tables[name] = { name, fields, rows };
     }
     return { header: null, tables };
+  }
+
+  /**
+   * Удалить все STORES, имена которых начинаются с указанного префикса.
+   * Внимание: это удаление самих object stores (через bump версии), а не просто очистка данных.
+   */
+  async deleteTablesByPrefix(prefix: string): Promise<void> {
+    const p = (prefix ?? '').trim();
+    if (!p) return;
+    const names = this.db.tables.map(t => t.name).filter(n => typeof n === 'string' && n.startsWith(p));
+    if (names.length === 0) return;
+    const nextVersion = Math.floor(this.db.verno) + 1;
+    const schema: Record<string, string | null> = {};
+    for (const n of names) {
+      schema[n] = null; // удалить store
+    }
+    this.db.close();
+    this.db.version(nextVersion).stores(schema);
+    await this.db.open();
+  }
+
+  /**
+   * Удалить из БД все СТАНДАРТНЫЕ stores (без префикса), которых НЕТ в списке keepNames.
+   * Под «стандартным» понимаем имя в формате UPPER_SNAKE_CASE (например, PROJECT, TASKPRED, WBSRSRC_QTY).
+   * Рекомендуется использовать префиксы кандидатов вида 'cand__' (с разделителем), чтобы исключить совпадения.
+   */
+  async deleteTablesNotIn(keepNames: string[]): Promise<void> {
+    const keep = new Set((keepNames ?? []).map(s => String(s)));
+    const isStandardName = (n: string) => /^[A-Z][A-Z0-9_]*$/.test(n);
+    const toDrop = this.db.tables
+      .map(t => t.name)
+      .filter(n => isStandardName(n) && !keep.has(n));
+
+    if (toDrop.length === 0) return;
+
+    const nextVersion = Math.floor(this.db.verno) + 1;
+    const schema: Record<string, string | null> = {};
+    for (const n of toDrop) {
+      schema[n] = null; // удалить store
+    }
+    this.db.close();
+    this.db.version(nextVersion).stores(schema);
+    await this.db.open();
   }
 
   /** Очистить все object stores (данные) */
@@ -278,4 +338,18 @@ export class P6DexieService {
     const rows = await this.getProjectRows();
     return rows.find((r: any) => Number(r?.proj_id) === Number(proj_id));
   }
+
+  public async ensureCandidateStores(): Promise<void> {
+    await this.ensureStore('C_PROJECT', 'proj_id');
+    await this.ensureStore('C_TASK', 'task_id');
+    await this.ensureStore('C_TASKRSRC', 'id');
+    await this.ensureStore('C_RSRC', 'rsrc_id');
+    await this.ensureStore('C_SUMMARIZE', 'id');
+    await this.ensureStore('C_CALENDAR', 'clndr_id');
+  }
+
+  public async ensureDashboardStore(): Promise<void> {
+     await this.ensureStore('DASHBOARD', 'id');
+  }
+
 }

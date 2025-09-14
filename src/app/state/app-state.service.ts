@@ -163,6 +163,7 @@ export class AppStateService {
     this.error.set(null);
     try {
       await this.dexie.clear();
+      await this.clearDashboardTable();
       await this.p6.loadFromFile(file);
 
       const projects = await this.dexie.getRows('PROJECT');
@@ -194,6 +195,7 @@ export class AppStateService {
     this.error.set(null);
     try {
       await this.dexie.clear();
+      await this.clearDashboardTable();
       await this.p6.loadAndLogFromAssets();
 
       const projects = await this.dexie.getRows('PROJECT');
@@ -258,14 +260,16 @@ export class AppStateService {
 
   /** Пересобирает данные для Gantt и Summary под выбранный проект */
   private async rebuildForProject(project_id: number): Promise<void> {
-    const tree = await buildWbsTaskByProjectTreeFromIndexedDb(this.dexie, project_id, {
-      baselineSource: 'none',
-      translate: (key) => this.transloco.translate(key),
-      debug: false,
-    });
+    const [tree, sumRows] = await Promise.all([
+      buildWbsTaskByProjectTreeFromIndexedDb(this.dexie, project_id, {
+        baselineSource: 'none',
+        translate: (key) => this.transloco.translate(key),
+        debug: false,
+      }),
+      this.dexie.getRows('SUMMARIZE'),
+    ]);
     this.activityData.set(tree);
 
-    const sumRows = await this.dexie.getRows('SUMMARIZE');
     const array = (sumRows as any[]).map(r => ({
       ...r,
       params: r && r.params ? JSON.parse(String(r.params)) : {},
@@ -325,6 +329,12 @@ export class AppStateService {
   private clampPct(n: number): number {
     if (!Number.isFinite(n)) return 0;
     return Math.max(0, Math.min(100, n));
+  }
+
+  private round(n: number, digits = 2): number {
+    if (!Number.isFinite(n)) return 0;
+    const p = Math.pow(10, digits);
+    return Math.round(n * p) / p;
   }
 
   private toNumberOrNull(v: any): number | null {
@@ -637,6 +647,74 @@ if (trs.length === 0 || isAllZero([costBudgeted, costActualToDate, costRemaining
 
     const summarize = await this.getSummarizeFromDb();
 
+    // Ensure DASHBOARD store exists proactively
+    try {
+      if (typeof (this.dexie as any).ensureDashboardStore === 'function') {
+        await (this.dexie as any).ensureDashboardStore();
+      }
+    } catch (e) {
+      console.warn('[Dexie] ensureDashboardStore before persist failed:', e);
+    }
+    // === Persist Dashboard snapshot ===
+    // Name is not provided -> save as base
+    try {
+      const record = {
+        id: `${pid}::base`,           // stable key per project for the base variant
+        project_id: pid,
+        name: 'base',
+        updated_at: new Date().toISOString(),
+        payload: {
+          projectId: pid,
+          planStart,
+          planEnd,
+          lastRecalc,
+          summarize,
+          dataDate,
+          mustFinish,
+          costValue,
+          costActualToDate,
+          costRemaining,
+          costBudgeted,
+          costThisPeriod,
+          baseCurrency,
+          progressSchedulePct,
+          progressPhysicalPct,
+          progressCostPct,
+          rsrcQtyActualToDate,
+          rsrcQtyRemaining,
+          rsrcQtyBudgeted,
+          rsrcQtyThisPeriod,
+          floatSummary,
+          spi: {
+            asOf: spiRes.asOf,
+            EV: spiRes.EV,
+            PV: spiRes.PV,
+            SPI: spiRes.SPI,
+            method: spiRes.method
+          },
+          cpi,
+          totalTasks,
+          byStatus,
+          byTaskType,
+          byPriorityType,
+          byDurationType,
+          byRsrcId,
+        }
+      } as const;
+      try {
+        const d: any = this.dexie as any;
+        
+        if (d?.db && typeof d.db.open === 'function' && d.db.isOpen && !d.db.isOpen()) {
+          await d.db.open();
+        }
+      } catch (e) {
+        console.warn('[Dexie] DB open check failed before save:', e);
+      }
+      await this.saveDashboardToDb(record);
+    } catch (persistErr) {
+      console.warn('[Dashboard] persist skipped:', persistErr);
+    }
+
     return {
       projectId: pid,
       planStart,
@@ -714,4 +792,163 @@ if (trs.length === 0 || isAllZero([costBudgeted, costActualToDate, costRemaining
   
     return null;
   }
-}  
+/**
+ * Safely clears the DASHBOARD table, if the Dexie wrapper exposes such a method
+ * and the table exists. No-op if not available or table is missing.
+ */
+private async clearDashboardTable(): Promise<void> {
+  const d: any = this.dexie as any;
+
+  // Ensure DASHBOARD store exists in schema (if service exposes the helper)
+  try {
+    if (typeof (this.dexie as any).ensureDashboardStore === 'function') {
+      await (this.dexie as any).ensureDashboardStore();
+    }
+  } catch (e) {
+    console.warn('[Dexie] ensureDashboardStore failed during clear:', e);
+  }
+
+  // ensure DB is open if possible
+  try {
+    if (d?.db && typeof d.db.open === 'function' && d.db.isOpen && !d.db.isOpen()) {
+      await d.db.open();
+    }
+  } catch (e) {
+    console.warn('[Dexie] DB open check failed during clear:', e);
+  }
+
+  // If DASHBOARD table doesn't exist, just skip
+  try {
+    const hasTable =
+      !!(d?.db?.tables?.some((t: any) => t?.name === 'DASHBOARD')) ||
+      !!(d?.db?.stores && Object.prototype.hasOwnProperty.call(d.db.stores, 'DASHBOARD'));
+    if (!hasTable) {
+      console.info('[Dexie] DASHBOARD table not reported by Dexie metadata after ensure; will still attempt clear().');
+    }
+  } catch {}
+
+  try {
+    if (typeof d.clearTable === 'function') {
+      await d.clearTable('DASHBOARD');
+      return;
+    }
+    if (typeof d.deleteRows === 'function') {
+      await d.deleteRows('DASHBOARD');
+      return;
+    }
+    if (d?.db?.table && typeof d.db.table === 'function') {
+      await d.db.table('DASHBOARD').clear();
+      return;
+    }
+    console.warn('[Dexie] No suitable method to clear DASHBOARD.');
+  } catch (e) {
+    console.warn('[Dexie] clear DASHBOARD failed:', e);
+  }
+}
+
+/**
+ * Safely saves a single dashboard record into DASHBOARD table.
+ * - Ensures Dexie DB is open (if the wrapper exposes it).
+ * - Checks that the DASHBOARD table exists in the current schema.
+ * - Tries putRows / bulkPut / put / db.table('DASHBOARD').put in that order.
+ * - If Dexie path is unavailable, falls back to localStorage (namespaced key).
+ */
+private async saveDashboardToDb(record: {
+  id: string; project_id: number; name: string; updated_at: string; payload: unknown;
+}): Promise<void> {
+  const d: any = this.dexie as any;
+
+  // Ensure DASHBOARD store exists before presence check
+  try {
+    if (typeof (this.dexie as any).ensureDashboardStore === 'function') {
+      await (this.dexie as any).ensureDashboardStore();
+    }
+  } catch (e) {
+    console.warn('[Dexie] ensureDashboardStore failed during save:', e);
+  }
+
+  // Try to open DB if not open yet
+  try {
+    if (d?.db && typeof d.db.open === 'function' && d.db.isOpen && !d.db.isOpen()) {
+      await d.db.open();
+    }
+  } catch (e) {
+    console.warn('[Dexie] DB open check failed during save:', e);
+  }
+
+  // Helper: does DASHBOARD table exist?
+  const hasDashboardTable = (() => {
+    try {
+      if (d?.db?.tables && Array.isArray(d.db.tables)) {
+        if (d.db.tables.some((t: any) => t?.name === 'DASHBOARD')) return true;
+      }
+      if (d?.db?.stores && typeof d.db.stores === 'object') {
+        if (Object.prototype.hasOwnProperty.call(d.db.stores, 'DASHBOARD')) return true;
+      }
+    } catch {}
+    // After ensure, Dexie metadata may lag; proceed optimistically.
+    return true;
+  })();
+
+  // Normalize payload to be structured-clone friendly (strip undefined/NaN)
+  const safeRecord = JSON.parse(JSON.stringify(record, (_k, v) => {
+    if (v === undefined) return null;
+    if (typeof v === 'number' && !Number.isFinite(v)) return null;
+    return v;
+  }));
+
+  if (hasDashboardTable) {
+    try {
+      if (typeof d.putRows === 'function') {
+        await d.putRows('DASHBOARD', [safeRecord]);
+        return;
+      }
+      if (typeof d.bulkPut === 'function') {
+        await d.bulkPut('DASHBOARD', [safeRecord]);
+        return;
+      }
+      if (typeof d.put === 'function') {
+        await d.put('DASHBOARD', safeRecord);
+        return;
+      }
+      if (d?.db?.table && typeof d.db.table === 'function') {
+        await d.db.table('DASHBOARD').put(safeRecord);
+        return;
+      }
+      console.warn('[Dexie] No suitable method to save DASHBOARD record — trying fallback.');
+    } catch (e) {
+      console.warn('[Dexie] save DASHBOARD via Dexie failed — falling back to localStorage:', e);
+    }
+  } else {
+    console.warn('[Dexie] DASHBOARD table is not defined in schema — using localStorage fallback.');
+  }
+
+  // ---- Fallback: localStorage (namespaced by project and name) ----
+  try {
+    const key = `DASHBOARD::${safeRecord.project_id}::${safeRecord.name}::${safeRecord.id}`;
+    localStorage.setItem(key, JSON.stringify(safeRecord));
+  } catch (e) {
+    console.error('[Fallback] Unable to persist dashboard snapshot to localStorage:', e);
+  }
+}
+/**
+ * Utility to read a dashboard snapshot from localStorage fallback (for diagnostics).
+ * Not used in the normal flow; kept private for possible future use.
+ */
+private readDashboardFromLocalFallback(projectId: number, name = 'base'): any | null {
+  try {
+    const exactKey = `DASHBOARD::${projectId}::${name}::${projectId}::base`;
+    const exact = localStorage.getItem(exactKey);
+    if (exact) return JSON.parse(exact);
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i) || '';
+      if (k.startsWith(`DASHBOARD::${projectId}::${name}::`)) {
+        const v = localStorage.getItem(k);
+        if (v) return JSON.parse(v);
+      }
+    }
+  } catch {}
+  return null;
+}
+}

@@ -50,9 +50,8 @@ import { TranslocoModule } from "@jsverse/transloco";
             <p class="title_info">
                 {{ ('dcma.info.check.description') | transloco }}:
             </p>
-            <p>
-                {{ ('dcma.info.check.' + data.check + '.description') | transloco }}
-            </p>
+            <div [innerHTML]="'dcma.info.check.'+data.check+'.description' | transloco"></div>
+
         </div>
 
 

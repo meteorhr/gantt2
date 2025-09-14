@@ -71,8 +71,9 @@ export class LoaderService {
    * Загрузить файл пользователя (.xer ИЛИ .xml), распарсить и сохранить таблицы в IndexedDB (Dexie).
    * Формат определяется по расширению и по сигнатуре текста (sniff), чтобы не зависеть от неверного расширения.
    */
-  async loadFromFile(file: File): Promise<void> {
-    await this.dexie.clear();
+  async loadFromFile(file: File, opts?: { candidate?: boolean }): Promise<void> {
+    const isCandidate = !!opts?.candidate;
+    if (!isCandidate) { await this.dexie.clear(); }
 
     const name = file?.name ?? '';
     const lower = name.toLowerCase();
@@ -91,10 +92,48 @@ export class LoaderService {
     const fmt = isXmlByExt ? 'xml' : (sniffed === 'xml' ? 'xml' : 'xer');
 
     const doc = fmt === 'xml' ? parseP6XML(text) : parseXER(text);
-    // перезапишем SUMMARIZE «умной» таблицей
-    doc.tables['SUMMARIZE'] = buildSummarizeTable(doc);
 
-    await this.dexie.saveDocument(doc);
+    // BASE vs CANDIDATE:
+    // - Base (isCandidate=false): сохраняем обычные таблицы, пересчитываем SUMMARIZE умной функцией.
+    // - Candidate (isCandidate=true): берём ТОЛЬКО стандартные таблицы и сохраним их с префиксом "С_".
+    if (isCandidate) {
+      
+      const t: any = doc.tables || {};
+      const pick = (n: string) => {
+        const tab = t?.[n];
+        return tab ? { name: n, fields: tab.fields ?? [], rows: tab.rows ?? [] } : { name: n, fields: [], rows: [] };
+      };
+      doc.tables = {
+        PROJECT:   pick('PROJECT'),
+        TASK:      pick('TASK'),
+        TASKRSRC:  pick('TASKRSRC'),
+        RSRC:      pick('RSRC'),
+        SUMMARIZE: pick('SUMMARIZE'),
+        CALENDAR:  pick('CALENDAR'),
+      };
+    } else {
+      try { await this.dexie.ensureCandidateStores(); } catch (e) {
+        console.warn('[Dexie] ensureCandidateStores failed on base init:', e);
+      }
+      // Base: умный пересчёт SUMMARIZE поверх распарсенного документа
+      doc.tables['SUMMARIZE'] = buildSummarizeTable(doc);
+    }
+
+    if (!isCandidate) {
+      const present = Object.keys(doc.tables);
+      await this.dexie.deleteTablesNotIn(present);
+    }
+    await this.dexie.saveDocument(doc, { prefix: isCandidate ? 'C_' : '' });
+
+    if (!isCandidate) {
+      // On base init, pre-create empty candidate tables with Latin 'C_' prefix.
+      try {
+        await this.dexie.ensureDashboardStore();
+        await this.dexie.ensureCandidateStores();
+      } catch (e) {
+        console.warn('[Dexie] ensureCandidateStores failed on base init:', e);
+      }
+    }
 
     console.group(fmt === 'xml' ? '[P6-XML] Загрузка из файла' : '[XER] Загрузка из файла');
     console.log('File:', name);

@@ -1,0 +1,537 @@
+{
+  "common": {
+    "start": "Start",
+    "end": "End",
+        "loading": "Calculating…",
+    "list": "List",
+    "dq": "Data quality (DQ)",
+    "close": "Close"
+  },
+  "DCMA_14": "DCMA 14",
+  "app": {
+    "title": "ScheduleVision",
+    "subtitle":"A clear view of your project"
+  },
+    "dashboard": {
+      "show_table": "Show table",
+      "show_chart": "Show chart",
+      "unitsByResources": "Units by resources",
+      "costByResources": "Cost by resources",
+      "period": "Period",
+      "metric": {
+        "cost": "Metric (Cost)",
+        "units": "Metric (Units)"
+      },
+      "measures": {
+        "Budgeted": "Budgeted",
+        "Actual": "Actual",
+        "Remaining": "Remaining",
+        "AtCompletionUnits": "At Completion"
+      },
+      "float": {
+        "title": "Activity Total Float (days)",
+        "bucket": "Activity Float",
+        "count": "Count",
+        "rows": {
+          "critical": "Critical (TF < 1)",
+          "nearCritical": "Near Critical (TF < 21)",
+          "normal": "Normal Float",
+          "high": "High Float (TF > 49)",
+          "longestPath": "Longest Path",
+          "unknown": "Unknown TF",
+          "total": "Total"
+        }
+      },
+      "spi": {
+        "title": "SPI (EV / PV)",
+        "as_of": "As of {{date}}",
+        "table": {
+          "metric": "Metric",
+          "amount": "Amount"
+        },
+        "rows": {
+          "ev": "EV",
+          "pv": "PV",
+          "spi": "SPI"
+        },
+        "method_label": "Method: {{method}}"
+      },
+      "cpi": {
+        "title": "CPI (EV / AC)",
+        "as_of": "As of {{date}}",
+        "table": {
+          "metric": "Metric",
+          "amount": "Amount"
+        },
+        "rows": {
+          "ev": "EV",
+          "ac": "AC",
+          "cpi": "CPI"
+        },
+        "method_label": "Method: {{method}}"
+      },
+      "open_table": "Open detailed report",
+      "project_dates": "Project dates",
+      "start_date": "Start Date",
+      "data_date": "Data Date",
+      "end_date": "End Date",
+      "must_finish": "Must Finish",
+      "key": "Key",
+      "date": "Date",
+      "cost_loading": "Cost loading",
+      "cost_value": "Cost (value)",
+      "actual_to_date": "Actual to date",
+      "remaining_cost": "Remaining cost",
+      "budgeted_cost": "Budgeted cost",
+      "this_period_cost": "This period cost",
+      "cost": "Cost",
+      "amount": "Amount",
+      "progress": "Progress",
+      "schedule": "Schedule",
+      "physical": "Physical",
+      "total": "Total",
+      "resource_loading": "Resource loading (qty)",
+      "actual_to_date_qty": "Actual to date (qty)",
+      "remaining_qty": "Remaining qty",
+      "budgeted_qty": "Budgeted qty",
+      "this_period_qty": "This period qty",
+      "qty": "Qty",
+      "units": "Units",
+      "calculating": "Calculating metrics…",
+      "title": "Dashboard",
+      "project": "Project",
+      "planned_dates": "Planned dates",
+      "from_project_note": "from PROJECT",
+      "last_recalc": "Last recalculation",
+      "last_recalc_note": "",
+      "total_tasks": "Total Activity",
+      "distinct_resources": "Distinct resources ",
+      "statuses": "Statuses",
+      "groups_suffix": "groups",
+      "table_by_status": "Activity by Status",
+      "status": "Status",
+      "table_by_task_type": "Activity by Type",
+      "task": "Task",
+      "table_by_priority": "Activity by Priority",
+      "priority": "Priority",
+      "table_by_duration_type": "Activity by Duration Type",
+      "duration": "Duration",
+      "table_by_resource": "Activity by Resource",
+      "resource": "Resource",
+      "value": "Value",
+      "count": "Count",
+      "empty": "No data for dashboard."
+    }
+,
+  "intro": {
+    "p1": "My name is Ruslan Khisamov, I am a project manager specializing in capital project management in the mining and metallurgical industry. Oracle Primavera P6 is the industry standard for planning, coordination, and control of complex projects.",
+    "p2": "To view an Oracle Primavera P6 XER file, special software, licenses, and additional configuration are required. This reduces data accessibility and complicates fast managerial decision-making.",
+    "p3": "That is why I am creating ScheduleVision — a free and convenient web tool that allows you to open and analyze projects developed in Primavera P6 anywhere, without additional software. ScheduleVision makes working with schedules more transparent and analytics accessible to every project participant — whether manager, engineer, or contractor.",
+    "p4": "My goal is to contribute to the industry by offering a tool that helps make decisions faster, manage resources more effectively, and improve transparency in project management."
+  },
+  "xer": {
+    "upload": {
+      "title": "Upload XER or XML File",
+      "desc": "Choose an Oracle Primavera P6 XER or XML file for local processing and viewing. All processing is done in your browser, and no data is sent to the server.",
+      "btn": "Select XER or XML File",
+      "btn_aria": "Upload XER or XML file from local device" ,
+    "demo_btn": "Load demo data",
+    "demo_btn_aria": "Load bundled demo .xer, .xml file"
+  }
+  },
+  "security": {
+    "title": "Security and Privacy",
+    "lead": "ScheduleVision is designed with a priority on protecting your data:",
+    "items": {
+      "local_only": "Your files are not transmitted to the server — all processing is performed directly in your browser.",
+      "indexeddb": "Data is stored only in the local database (IndexedDB) on your device.",
+      "analytics": "Web files and cookies are used exclusively for visit analytics via Google services and do not affect the content of your projects.",
+      "control": "You have full control of your data: you can delete saved files from your browser’s local database at any time."
+    },
+    "outro": "Thus, working with projects in ScheduleVision is safe, private, and fully under your control."
+  },
+    "xer_upload_title": "Upload XER or XML file",
+  "xer_upload_desc": "To get started, upload a .xer or .xml file from your device. The local database will be cleared on page load.",
+  "xer_upload_btn": "Choose .xer or .xml file",
+  "xer_reload_file": "Reload .xer or .xml file",
+  "xer_upload_hint": "If you want to switch the dataset, reload a .xer or .xml file.",
+  "loading": "Loading…",
+    "activities_gantt": "Activities",
+    "xer_summary": "Summary",
+    
+    "task": {
+    "task_type": {
+      "TT_Task": "Task",
+      "TT_Rsrc": "Resource Dependent",
+      "TT_LOE": "Level of Effort",
+      "TT_WBS": "WBS Summary",
+      "TT_Mile": "Start Milestone",
+      "TT_StartMile": "Start Milestone",
+      "TT_FinMile": "Finish Milestone",
+      "TT_Hammock": "Hammock",
+      "TT_Tmpl": "Template Activity"
+    },
+
+    "status_code": {
+      "TK_NotStart": "Not Started",
+      "TK_Active": "In Progress",
+      "TK_Suspend": "Suspended",
+      "TK_Complete": "Completed",
+      "TK_Inactive": "Inactive"
+    },
+
+    "duration_type": {
+      "DT_FixedDUR2": "Fixed Duration",
+      "DT_FixedDUR": "Fixed Duration",
+      "DT_FixedDrtn": "Fixed Duration",
+      "DT_FixedUnits": "Fixed Units",
+      "DT_FixedUnitsTime": "Fixed Units/Time",
+      "DT_FixedWork": "Fixed Work",
+      "DT_FixedRate": "Fixed Rate",
+      "DT_None": "None"
+    },
+
+    "complete_pct_type": {
+      "CP_Drtn": "Duration % Complete",
+      "CP_Units": "Units % Complete",
+      "CP_Phys": "Physical % Complete"
+    },
+
+    "priority_type": {
+      "PT_VeryLow": "Very Low",
+      "PT_Low": "Low",
+      "PT_Normal": "Normal",
+      "PT_High": "High",
+      "PT_VeryHigh": "Very High",
+      "PT_Top": "Top"
+    }
+  },
+  "summarize": {
+    "version": "Version",
+    "exportDate": "Export date",
+    "context": "Context",
+    "user": "User",
+    "db": "Database",
+    "module": "Module",
+    "baseCurrency": "Base currency",
+    "fileType": "File type",
+    "table": {
+      "SUMMARIZE": "Summarize",
+        "count": "{{rows}} rows, {{fields}} fields",
+        "rowsFields": "{{rows}} rows, {{fields}} fields",
+        "ACCOUNT": "Cost Accounts",
+        "ACTVCODE": "Activity Code Values",
+        "ACTVTYPE": "Activity Types",
+        "APPLYACTOPTIONS": "Apply Actual Options",
+        "ASSIGNMENT": "Assignment Code Assignments",
+        "ASGNMNTCATTYPE": "Assignment Codes",
+        "ASGNMNTCATVAL": "Assignment Code Values",
+        "BUDGCHNG": "Budget Changes",
+        "CALENDAR": "Calendars",
+        "COSTTYPE": "Expense Categories",
+        "CURRTYPE": "Currency Types",
+        "DOCCATG": "Document Categories",
+        "DOCSTAT": "Document Statuses",
+        "DOCUMENT": "Work Products and Documents",
+        "FINDATES": "Financial Periods",
+        "FUNDSRC": "Funding Sources",
+        "ISSUHIST": "Notification History",
+        "MEMOTYPE": "Notebook Topics",
+        "OBS": "OBS",
+        "PCATTYPE": "Project Codes",
+        "PCATVAL": "Project Code Values",
+        "PHASE": "Phase",
+        "PROJCOST": "Project Expenses",
+        "PROJECT":"Projects",
+        "PROJEST": "Estimate History",
+        "PROJFUND": "Project Funding Assignments",
+        "PROJISSU": "Issues",
+        "PROJPCAT": "Project Code Assignments",
+        "PROJTHRS": "Thresholds",
+        "PROJWBS": "WBS",
+        "PRORISK": "Risks",
+        "RCATTYPE": "Resource Codes",
+        "RCATVAL": "Resource Code Values",
+        "RISKTYPE": "Risk Types",
+        "ROLECATTYPE": "Role Codes",
+        "ROLECATVAL": "Role Code Values",
+        "ROLELIMIT": "Role Limits",
+        "ROLERATE": "Role Rates",
+        "ROLERCAT": "Role Code Assignments",
+        "ROLES": "Roles",
+        "RSRC": "Resources",
+        "RSRCCURV": "Resource Curves",
+        "RSRCCURVDATA": "Resource Curve Data",
+        "RSRCLEVELLIST": "Resource Level List",
+        "RSRCRATE": "Resource Rates",
+        "RSRCRCAT": "Resource Code Assignments",
+        "RSRCROLE": "Resource Role Assignments",
+        "SCHEDOPTIONS": "Schedule Options",
+        "SHIFT": "Shift Names",
+        "SHIFTPER": "Shifts",
+        "TASK": "Activities",
+        "TASKACTV": "Activity Code Assignments",
+        "TASKDOC": "Document Assignments",
+        "TASKFDBK": "Activity Feedback",
+        "TASKFIN": "Activity Past Period Actuals",
+        "TASKMEMO": "Activity Notebook",
+        "TASKNOTE": "Activity Notes to Resources",
+        "TASKPRED": "Activity Relationships",
+        "TASKPROC": "Activity Steps",
+        "TASKRSRC": "Activity Resource Assignments",
+        "TASKUSER": "Activity Owners",
+        "THRSPARM": "Threshold Parameters",
+        "TRSRCFIN": "Activity Resource Assignment Past Period Actuals",
+        "UDFTYPE": "User Defined Fields",
+        "UDFVALUE": "User Defined Field Values",
+        "UMEASURE": "Units of Measure",
+        "WBSBUDG": "Spending and Benefit Plans",
+        "WBSMEMO": "EPS, Project and WBS Notebook",
+        "WBSRSRC_QTY": "WBS Resource Quantities",
+        "WBSRSRC": "WBS Resource",
+        "WBSSTEP": "WBS Milestones",
+        "projrisk": "Project risks"
+    }
+  },
+  
+
+
+
+  "links": {
+    "predType": {
+      "FS": "Finish to Start",
+      "SS": "Start to Start",
+      "FF": "Finish to Finish",
+      "SF": "Start to Finish"
+    }
+  },
+  
+
+  "hist": {
+    "series": {
+      "planned": "План",
+      "actual": "Факт",
+      "remaining": "Остаток",
+      "plannedCumulative": "План (накоп.)",
+      "actualCumulative": "Факт (накоп.)",
+      "remainingCumulative": "Остаток (накоп.)",
+      "baseline": "Базовая линия"
+    },
+    "axis": {
+      "left": "Помесячные",
+      "right": "Накопительные"
+    }
+  },
+  "projects": {
+    "cost": {
+      "prefix": {
+        "thousand": "тыс.",
+        "million":  "млн.",
+        "billion":  "млрд."
+      }
+    }
+  },
+  "dcma": {
+    "info": {
+      "check": {
+        "goal": "Цель проверки",
+        "check": "Правило проверки",
+        "importanceMetrics": "Важность для метрик",
+        "frequency": "Частота проверки",
+        "description": "Описание",
+        "1": {
+          "title": "Check 1: Logic",
+          "goal": "Оценка полноты логических связей между задачами календарно-сетевого графика.",
+          "check": "Все незавершённые задачи должны иметь как минимум одну связь с предшественником и одну с последователем. Исключение составляют только начальные и завершающие события, если они технически обоснованы.",
+          "importanceMetrics": "Высокая. Без логических связей график не способен выполнять свою ключевую функцию – быть основой принятия решений и контроля проекта.",
+          "frequency": "При составлении и при каждой корректировке графика.",
+          "description": "<p>Первый критерий проверки в протоколе DCMA 14 Schedule Assessment – это Логика. Проверка гарантирует, что все активности в плане проекта имеют предшественников и последователей. Стандарт DCMA допускает, что максимум 5% всех задач проекта могут не иметь предшественника, последователя или обоих. Обычно в эту категорию попадают стартовые и финишные вехи, однако существуют проектные техники, позволяющие минимизировать их количество.</p><p> Отсутствие связей между задачами нарушает логическую целостность графика, делает невозможным корректный расчёт критического пути и анализ резервов времени. Некорректное определение связей «предшественник – последователь» может негативно повлиять на даты ключевых проектных вех.</p>"     
+        },
+        "2": {
+          "title": "Check 2: Leads",
+          "goal": "Выявление и исключение некорректных логических зависимостей, создающих искажение последовательности выполнения работ.",
+          "check": "Проверяются связи между задачами, содержащие отрицательные лаги (лиды). Это ситуации, при которых последующая работа начинается до завершения предшествующей. Пример: связь типа Финиш–Старт (ФС) с лагом –30 дней.",
+          "importanceMetrics": "Высокая. Использование лидов искажает расчёты временных резервов и критического пути, снижает прозрачность графика и может привести к неверным управленческим решениям.",
+          "frequency": "При составлении, актуализации и корректировке графика.",
+          "description": "<p>В практике проектного управления лид (Lead) — это перекрытие по времени или отрицательный лаг, выраженный в днях или часах, между двумя задачами с зависимостью. То есть последующая задача может стартовать до того, как завершится предшествующая. В программном обеспечении для управления проектами лиды отображаются как отрицательные значения в колонке «Лаг».</p><p>Методология DCMA 14 Schedule Assessment строго ограничивает применение лидов и указывает, что в проектном плане их не должно быть. Причина в том, что отрицательные лаги искажают расчёт общего резерва (Total Float), усложняют корректное определение критического пути и могут по-разному интерпретироваться при пересчётах графика.</p><p>Как правило, лиды используются для имитации параллельности без явного отражения технологических зависимостей. Методически корректнее:</p><ul><li>применять связь типа Старт–Старт (СС) с положительным лагом,</li><li>либо вводить промежуточную задачу, отражающую фактическое наложение работ.</li></ul>"
+        },
+        "3": {
+          "title": "Check 3: Lags",
+          "goal": "Контроль применения положительных лагов в логике календарно-сетевого графика.",
+          "check": "Анализируются связи между задачами с положительным лагом (например, Финиш–Старт (ФС) +5 дней). Проверяется их наличие, количество и длительность.",
+          "importanceMetrics": "Высокая. Положительные лаги маскируют реальные работы, снижают прозрачность и управляемость проекта. Они, как и лиды, влияют на расчёт критического пути и могут искажать результаты анализа временных резервов.",
+          "frequency": "При формировании, актуализации и корректировке календарно-сетевого графика.",
+          "description": "<p>По определению, лаги противоположны лидам. Лаг — это временной интервал, выраженный в днях или часах, между датой завершения предшественника и датой начала последователя. В методологии DCMA 14 Schedule Assessment допускается использование положительных лагов, но не более чем в 5% от всех связей проекта.</p><p>В практике управления проектами считается более корректным вместо лагов вводить отдельные задачи с пояснением их содержания, что обеспечивает прозрачность, позволяет контролировать фактические объёмы и длительности, а также исключает «скрытые» зависимости. Использование лагов должно быть строго обосновано, так как они не отображаются в отчётности и могут затруднять контроль за реальным ходом выполнения работ.</p>"
+        },
+        "4": {
+          "title": "Check 4: Relationship Types",
+          "goal": "Стандартизация логических зависимостей и обеспечение корректной технологической последовательности выполнения работ.",
+          "check": "Доля связей типа Финиш–Старт (ФС). Согласно требованиям DCMA 14 Schedule Assessment, не менее 90% всех связей в проекте должны быть именно такого типа.",
+          "importanceMetrics": "Средняя. Чрезмерное использование связей Старт–Старт (СС), Финиш–Финиш (ФФ) и особенно Старт–Финиш (СФ) усложняет управление графиком, снижает его прозрачность и может искажать критический путь. Однако это не делает график полностью неработоспособным.",
+          "frequency": "При формировании, редактировании и актуализации календарно-сетевого графика.",
+          "description": "<p>Все задачи в проектном плане соединены логическими зависимостями, образующими цепочку выполнения (activity chain). Именно эта концепция стала основой каскадной (Waterfall) методологии, одной из наиболее распространённых в управлении проектами.</p><p>С точки зрения DCMA, использование связей Финиш–Старт обеспечивает наиболее прозрачную и понятную логику графика. Такой подход упрощает анализ критического пути и делает его более управляемым. Зависимости Старт–Старт и Финиш–Финиш допустимы лишь в обоснованных случаях, а зависимость Старт–Финиш должна применяться исключительно в редких и изолированных ситуациях.</p>"
+        },
+        "5": {
+          "title": "Check 5: Hard Constraints",
+          "goal": "Исключение фиксированных дат, которые ограничивают перерасчёт логики графика и снижают его гибкость.",
+          "check": "Количество задач с жёсткими ограничениями (Фиксированное начало / Фиксированное окончание). Согласно DCMA, их должно быть не более 5% от всех ограничений в проекте.",
+          "importanceMetrics": "Высокая. Жёсткие ограничения делают график негибким, искажают ход работ, затрудняют обновление и могут привести к некорректному расчёту критического пути.",
+          "frequency": "При формировании, редактировании и каждой актуализации календарно-сетевого графика.",
+          "description": "<p>Ограничения — это атрибуты задач, определяющие, подчиняется ли активность алгоритму расчёта графика. Различают два типа ограничений:</p><ul><li><strong>Жёсткие (Hard Constraints):</strong> Mandatory Start, Mandatory Finish (Фиксированное начало, Фиксированное окончание).</li><li><strong>Мягкие (Soft Constraints):</strong> As Late As Possible, Start On / Before / After, Finish On / Before / After.</li></ul><p>Методология DCMA 14 Schedule Assessment требует, чтобы использование жёстких ограничений не превышало 5% от общего числа, отдавая предпочтение мягким ограничениям. В отличие от жёстких, мягкие ограничения учитываются алгоритмом расчёта, что позволяет сохранять гибкость графика и корректность анализа. Жёсткие ограничения же блокируют перерасчёт и могут вызвать серьёзные проблемы при обновлении проекта.</p>"
+        },
+        "6": {
+          "title": "Check 6: High Float",
+          "goal": "Выявление задач с неконтролируемым или неаргументированным запасом времени.",
+          "check": "Количество задач с общим временным резервом, превышающим установленный порог. Согласно DCMA 14, задач с резервом более 44 календарных дней должно быть не более 5% от всех задач проекта. В ряде методик также используется ориентир 60 рабочих дней как граница чрезмерного резерва.",
+          "importanceMetrics": "Средняя. Избыточные резервы могут скрывать ошибки в логике или отсутствие связей, но эти проблемы проверяются в других критериях.",
+          "frequency": "После формирования графика и при его обновлениях.",
+          "description": "<p>Временной резерв (Float, Slack) — это количество времени (в днях или часах), на которое задача может быть отложена без срыва ключевых проектных вех. Избыточный резерв часто возникает из-за отсутствия связей или ошибок в логике. Такие задачи («висячие работы») усложняют анализ рисков, искажают расчёт критического пути и снижают управляемость графика.</p><p> Методологически правильнее минимизировать количество задач с высоким резервом за счёт корректной проработки связей и уточнения логической структуры проекта.</p>"
+        },
+        "7": {
+          "title": "Check 7: Negative Float",
+          "goal": "Выявление задач, уже нарушающих сроки проекта.",
+          "check": "Наличие задач с отрицательным общим временным резервом (Negative Float / Negative Slack).",
+          "importanceMetrics": "Высокая. Отрицательный временной резерв свидетельствует о срыве сроков и требует немедленного принятия управленческих решений и компенсирующих мероприятий.",
+          "frequency": "После формирования графика и перед каждой его актуализацией.",
+          "description": "<p>Отрицательный временной резерв возникает тогда, когда для задачи установлены жёсткие ограничения (Mandatory Start или Mandatory Finish), из-за чего её выполнение фиксируется во времени и не подчиняется алгоритму расчёта. Это приводит к тому, что отдельные ключевые даты проекта оказываются нарушенными.</p><p>Методология DCMA 14 Schedule Assessment прямо указывает, что наличие отрицательных резервов в проекте недопустимо. Их появление говорит о фактическом нарушении базового графика, использовании некорректных ограничений или работе с устаревшей датой статуса.</p><p>Для устранения отрицательного резерва необходимо пересмотреть логику графика, обновить статусные даты, а также заменить жёсткие ограничения мягкими или корректировать связи между задачами.</p>"
+        },
+        "8": {
+          "title": "Check 8: High Duration",
+          "goal": "Повышение управляемости и детализации работ в графике.",
+          "check": "Незавершённые задачи с длительностью более 44 рабочих дней. Согласно DCMA 14 Schedule Assessment, их количество не должно превышать 5% от всех задач проекта.",
+          "importanceMetrics": "Средняя. Слишком длинные задачи не отражают технологическую последовательность, снижают прозрачность графика и затрудняют контроль.",
+          "frequency": "Перед утверждением графика и при его актуализации.",
+          "description": "<p>Сверхдлинные задачи, как правило, представляют собой укрупнённое описание целого комплекса работ. Они не отображают внутреннюю логику выполнения, не позволяют выделить контрольные вехи и скрывают технологическую последовательность.</p><p>В результате усложняется:</p><ul><li>оперативный мониторинг,</li><li>приёмка результатов,</li><li>детализация статуса.</li></ul><p>Фактически одна такая задача может «прятать» несколько технологических этапов, каждый из которых требует отдельного управления, учёта и измерения. Методологически правильно выполнять декомпозицию работ до управляемого уровня детализации, что обеспечивает прозрачность, контроль сроков и точность анализа критического пути.</p>"
+        },
+        "9": {
+          "title": "Check 9: Invalid Dates",
+          "goal": "Обеспечение корректности статуса и актуализации графика.",
+          "check": "Фактические даты (Actual Start/Finish): они не должны находиться позже даты отчёта (Data Date). Прогнозные даты (Early/Late Start и Finish): они не должны быть назначены раньше даты отчёта.",
+          "importanceMetrics": "Высокая. Неверные даты искажают картину выполнения, сбивают актуализацию и отчётность, а также влияют на индексы выполнения (например, BEI).",
+          "frequency": "При каждой актуализации и предоставлении отчётности по проекту.",
+          "description": "<p>Методология DCMA 14 Schedule Assessment выделяет две категории ошибок в датах:</p><ul><li><strong>9a. Forecast Dates (прогнозные даты):</strong> некорректные прогнозные даты чаще всего возникают при наличии отрицательных резервов, когда расчётные ранние/поздние даты оказываются в прошлом.</li><li><strong>9b. Actual Dates (фактические даты):</strong> ошибки появляются, если фактические даты начала или окончания указываются в будущем, то есть позже даты отчёта.</li></ul><p>Такие несоответствия нарушают расчёт текущего состояния проекта, искажают прогресс и могут привести к неверной интерпретации критического пути. Постоянный контроль корректности дат при каждом обновлении графика позволяет избежать подобных ошибок и поддерживать его в актуальном состоянии.</p>"
+        },
+        "10": {
+          "title": "Check 10: Resources",
+          "goal": "Проверка полноты ресурсной модели графика.",
+          "check": "Все задачи с длительностью 1 день и более должны иметь назначенные ресурсы или стоимость. Ресурсы могут быть любых типов, которые поддерживает система управления проектами (например, Oracle Primavera P6): трудовые, материальные, оборудование или стоимостные.",
+          "importanceMetrics": "Высокая. Без ресурсов график не отражает трудоёмкость работ, не позволяет контролировать исполнение, прогнозировать затраты и анализировать загрузку.",
+          "frequency": "После завершения ресурсного планирования и при каждом обновлении графика.",
+          "description": "<p>Методология DCMA 14 Schedule Assessment требует, чтобы у каждой задачи продолжительностью не менее 1 дня был назначен хотя бы один ресурс. В то же время DCMA признаёт, что не все задачи можно обеспечить ресурсами из корпоративного пула (например, ревизия продукта или согласование документации, зависящие от решений заказчика).</p><p> Тем не менее, данная проверка является важным индикатором полноты графика и позволяет выявить задачи, которые могут вызвать дисбаланс в загрузке или усложнить контроль затрат.</p>"
+        },
+        "11": {
+          "title": "Check 11: Missed Tasks",
+          "goal": "Оценка исполнения проекта по базовому плану, выявление нарушений сроков и фактическая дисциплина выполнения задач.",
+          "check": "Задачи, завершённые позже плановой даты окончания, установленной в базовом плане. Учитываются только завершённые активности. Согласно DCMA 14, количество таких задач не должно превышать 5%.",
+          "importanceMetrics": "Высокая. Нарушение сроков по задачам является прямым индикатором производственной дисциплины и эффективности управления проектом.",
+          "frequency": "На каждом совещании в ходе выполнения проекта.",
+          "description": "<p>Метрика показывает фактическое соблюдение сроков и уровень дисциплины исполнения; при выявлении отклонений требуется анализ причин и корректирующие мероприятия.</p><p><strong>Индекс исполнения по базовому плану (BEI — Baseline Execution Index)</strong></p><p>Формула:</p><p><code>BEI = Количество завершённых задач / Количество задач, которые должны были быть завершены по БП</code></p><p><strong>Интерпретация BEI:</strong></p><ul><li>BEI = 1 → проект выполняется строго по базовому плану.</li><li>BEI &lt; 1 → наблюдается отставание от плана.</li><li>BEI &gt; 1 → проект идёт с опережением графика (ситуация встречается редко и требует проверки достоверности).</li></ul><p><strong>Зачем нужен BEI:</strong></p><ol><li>Даёт объективную картину исполнения графика, не привязываясь к объёмам или стоимости.</li><li>Позволяет быстро оценить дисциплину команды в выполнении плановых задач.</li><li>Используется при формировании KPI для подрядчиков и анализа текущего статуса проекта.</li></ol>"
+        },
+        "12": {
+          "title": "Check 12: Critical Path Test ",
+          "goal": "Проверка чувствительности даты завершения проекта к изменению длительности задач на критическом пути.",
+          "check": "Если увеличить длительность любой задачи на критическом пути (например, искусственно добавить 600 дней), то дата окончания проекта должна сместиться на такой же период. Несоответствие означает, что в графике отсутствуют связи (предшественники или последователи), и логическая цепочка критического пути нарушена.",
+          "importanceMetrics": "Высокая. Если критический путь не «живой» и не реагирует на изменения длительности, то график фиктивен и не отражает реальную управляемую модель проекта.",
+          "frequency": "После каждой корректировки графика, а также после внесения изменений в связи или добавления новых задач.",
+          "description": "Критический путь — это основа для расчёта сроков и принятия управленческих решений. Тест критического пути позволяет убедиться, что график построен корректно и завершение проекта действительно зависит от цепочки критических задач. Если при удлинении критической задачи дата окончания проекта не изменяется, значит логика нарушена, и требуется детальный анализ графика."
+        },
+        "13": {
+          "title": "Check 13: Critical Path Length Index (CPLI)",
+          "goal": "Оценка реалистичности завершения проекта в срок относительно базового плана.",
+          "check": "Расчёт индекса длины критического пути (CPLI), который показывает баланс между длительностью критического пути и доступным временным резервом. Согласно DCMA 14, значение CPLI должно быть равно 1, допускается отклонение не более ±5%.",
+          "importanceMetrics": "Высокая. Низкий CPLI указывает на высокий риск нарушения сроков даже при нормальном текущем прогрессе.",
+          "frequency": "Ежемесячно, особенно при пересмотре сроков и актуализации графика.",
+          "description": "<p>CPLI оценивает, насколько реально проект может быть завершён в срок, учитывая текущее положение дел; интерпретация:</p><ul><li>&gt; 1 — график опережает план, имеется запас времени;</li><li>= 1 — проект идёт строго по плану;</li><li>&lt; 1 — проект в зоне риска, высока вероятность нарушения сроков;</li><li>&lt; 0,95 — системное отставание, требующее вмешательства и корректирующих действий.</li></ul><p>Методология DCMA рассматривает CPLI как один из ключевых индикаторов качества графика и его способности достичь конечных вех в срок.</p>"   },
+        "14": {
+          "title": "Check 14 Baseline Execution Index (BEI)",
+          "goal": "Оценка соответствия фактического исполнения проектного плана запланированному. Индекс BEI показывает, какая доля задач выполнена к дате статуса из числа тех, что должны были быть завершены по базовому плану, и насколько проект идёт по графику.",
+          "check": "Количество фактически завершённых задач по отношению к числу задач, запланированных к завершению на дату отчёта.",
+          "importanceMetrics": "Высокая. BEI позволяет оценить производственную дисциплину, выявить отставания по графику и определить необходимость компенсирующих мероприятий.",
+          "frequency": "На каждом проектном совещании, но не реже одного раза в месяц.",
+          "description": "<p>Методология DCMA 14 Schedule Assessment устанавливает, что BEI &lt; 0,95 означает отставание и требует анализа причин.</p><ul><li>BEI = 1 — проект выполняется строго по плану.</li><li>BEI &gt; 1 — проект идёт с опережением (требует проверки корректности данных).</li><li>BEI &lt; 1 — проект отстаёт от плана.</li><li>BEI &lt; 0,95 — системное отставание, необходимы меры.</li></ul><p><strong>Зачем нужен BEI:</strong></p><ol><li>Даёт прозрачную картину исполнения графика без привязки к объёмам и стоимости.</li><li>Позволяет оценить дисциплину команды в выполнении задач.</li><li>Используется при формировании KPI для подрядчиков и прогнозировании риска срыва сроков.</li></ol>"
+        }
+      }
+    },
+  "summary": {
+    "title": "DCMA 14 — Summary"
+  },
+
+  "table": {
+    "check": "#",
+    "metric": "Check",
+    "description": "Metric",
+    "percent": "% / Value",
+    "passed": "Passed",
+    "details": "Details",
+    "btnDetails": "Details"
+  },
+
+  "details": {
+    "strictLogic": "Strict logic mode enabled"
+  },
+  "c1": {
+    "missingAny": "Missing Any (%)",
+    "missingTriplet": "Missing Pred/Succ/Both",
+    "missingPred": "Missing Predecessor",
+    "missingSucc": "Missing Successor"
+  },
+  "c2": {
+    "leads": "Leads",
+    "leadsList": "Leads"
+  },
+  "c3": {
+    "lags": "Lags",
+    "lagsList": "Lags"
+  },
+  "c4": {
+    "fsPercent": "FS %",
+    "nonFs": "Non-FS"
+  },
+  "c5": {
+    "hard": "Hard",
+    "hardList": "Hard constraints"
+  },
+  "c6": {
+    "highFloat": "High Float"
+  },
+  "c7": {
+    "negativeFloat": "Negative Float"
+  },
+  "c8": {
+    "highDuration": "High Duration"
+  },
+  "c9": {
+    "invalidForecast": "Invalid Forecast",
+    "invalidActual": "Invalid Actual",
+    "forecastList": "9a — Forecast",
+    "actualList": "9b — Actual"
+  },
+  "c10": {
+    "withoutResources": "Without resources"
+  },
+  "c11": {
+    "missed": "Missed"
+  },
+  "c12": {
+    "criticalTasks": "Critical tasks",
+    "singleChain": "Single chain",
+    "endsAtPf": "Ends at PF",
+    "startNodes": "Start nodes",
+    "endNodes": "End nodes"
+  },
+  "c13": {
+    "cpl": "CPL",
+    "ptf": "PTF",
+    "cpli": "CPLI"
+  },
+  "c14": {
+    "bei": "BEI",
+    "ge095": "≥0.95",
+    "plannedNotCompleted": "Planned but not completed",
+    "completedAhead": "Completed ahead of plan"
+  }
+  }
+,
+  "units": "Units",
+  "info": "ScheduleVision is fully compatible with Oracle® Primavera® P6®. It is an independently developed reader application created by Ruslan Khissamov. ScheduleVision is not a product of Oracle® and is neither endorsed, sponsored, nor affiliated with Oracle® Corporation. Oracle®, Primavera®, and P6® are registered trademarks of Oracle® Corporation and/or its affiliates."
+}

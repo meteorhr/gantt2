@@ -12,7 +12,7 @@ export class App implements OnInit {
   async ngOnInit() {
     try {
       // Удаляем базу P6DB, если она существует
-      const deleted = await Dexie.delete('P6DB');
+      const deleted = await Dexie.delete('P6Db');
       console.log('P6DB deleted:', deleted); // true = удалена, false = не было
     } catch (error) {
       console.error('Ошибка при удалении P6DB:', error);
