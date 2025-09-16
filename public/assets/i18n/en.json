@@ -7,6 +7,8 @@
     "dq": "Data quality (DQ)",
     "close": "Close"
   },
+  "scheduleHealth": "Schedule Health",
+  "changeControl": "Change Control",
   "DCMA_14": "DCMA 14",
   "app": {
     "title": "ScheduleVision",
@@ -128,15 +130,24 @@
     "p3": "That is why I am creating ScheduleVision — a free and convenient web tool that allows you to open and analyze projects developed in Primavera P6 anywhere, without additional software. ScheduleVision makes working with schedules more transparent and analytics accessible to every project participant — whether manager, engineer, or contractor.",
     "p4": "My goal is to contribute to the industry by offering a tool that helps make decisions faster, manage resources more effectively, and improve transparency in project management."
   },
-  "xer": {
+  "base": {
     "upload": {
       "title": "Upload XER or XML File",
       "desc": "Choose an Oracle Primavera P6 XER or XML file for local processing and viewing. All processing is done in your browser, and no data is sent to the server.",
       "btn": "Select XER or XML File",
       "btn_aria": "Upload XER or XML file from local device",
       "demo_btn": "Load demo data",
-      "demo_btn_aria": "Load bundled demo .xer, .xml file"
+      "demo_btn_aria": "Load bundled demo .xer, .xml file",
+      "hint": "If you need to update the base file, click “Reload file”."
+    },
+    "reload": {
+      "btn": "Reload file",
+      "btn_aria": "Reload base XER or XML file"
     }
+  },
+  "project": {
+    "label": "Project",
+    "candidate_label": "Project Candidate"
   },
   "security": {
     "title": "Security and Privacy",
@@ -149,11 +160,11 @@
     },
     "outro": "Thus, working with projects in ScheduleVision is safe, private, and fully under your control."
   },
-  "xer_upload_title": "Upload XER or XML file",
-  "xer_upload_desc": "To get started, upload a .xer or .xml file from your device. The local database will be cleared on page load.",
-  "xer_upload_btn": "Choose .xer or .xml file",
-  "xer_reload_file": "Reload .xer or .xml file",
-  "xer_upload_hint": "If you want to switch the dataset, reload a .xer or .xml file.",
+  "base_upload_title": "Upload XER or XML file",
+  "base_upload_desc": "To get started, upload a .xer or .xml file from your device. The local database will be cleared on page load.",
+  "base_upload_btn": "Choose .xer or .xml file",
+  "base_reload_file": "Reload .xer or .xml file",
+  "base_upload_hint": "If you want to switch the dataset, reload a .xer or .xml file.",
   "loading": "Loading…",
   "activities_gantt": "Activities",
   "xer_summary": "Summary",
@@ -519,6 +530,73 @@
     "completedAhead": "Completed ahead of plan"
   }
 },
+  "contact": {
+    "email_aria": "Email Ruslan Khissamov",
+    "name": "Ruslan Khissamov"
+  },
+  "table": {
+    "name": "Name",
+    "value": "Value"
+  },
+  "candidate": {
+    "upload": {
+      "btn_add": "Add file for comparison",
+      "btn_add_aria": "Add candidate XER or XML file for comparison",
+      "btn_reload": "Reload file",
+      "btn_reload_aria": "Reload candidate XER or XML file"
+    }
+  },
+  "compare": {
+    "running": "Running comparison…",
+    "actions": {
+      "retry": "Retry"
+    },
+    "headerLabel": "Project name",
+    "base": "Base",
+    "candidate": "Candidate",
+    "vs": "vs",
+    "candidate_missing": {
+      "title": "Candidate not found",
+      "desc1": "Candidate file is not uploaded or candidate project is not selected.",
+      "desc2": "Upload a candidate file (.xer, .xml) to start the comparison.",
+      "action": "Add file for comparison",
+      "action_aria": "Add candidate XER/XML file",
+      "hint_select": "After upload, select the candidate project in the dropdown."
+    },
+    "common_error": {
+      "title": "Comparison error"
+    },
+    "errors": {
+      "no_base_selected": "Base project is not selected.",
+      "no_candidate_selected_or_loaded": "Candidate not found: upload a file and select candidate project.",
+      "base_snapshot_missing": "Base project snapshot not found.",
+      "candidate_snapshot_missing": "Candidate snapshot not found.",
+      "failed": "Failed to compare. Check selected projects and data."
+    }
+  },
+  "dates": {
+    "columns": {
+      "type": "Date type",
+      "base": "Base",
+      "candidate": "Candidate",
+      "delta": "Δ Delta"
+    },
+    "labels": {
+      "planStart": "Plan Start",
+      "dataDate": "Data Date",
+      "planEnd": "Plan End",
+      "mustFinish": "Must Finish"
+    },
+    "days": "days"
+  },
+  "progress": {
+    "columns": {
+      "metric": "Metric",
+      "base_pct": "Base, %",
+      "candidate_pct": "Candidate, %",
+      "delta_pct": "Δ Delta, %"
+    }
+  },
   "units": "Units",
   "info": "ScheduleVision is fully compatible with Oracle® Primavera® P6®. It is an independently developed reader application created by Ruslan Khissamov. ScheduleVision is not a product of Oracle® and is neither endorsed, sponsored, nor affiliated with Oracle® Corporation. Oracle®, Primavera®, and P6® are registered trademarks of Oracle® Corporation and/or its affiliates."
 }

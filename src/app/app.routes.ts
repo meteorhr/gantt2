@@ -29,7 +29,13 @@ export const APP_ROUTES: Routes = [
         loadComponent: () =>
           import('./features/gantt/gantt-tab.component').then(m => m.GanttTabComponent),
       },
-            {
+      {
+        path: 'compare',
+        title: 'Compare Schedule',
+        loadComponent: () =>
+          import('./features/compare/compare-tab.component').then(m => m.CompareTabComponent),
+      },      
+      {
         path: 'dcma',
         title: 'DCMA Checks',
         loadComponent: () =>

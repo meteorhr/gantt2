@@ -3,7 +3,6 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { MatCardModule } from '@angular/material/card';
 import { GanttCanvasComponent } from '../../gantt/gantt-canvas.component';
 import { AppStateService } from '../../state/app-state.service';
-import { NgIf } from '@angular/common';
 
 @Component({
   selector: 'sv-gantt-tab',

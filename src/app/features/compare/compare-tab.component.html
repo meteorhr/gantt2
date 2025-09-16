@@ -1,0 +1,131 @@
+<div class="cmp-root">
+    <div class="dash-viewport">
+        <div class="dash-wrap">
+    <!-- Информер: кандидат не найден / не выбран -->
+    @let candidateList = wm.projectsCandidate();
+    @let candidateHasProjects = (candidateList?.length ?? 0) > 0;
+    @let candidateSelected = !!wm.selectedProjectIdCandidate();
+  
+    @if (errorMsgKey === 'compare.errors.no_candidate_selected_or_loaded') {
+      <mat-card appearance="outlined" class="cmp-empty">
+        <mat-card-content class="cmp-empty__content">
+          <div class="cmp-empty__text">
+            <div class="cmp-empty__title">{{ 'compare.candidate_missing.title' | transloco }}</div>
+            <div class="cmp-empty__desc">
+              {{ 'compare.candidate_missing.desc1' | transloco }}
+            </div>
+            <div class="cmp-empty__desc">
+              {{ 'compare.candidate_missing.desc2' | transloco }}
+            </div>
+  
+            <div class="cmp-empty__actions">
+              <input
+                #candidateFile
+                type="file"
+                accept=".xer,.xml"
+                (change)="onCandidateFileSelected($event)"
+                hidden
+                aria-hidden="true"
+              />
+              <button
+                mat-stroked-button
+                color="primary"
+                type="button"
+                (click)="candidateFile.click()"
+                aria-label="{{ 'compare.candidate_missing.action_aria' | transloco }}"
+              >
+                <mat-icon aria-hidden="true">upload_file</mat-icon>
+                <span>{{ 'compare.candidate_missing.action' | transloco }}</span>
+              </button>
+  
+              @if (candidateHasProjects && !candidateSelected) {
+                <span class="cmp-empty__hint">
+                  {{ 'compare.candidate_missing.hint_select' | transloco }}
+                </span>
+              }
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  
+    <!-- Общие ошибки сравнения -->
+    @if (errorMsgKey && errorMsgKey !== 'compare.errors.no_candidate_selected_or_loaded') {
+      <mat-card appearance="outlined" class="cmp-error">
+        <mat-card-content class="cmp-error__content">
+          <mat-icon class="cmp-error__icon" aria-hidden="true">error</mat-icon>
+          <div class="cmp-error__text">
+            <div class="cmp-error__title">{{ 'compare.common_error.title' | transloco }}</div>
+            <div class="cmp-error__desc">{{ errorMsgKey | transloco }}</div>
+            <div class="cmp-error__actions">
+              <button mat-stroked-button type="button" (click)="onCompare()">
+                <mat-icon aria-hidden="true">refresh</mat-icon>
+                <span>{{ 'compare.actions.retry' | transloco }}</span>
+              </button>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  
+    <!-- Индикатор прогресса сравнения -->
+    @if (compareRunning) {
+      <div class="cmp-progress">
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        <div class="cmp-progress__label">{{ 'compare.running' | transloco }}</div>
+      </div>
+    }
+  
+    <!-- Результаты сравнения (когда готовы) -->
+    @if (!!compareResult && !compareRunning) {
+        <mat-card appearance="outlined" class="cmp-summary">
+            <mat-card-header>
+                <mat-card-content >
+                    <div class="cmp-summary__row" role="group" aria-label="{{ 'compare.headerLabel' | transloco }}">
+                      <div class="cmp-summary__side cmp-summary__side--base">
+                        <div class="cmp-summary__label">{{ 'compare.base' | transloco }}</div>
+                        <div class="cmp-summary__name">{{ baseLabel }}</div>
+                      </div>
+              
+                      <div class="cmp-summary__vs">{{ 'compare.vs' | transloco }}</div>
+              
+                      <div class="cmp-summary__side cmp-summary__side--candidate">
+                        <div class="cmp-summary__label">{{ 'compare.candidate' | transloco }}</div>
+                        <div class="cmp-summary__name">{{ candidateLabel }}</div>
+                      </div>
+                    </div>
+                  </mat-card-content>
+            </mat-card-header>
+          </mat-card>
+        <div class="tables">
+            <mat-card class="table-card" appearance="outlined">
+                <mat-card-header>
+                  <mat-card-title>{{ 'dashboard.project_dates' | transloco }}</mat-card-title>
+                </mat-card-header>
+                  <mat-card-content>
+            <sv-date-compare-table
+            [dates]="compareResult?.dates">
+            </sv-date-compare-table>
+        </mat-card-content>
+    </mat-card>
+
+    <mat-card class="kpi-card" appearance="outlined" style="height: 326px;">
+        <mat-card-header>
+          <mat-card-title>{{ 'dashboard.progress' | transloco }}</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <sv-progress-compare-table
+            [data]="{
+              progressSchedulePct: compareResult?.progressSchedulePct,
+              progressPhysicalPct: compareResult?.progressPhysicalPct,
+              progressCostPct: compareResult?.progressCostPct
+            }">
+          </sv-progress-compare-table>
+        </mat-card-content>
+      </mat-card>
+        </div>
+
+    }
+</div>
+    </div>
+</div>

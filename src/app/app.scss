@@ -1,151 +1,261 @@
-:host {
-  display: block;
-  height: auto; /* страница может расти по высоте */
-}
-.dash-viewport {
-  width: 1200px;                 /* фиксированная ширина */
-  max-width: calc(100vw - 32px); /* чтобы влезало на узких экранах, можно убрать */
-  margin: 0 auto;                /* центрирование */
-  overflow: auto;                /* внутренний скролл */
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  display: block;
-}
-
-/* оставляем как есть */
-.dash-wrap {
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.center {
+/* =========================================
+   Общие токены (CSS-переменные)
+   ========================================= */
+   :host {
+    /* Размеры/сетку можно быстро настраивать здесь */
+    --sv-max-width: 1200px;
+    --sv-page-padding: 16px;
+    --sv-gap-sm: 8px;
+    --sv-gap-md: 12px;
+    --sv-gap-lg: 20px;
+  
+    --sv-radius: 12px;
+    --sv-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    --sv-shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.12);
+  
+    --sv-fg-muted: rgba(0, 0, 0, 0.6);
+    --sv-bg-soft: #f9fafb;
+    --sv-border: #e0e0e0;
+    --sv-error: #d32f2f;
+  
+    display: block;
+    height: auto; /* страница может расти по высоте */
+  }
+  
+  /* =========================================
+     Вьюпорт/контейнеры
+     ========================================= */
+  .dash-viewport {
+    width: var(--sv-max-width);                 /* основная ширина */
+    max-width: calc(100vw - var(--sv-page-padding) * 2); /* влезает на узких экранах */
+    margin: 0 auto;                             /* центрирование */
+    overflow: auto;                             /* внутренний скролл */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    display: block;
+  }
+  
+  .dash-wrap {
+    padding: var(--sv-gap-md) var(--sv-page-padding);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sv-gap-md);
+  }
+  
+  /* Вспомогательный контейнер (если где-то используется) */
+  .center {
     width: 1080px;
+    max-width: 100%;
     margin: 0 auto;
   }
-
-
-.table-wrapper {
-  height: calc(100vh - 400px);
-  min-width: 1060px;
-  max-width: 1460px;
-  overflow: auto;
-  position: relative;
-
-}
-
-  :host {
-  display: block;
-}
-
-.sv-root {
-  padding: 32px;
-  display: grid;
-  place-items: center;
-}
-
-.sv-card {
-  width: 100%;
-  max-width: 720px;
-}
-
-.sv-header {
-  padding-bottom: 0;
-}
-
-.sv-title {
-  font-weight: 600;
-}
-
-.sv-subtitle {
-  opacity: 0.85;
-}
-
-.sv-content {
-  margin-top: 12px;
-  margin-bottom: 8px;
-  display: grid;
-  gap: 20px;
-  max-height: 75vh;         /* fits within viewport; adjust if needed */
-  overflow: auto;           /* enable scroll when content exceeds max-height */
-  -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
-  overscroll-behavior: contain;      /* prevent parent page scroll chaining */
-}
-
-
-.sv-section {
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.sv-intro .sv-p + .sv-p {
-  margin-top: 10px;
-}
-
-.sv-h4 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.sv-p {
-  margin: 0 0 10px 0;
-}
-
-.sv-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.sv-progress {
-  margin-top: 16px;
-}
-
-.sv-error {
-  margin-top: 12px;
-  color: #d32f2f; // Material error tone (MDC red 700 vicinity)
-}
-
-.sv-ul {
-  margin: 0 0 10px 18px;
-  padding: 0;
-}
-
-.sv-li {
-  margin: 4px 0;
-}
-
-/* Адаптивность */
-@media (max-width: 480px) {
+  
+  /* =========================================
+     Табличный контейнер
+     ========================================= */
+  .table-wrapper {
+    height: calc(100vh - 450px);
+    min-width: 1060px;
+    max-width: 1460px;
+    overflow: auto;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Если используете sticky: true у заголовка — сохраняем порядок наложения */
+  .table-wrapper .mat-mdc-header-row {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+  }
+  
+  /* =========================================
+     Стартовая страница (до загрузки)
+     ========================================= */
   .sv-root {
-    padding: 16px;
+    padding: 32px;
+    display: grid;
+    place-items: center;
   }
+  
+  .sv-card {
+    width: 100%;
+    max-width: 720px;
+  }
+  
+  .sv-header {
+    padding-bottom: 0;
+  }
+  
+  .sv-title {
+    font-weight: 600;
+  }
+  
+  .sv-subtitle {
+    opacity: 0.85;
+  }
+  
   .sv-content {
-    gap: 16px;
+    margin-top: var(--sv-gap-md);
+    margin-bottom: var(--sv-gap-sm);
+    display: grid;
+    gap: var(--sv-gap-lg);
+    max-height: 75vh;                 /* чтобы контент помещался во вьюпорт */
+    overflow: auto;                   /* скролл при переполнении */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
-  .sv-h4 {
-    font-size: 15px;
-  }
+  
   .sv-section {
-    font-size: 13.5px;
+    font-size: 14px;
+    line-height: 1.6;
   }
-}
-
-.sv-upload-highlight {
-  padding: 20px;
-  border-radius: 12px;
-  background-color: #f9fafb; // светлый фон
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); // мягкая тень
-  border: 1px solid #e0e0e0; // тонкая рамка
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
-
-  &:hover {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px); // лёгкий "подъём"
+  
+  .sv-intro .sv-p + .sv-p {
+    margin-top: 10px;
   }
-}
-.sv-btn-row{display:flex;flex-wrap:wrap;gap:12px}
-.sv-btn+.sv-btn{margin-left:12px}
-@media (max-width:480px){.sv-btn+.sv-btn{margin-left:0}}
+  
+  .sv-h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  .sv-p {
+    margin: 0 0 10px 0;
+  }
+  
+  .sv-ul {
+    margin: 0 0 10px 18px;
+    padding: 0;
+  }
+  
+  .sv-li {
+    margin: 4px 0;
+  }
+  
+  .sv-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sv-gap-sm);
+    margin-top: 6px;
+  }
+  
+  .sv-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  /* На случай старых разметок: визуальный интервал между соседними кнопками */
+  .sv-btn + .sv-btn {
+    margin-left: 12px;
+  }
+  
+  .sv-progress {
+    margin: 8px 0; /* единый отступ для всех прогресс-баров */
+  }
+  
+  .sv-error {
+    margin-top: 12px;
+    color: var(--sv-error);
+  }
+  
+  /* Подсветка области загрузки */
+  .sv-upload-highlight {
+    padding: 20px;
+    border-radius: var(--sv-radius);
+    background-color: var(--sv-bg-soft);
+    box-shadow: var(--sv-shadow);
+    border: 1px solid var(--sv-border);
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+  
+    &:hover {
+      box-shadow: var(--sv-shadow-hover);
+      transform: translateY(-2px);
+    }
+  }
+  
+  /* =========================================
+     Карточки загрузки/выбора (база и кандидат)
+     ========================================= */
+  .xr-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  
+  .xr-left {
+    min-width: 280px;
+    flex: 1 1 320px;
+  }
+  
+  .project-field {
+    width: 100%;
+  }
+  
+  .xr-right {
+    min-width: 280px;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* на десктопе текст справа */
+    gap: var(--sv-gap-sm);
+  }
+  
+  .xr-upload {
+    display: flex;
+    align-items: center;
+    gap: var(--sv-gap-sm);
+  }
+  
+  .xr-hint {
+    color: var(--sv-fg-muted);
+    text-align: right;
+    max-width: 520px;
+  }
+  
+  /* =========================================
+     Адаптив
+     ========================================= */
+  @media (max-width: 640px) {
+    .xr-right {
+      align-items: stretch; /* кнопка и подсказка на всю ширину */
+    }
+  
+    .xr-hint {
+      text-align: left;
+    }
+  
+    .table-wrapper {
+      min-width: 0;      /* позволяем ужиматься на мобильных */
+      max-width: 100%;
+    }
+  }
+  
+  /* Широкие экраны — немного увеличим наполнение */
+  @media (min-width: 1440px) {
+    .dash-wrap {
+      gap: var(--sv-gap-lg);
+    }
+  }
+  
+  /* =========================================
+     Печать
+     ========================================= */
+  @media print {
+    .dash-viewport,
+    .table-wrapper,
+    .sv-content {
+      max-height: none;
+      overflow: visible;
+    }
+  
+    .sv-upload-highlight {
+      box-shadow: none;
+      transform: none;
+    }
+  }
+  

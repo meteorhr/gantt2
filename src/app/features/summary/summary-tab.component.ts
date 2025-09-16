@@ -19,165 +19,244 @@ import { AppStateService } from '../../state/app-state.service';
   styleUrls: ['../../app.scss'],
   template: `
     @if (!wm.isReady()) {
-      
-    <div class="sv-root">
-    <mat-card class="sv-card" appearance="outlined">
-        <mat-card-header class="sv-header">
-        <mat-card-title class="sv-title">{{ 'app.title' | transloco }}</mat-card-title>
-        <mat-card-subtitle class="sv-subtitle">{{ 'app.subtitle' | transloco }}</mat-card-subtitle>
-        </mat-card-header>
+      <div class="sv-root">
+        <mat-card class="sv-card" appearance="outlined">
+          <mat-card-header class="sv-header">
+            <mat-card-title class="sv-title">{{ 'app.title' | transloco }}</mat-card-title>
+            <mat-card-subtitle class="sv-subtitle">{{ 'app.subtitle' | transloco }}</mat-card-subtitle>
+          </mat-card-header>
 
-        <mat-card-content class="sv-content">
-        <section class="sv-section sv-intro">
-            <p class="sv-p">{{ 'intro.p1' | transloco }}</p>
-            <p class="sv-p">{{ 'intro.p2' | transloco }}</p>
-            <p class="sv-p">{{ 'intro.p3' | transloco }}</p>
-            <p class="sv-p">{{ 'intro.p4' | transloco }}</p>
-        </section>
+          <mat-card-content class="sv-content">
+            <section class="sv-section sv-intro">
+              <p class="sv-p">{{ 'intro.p1' | transloco }}</p>
+              <p class="sv-p">{{ 'intro.p2' | transloco }}</p>
+              <p class="sv-p">{{ 'intro.p3' | transloco }}</p>
+              <p class="sv-p">{{ 'intro.p4' | transloco }}</p>
+            </section>
 
-        <section class="sv-section sv-upload-highlight " aria-labelledby="xer-upload-title">
-            <h4 id="xer-upload-title" class="sv-h4">{{ 'xer.upload.title' | transloco }}</h4>
-            <p class="sv-p">{{ 'xer.upload.desc' | transloco }}</p>
+            <section class="sv-section sv-upload-highlight" aria-labelledby="base-upload-title">
+              <h4 id="base-upload-title" class="sv-h4">{{ 'base.upload.title' | transloco }}</h4>
+              <p class="sv-p">{{ 'base.upload.desc' | transloco }}</p>
 
-            <input
-            #fileInput
-            type="file"
-            accept=".xer,.xml"
-            (change)="onFileSelected($event)"
-            hidden
-            aria-hidden="true"
-            />
+              <input
+                #fileInput
+                type="file"
+                accept=".xer,.xml"
+                (change)="onFileSelected($event)"
+                hidden
+                aria-hidden="true"
+              />
 
-            <button
-            mat-stroked-button
-            type="button"
-            class="sv-btn"
-            [disabled]="wm.loading()"
-            (click)="fileInput.click()"
-            aria-label="{{ 'xer.upload.btn_aria' | transloco }}"
-            >
-            <mat-icon aria-hidden="true">upload_file</mat-icon>
-            <span>{{ 'xer.upload.btn' | transloco }}</span>
-            </button>
+              <button
+                mat-stroked-button
+                type="button"
+                class="sv-btn"
+                [disabled]="wm.loading()"
+                (click)="fileInput.click()"
+                aria-label="{{ 'base.upload.btn_aria' | transloco }}"
+              >
+                <mat-icon aria-hidden="true">upload_file</mat-icon>
+                <span>{{ 'base.upload.btn' | transloco }}</span>
+              </button>
 
-            <button
-            mat-stroked-button
-            color="primary"
-            type="button"
-            class="sv-btn"
-            [disabled]="wm.loading()"
-            (click)="onLoadDemoClick()"
-            aria-label="{{ 'xer.upload.demo_btn_aria' | transloco }}"
-            >
-            <mat-icon aria-hidden="true">dataset</mat-icon>
-            <span>{{ 'xer.upload.demo_btn' | transloco }}</span>
-            </button>
+              <button
+                mat-stroked-button
+                color="primary"
+                type="button"
+                class="sv-btn"
+                [disabled]="wm.loading()"
+                (click)="onLoadDemoClick()"
+                aria-label="{{ 'base.upload.demo_btn_aria' | transloco }}"
+              >
+                <mat-icon aria-hidden="true">dataset</mat-icon>
+                <span>{{ 'base.upload.demo_btn' | transloco }}</span>
+              </button>
 
-            @if (wm.loading()) {
-            <div class="sv-progress">
-                <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-            </div>
-            } 
+              @if (wm.loading()) {
+                <div class="sv-progress">
+                  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                </div>
+              }
 
-            @if (wm.error()) {
-            <div class="sv-error mat-body">{{ wm.error() }}</div>
-            }
-        </section>
+              @if (wm.error()) {
+                <div class="sv-error mat-body">{{ wm.error() }}</div>
+              }
+            </section>
 
-        <section class="sv-section sv-security" aria-labelledby="security-title">
-            <h4 id="security-title" class="sv-h4">{{ 'security.title' | transloco }}</h4>
-            <p class="sv-p">{{ 'security.lead' | transloco }}</p>
-            <ul class="sv-ul">
-            <li class="sv-li">{{ 'security.items.local_only' | transloco }}</li>
-            <li class="sv-li">{{ 'security.items.indexeddb' | transloco }}</li>
-            <li class="sv-li">{{ 'security.items.analytics' | transloco }}</li>
-            <li class="sv-li">{{ 'security.items.control' | transloco }}</li>
-            </ul>
-            <p class="sv-p">{{ 'security.outro' | transloco }}</p>
-        </section>
+            <section class="sv-section sv-security" aria-labelledby="security-title">
+              <h4 id="security-title" class="sv-h4">{{ 'security.title' | transloco }}</h4>
+              <p class="sv-p">{{ 'security.lead' | transloco }}</p>
+              <ul class="sv-ul">
+                <li class="sv-li">{{ 'security.items.local_only' | transloco }}</li>
+                <li class="sv-li">{{ 'security.items.indexeddb' | transloco }}</li>
+                <li class="sv-li">{{ 'security.items.analytics' | transloco }}</li>
+                <li class="sv-li">{{ 'security.items.control' | transloco }}</li>
+              </ul>
+              <p class="sv-p">{{ 'security.outro' | transloco }}</p>
+            </section>
 
-        <section class="sv-section sv-privacy" aria-labelledby="privacy-title">
-          {{ 'info' | transloco }}
-        </section>
-        </mat-card-content>
-        <mat-card-actions>
-                      <a
+            <section class="sv-section sv-privacy" aria-labelledby="privacy-title">
+              {{ 'info' | transloco }}
+            </section>
+          </mat-card-content>
+
+          <mat-card-actions>
+            <a
               mat-stroked-button
               color="primary"
               href="mailto:ruslan.khissamov@meteorhr.com"
-              aria-label="Email Ruslan Khissamov"
+              aria-label="{{ 'contact.email_aria' | transloco }}"
             >
               <mat-icon aria-hidden="true">mail</mat-icon>
-              <span>Ruslan Khisamov</span>
+              <span>{{ 'contact.name' | transloco }}</span>
             </a>
-        </mat-card-actions>
-    </mat-card>
-    </div>
+          </mat-card-actions>
+        </mat-card>
+      </div>
     } @else {
       <div class="dash-viewport">
         <div class="dash-wrap">
 
+          <!-- Блок: базовый проект + замена файла -->
           <mat-card appearance="outlined">
             <mat-card-content>
-              <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:12px;">
-                <div style="color: rgba(0,0,0,0.6);">
-                  {{ 'xer_upload_hint' | transloco }}
+              <div class="xr-row">
+                <!-- Левая колонка: выбор проекта -->
+                <div class="xr-left">
+                  <mat-form-field appearance="outline" class="project-field">
+                    <mat-label>{{ 'project.label' | transloco }}</mat-label>
+                    <mat-select
+                      [disabled]="wm.loading()"
+                      [value]="wm.selectedProjectId()"
+                      (selectionChange)="onProjectChange($event.value)"
+                    >
+                      @for (p of wm.projects(); track p.proj_id) {
+                        <mat-option [value]="p.proj_id">
+                          {{ p.proj_short_name || ('#' + p.proj_id) }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
                 </div>
-                <div>
-                  <input
-                    #reloadInput
-                    type="file"
-                    accept=".xer,.xml"
-                    (change)="onFileSelected($event)"
-                    style="display:none" />
-                  <button
-                    [disabled]="wm.loading()"
-                    mat-stroked-button
-                    color="primary"
-                    type="button"
-                    (click)="reloadInput.click()">
-                    <mat-icon>upload_file</mat-icon>
-                    {{ 'xer_reload_file' | transloco }}
-                  </button>
+
+                <!-- Правая колонка: кнопка сверху, подсказка снизу -->
+                <div class="xr-right">
+                  <div class="xr-upload">
+                    <input
+                      #reloadInput
+                      type="file"
+                      accept=".xer,.xml"
+                      (change)="onFileSelected($event)"
+                      style="display:none"
+                    />
+                    <button
+                      [disabled]="wm.loading()"
+                      mat-stroked-button
+                      color="primary"
+                      type="button"
+                      (click)="reloadInput.click()"
+                      aria-label="{{ 'base.reload.btn_aria' | transloco }}"
+                      aria-describedby="uploadHint"
+                    >
+                      <mat-icon>upload_file</mat-icon>
+                      {{ 'base.reload.btn' | transloco }}
+                    </button>
+                  </div>
+
+                  <div id="uploadHint" class="xr-hint">
+                    {{ 'base.upload.hint' | transloco }}
+                  </div>
                 </div>
               </div>
 
               @if (wm.loading()) {
-                <div class="sv-progress" style="margin-bottom: 8px; margin-top: 8px;">
+                <div class="sv-progress">
                   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
                 </div>
               }
             </mat-card-content>
           </mat-card>
 
-          <mat-card appearance="outlined">
+          <!-- Блок: кандидат (селект скрыт, если массив пуст) -->
+          <mat-card appearance="outlined" style="margin-top:12px;">
             <mat-card-content>
-              <mat-form-field appearance="outline" style="min-width: 280px;">
-                <mat-label>Project</mat-label>
-                <mat-select [value]="wm.selectedProjectId()" (selectionChange)="onProjectChange($event.value)">
-                  @for (p of wm.projects(); track p.proj_id) {
-                    <mat-option [value]="p.proj_id">
-                      {{ p.proj_short_name || ('#' + p.proj_id) }}
-                    </mat-option>
+              <div class="xr-row">
+                <div class="xr-left">
+                  @let candidateList = wm.projectsCandidate();
+                  @let candidateHasProjects = (candidateList?.length ?? 0) > 0;
+
+                  @if (candidateHasProjects) {
+                    <mat-form-field appearance="outline" class="project-field">
+                      <mat-label>{{ 'project.candidate_label' | transloco }}</mat-label>
+                      <mat-select
+                        [disabled]="wm.loadingCandidate()"
+                        [value]="wm.selectedProjectIdCandidate()"
+                      >
+                        @for (p of candidateList; track p.proj_id) {
+                          <mat-option [value]="p.proj_id">
+                            {{ p.proj_short_name || ('#' + p.proj_id) }}
+                          </mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
                   }
-                </mat-select>
-              </mat-form-field>
+                </div>
+
+                <div class="xr-right">
+                  <div class="xr-upload">
+                    <input
+                      #candidateInput
+                      type="file"
+                      accept=".xer,.xml"
+                      (change)="onCandidateFileSelected($event)"
+                      style="display:none"
+                    />
+                    <button
+                      [disabled]="wm.loadingCandidate()"
+                      mat-stroked-button
+                      color="primary"
+                      type="button"
+                      (click)="candidateInput.click()"
+                      aria-describedby="candidateUploadHint"
+                      aria-label="{{ (candidateHasProjects ? 'candidate.upload.btn_reload_aria' : 'candidate.upload.btn_add_aria') | transloco }}"
+                    >
+                      <mat-icon>upload_file</mat-icon>
+                      @if (candidateHasProjects) {
+                        {{ 'candidate.upload.btn_reload' | transloco }}
+                      } @else {
+                        {{ 'candidate.upload.btn_add' | transloco }}
+                      }
+                    </button>
+                  </div>
+
+                  <div id="candidateUploadHint" class="xr-hint">
+                    {{ 'base.upload.hint' | transloco }}
+                  </div>
+                </div>
+              </div>
+
+              @if (wm.loadingCandidate()) {
+                <div class="sv-progress">
+                  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                </div>
+              }
             </mat-card-content>
           </mat-card>
 
+          <!-- Таблица суммарной информации -->
           <mat-card appearance="outlined">
             <mat-card-content>
               <div class="table-wrapper">
                 <table mat-table [dataSource]="wm.xerSummaryArray()" class="mat-elevation-z1" style="width:100%; margin-bottom: 16px;">
                   <ng-container matColumnDef="name">
-                    <th mat-header-cell *matHeaderCellDef style="width: 200px;">Name</th>
+                    <th mat-header-cell *matHeaderCellDef style="width: 200px;">{{ 'table.name' | transloco }}</th>
                     <td mat-cell *matCellDef="let row">
                       {{ row.i18n ? (row.i18n | transloco) : row.name }}
                     </td>
                   </ng-container>
 
                   <ng-container matColumnDef="value">
-                    <th mat-header-cell *matHeaderCellDef>Value</th>
+                    <th mat-header-cell *matHeaderCellDef>{{ 'table.value' | transloco }}</th>
                     <td mat-cell *matCellDef="let row">
                       {{ row.i18nValue ? (row.i18nValue | transloco: row.params) : row.value }}
                     </td>
@@ -191,9 +270,8 @@ import { AppStateService } from '../../state/app-state.service';
           </mat-card>
 
         </div>
-      </div>   
+      </div>
     }
-
   `,
 })
 export class SummaryTabComponent {
@@ -204,6 +282,18 @@ export class SummaryTabComponent {
     const file = input?.files && input.files.length ? input.files[0] : null;
     if (file) await this.wm.loadFromFile(file);
     if (input) input.value = '';
+  }
+
+  async onCandidateFileSelected(ev: Event): Promise<void> {
+    const input = ev.target as HTMLInputElement;
+    const file = input?.files && input.files.length ? input.files[0] : null;
+    if (file) {
+      try {
+        await this.wm.loadFromFile(file, { candidate: true });
+      } finally {
+        if (input) input.value = '';
+      }
+    }
   }
 
   async onLoadDemoClick(): Promise<void> {

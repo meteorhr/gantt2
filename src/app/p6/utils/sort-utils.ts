@@ -1,7 +1,7 @@
 // src/app/xer/sort-utils.ts
 // Безопасные утилиты сортировки для ячеек XER (string | number | Date | null | undefined)
 
-import { P6Scalar } from "./parser/parser.types";
+import { P6Scalar } from "../parser/parser.types";
 
 
 

@@ -81,6 +81,11 @@ export interface DashboardVm {
   };
 }
 
+type DashboardBuildOptions = {
+  candidate?: boolean;   // использовать кандидатские таблицы
+  prefix?: string;       // префикс таблиц (по умолчанию 'C_' при candidate)
+  variantName?: string;  // имя варианта для Dashboard (по умолчанию 'candidate'|'base')
+};
 
 @Injectable({ providedIn: 'root' })
 export class AppStateService {
@@ -93,16 +98,20 @@ export class AppStateService {
   // UI signals
   readonly isReady = signal(false);
   readonly loading = signal(false);
+  readonly loadingCandidate = signal(false);
   readonly error = signal<string | null>(null);
 
   // Data
   readonly projects = signal<any[]>([]);
   readonly selectedProjectId = signal<number | null>(null);
+  readonly projectsCandidate = signal<any[]>([]);
+  readonly selectedProjectIdCandidate = signal<number | null>(null);
   readonly activityData = signal<Node[]>([]);
   readonly xerSummaryArray = signal<any[]>([]);
 
   // Dashboard VM
   readonly dashboard = signal<DashboardVm | null>(null);
+  readonly dashboardCandidate = signal<DashboardVm | null>(null);
   readonly dashLoading = signal(false);   // индикатор расчёта дашборда
 
   // Gantt config
@@ -135,12 +144,13 @@ export class AppStateService {
 
   // Tabs VM
   readonly tabsVm = computed(() => ([
-    { link: 'summary' as const,   i18n: 'xer_summary',        disabled: false },
-    { link: 'dcma' as const,      i18n: 'DCMA_14',   disabled: !this.isReady() },
-    { link: 'dashboard' as const, i18n: 'dashboard.title',          disabled: !this.isReady() },
-    { link: 'gantt' as const,     i18n: 'activities_gantt',   disabled: !this.isReady() },
-
+    { link: 'summary' as const,     i18n: 'xer_summary',        disabled: false },
+    { link: 'dcma' as const,        i18n: 'scheduleHealth',            disabled: !this.isReady() },
+    { link: 'dashboard' as const,   i18n: 'dashboard.title',    disabled: !this.isReady() },
+    { link: 'gantt' as const,       i18n: 'activities_gantt',   disabled: !this.isReady() },
+    { link: 'compare' as const,     i18n: 'changeControl',            disabled: !this.isReady() },
   ]));
+  
   readonly tabs$ = toObservable(this.tabsVm);
 
   constructor() {
@@ -157,35 +167,55 @@ export class AppStateService {
     }
   }
 
-  async loadFromFile(file: File): Promise<void> {
+  async loadFromFile(file: File, opts?: { candidate?: boolean }): Promise<void> {
     const hadData = this.isReady();
-    this.loading.set(true);
+    const isCandidate = !!opts?.candidate;
+    if(isCandidate){
+      this.loadingCandidate.set(true)
+    } else {
+      this.loading.set(true);
+    }
+    
     this.error.set(null);
     try {
-      await this.dexie.clear();
-      await this.clearDashboardTable();
-      await this.p6.loadFromFile(file);
+      await this.p6.loadFromFile(file, opts);
 
-      const projects = await this.dexie.getRows('PROJECT');
-      const list = (projects as any[]).filter(p => p?.proj_id != null);
-      if (!list.length) throw new Error('Таблица PROJECT пуста или proj_id отсутствует.');
-      this.projects.set(list);
+      if (!isCandidate) {  
+        const projects = await this.dexie.getRows('PROJECT');
+        const list = (projects as any[]).filter(p => p?.proj_id != null);
+        if (!list.length) throw new Error('Таблица PROJECT пуста или proj_id отсутствует.');
+        this.projects.set(list);
+  
+        const pid = Number(list[0].proj_id);
+        if (!Number.isFinite(pid)) throw new Error('Некорректный proj_id в таблице PROJECT.');
+        this.selectedProjectId.set(pid);
+  
+        // Обновляем Gantt/Summary
+        await this.rebuildForProject(pid);
+  
+        this.isReady.set(true);
+        this.analytics.event('upload_xer', { file_name: file.name });
+      } else {
+        const projectsCandidate = await this.dexie.getRows('C_PROJECT');
+        const list = (projectsCandidate as any[]).filter(p => p?.proj_id != null);
+        if (!list.length) throw new Error('Таблица PROJECT пуста или proj_id отсутствует.');
+        this.projectsCandidate.set(list);
+  
+        const pid = Number(list[0].proj_id);
+        if (!Number.isFinite(pid)) throw new Error('Некорректный proj_id в таблице PROJECT.');
+        this.selectedProjectIdCandidate.set(pid);
+      }
 
-      const pid = Number(list[0].proj_id);
-      if (!Number.isFinite(pid)) throw new Error('Некорректный proj_id в таблице PROJECT.');
-      this.selectedProjectId.set(pid);
-
-      // Обновляем Gantt/Summary
-      await this.rebuildForProject(pid);
-
-      this.isReady.set(true);
-      this.analytics.event('upload_xer', { file_name: file.name });
     } catch (e: any) {
       console.error('[XER] File load failed:', e);
       this.error.set(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить файл.');
       if (!hadData) this.isReady.set(false);
     } finally {
-      this.loading.set(false);
+      if(isCandidate){
+        this.loadingCandidate.set(false)
+      } else {
+        this.loading.set(false);
+      }
     }
   }
 
@@ -238,23 +268,43 @@ export class AppStateService {
   }
 
   /** ПУБЛИЧНЫЙ расчёт дашборда: вызываем в компоненте Dashboard при каждом входе */
-  async computeDashboard(projectId?: number): Promise<void> {
+  // опционально — тип опций
+
+
+  async computeDashboard(projectId?: number, opts: DashboardBuildOptions = {}): Promise<void> {
     const pid = Number(projectId ?? this.selectedProjectId());
+    const isCandidate = !!opts.candidate;
     if (!Number.isFinite(pid)) {
-      this.dashboard.set(null);
+
+      if(isCandidate){
+        this.dashboardCandidate.set(null);
+      } else {
+        this.dashboard.set(null);
+      }
+
+      
       return;
     }
     this.dashLoading.set(true);
     try {
-      const vm = await this.buildDashboard(pid);
-      this.dashboard.set(vm);
+      const vm = await this.buildDashboard(pid, opts);
+      if(isCandidate){
+        this.dashboardCandidate.set(vm);
+      } else {
+        this.dashboard.set(vm);
+      }
     } catch (e) {
       console.error('[Dashboard] build failed:', e);
-      this.dashboard.set(null);
+      if(isCandidate){
+        this.dashboardCandidate.set(null);
+      } else {
+        this.dashboard.set(null);
+      }
     } finally {
       this.dashLoading.set(false);
     }
-  }
+}
+
 
   /* ---------------------- приватные методы ---------------------- */
 
@@ -375,397 +425,368 @@ export class AppStateService {
     }
   }
 
-  private async buildDashboard(project_id: number): Promise<DashboardVm> {
-    const pid = Number(project_id);
-  
-    // --- PROJECT ---
-    const projectRows = await this.dexie.getRows('PROJECT');
-    const p = (projectRows as any[]).find(r => Number(r?.proj_id) === pid) ?? null;
-  
-    const planStart  = this.toIsoDateOrNull(p?.plan_start_date ?? p?.fcst_start_date);
-    const planEnd    = this.toIsoDateOrNull(p?.plan_end_date   ?? p?.scd_end_date);
-    const dataDate   = this.toIsoDateOrNull(p?.next_data_date ?? p?.data_date );
-    const mustFinish = this.toIsoDateOrNull(p?.scd_end_date ?? p?.plan_end_date);
-  
-    const lastRecalc =
-      this.toIsoDateOrNull(p?.last_recalc_date) ??
-      this.toIsoDateOrNull(p?.last_tasksum_date) ??
-      this.toIsoDateOrNull(p?.update_date) ?? null;
-  
-    // --- TASK (все задачи проекта) ---
-    const taskRows = await this.dexie.getRows('TASK');
-    const tasks = (taskRows as any[]).filter(t => Number(t?.proj_id) === pid);
-    const totalTasks = tasks.length;
-    const taskIdSet = new Set<number>(tasks.map(t => Number(t?.task_id)).filter(n => Number.isFinite(n)));
-  
-    const floatSummary = await floatSummaryForProject(
-      this.dexie, pid,
-      { criticalLt: 1, nearCriticalLt: 21, highFloatGt: 49, units: 'days' }
-    );
-    
 
-    // --- RSRC (имена ресурсов для группировок) ---
-    const rsrcRows = await this.dexie.getRows('RSRC');
-    const rsrcMap = new Map<number, string>();
-    for (const r of (rsrcRows as any[])) {
-      const id = Number(r?.rsrc_id);
-      if (!Number.isFinite(id)) continue;
-      const name = String(r?.rsrc_name ?? r?.rsrc_short_name ?? '').trim();
-      rsrcMap.set(id, name || `#${id}`);
-    }
-  
-    // --- Группировки по TASK ---
-    const byStatus       = this.countBy(tasks, t => (t as any).status_code);
-    const byTaskType     = this.countBy(tasks, t => (t as any).task_type);
-    const byPriorityType = this.countBy(tasks, t => (t as any).priority_type);
-    const byDurationType = this.countBy(tasks, t => (t as any).duration_type);
-    const byRsrcId       = this.countBy(tasks, t => {
-      const raw = (t as any).rsrc_id;
-      if (raw === null || raw === undefined || raw === '') return '—';
-      const id = Number(raw);
-      if (!Number.isFinite(id)) return '—';
-      return rsrcMap.get(id) ?? `#${id}`;
-    });
-  
-    // --- Прогрессы (как было) ---
-    const completeCount = tasks.filter(t =>
-      (t as any).status_code === 'TK_Complete' || !!(t as any).act_end_date
-    ).length;
-    const progressSchedulePct = this.clampPct(totalTasks ? (completeCount / totalTasks) * 100 : 0);
-    const progressPhysicalPct = this.clampPct(
-      this.avgBy(tasks, t => this.toNumberOrNull((t as any).phys_complete_pct)) ?? 0
-    );
 
-    const actUnits    = this.sumBy(tasks, t => this.toNumberOrNull((t as any).act_work_qty));
-    const targetUnits = this.sumBy(tasks, t => this.toNumberOrNull((t as any).target_work_qty));
-    const progressUnitsPct = this.clampPct(targetUnits > 0 ? (actUnits / targetUnits) * 100 : 0);
-    // ================== COST LOADING ==================
-    // 1) Пытаемся взять из TASKRSRC (надежнее, если таблица заполнена).
-    const trsAll = await this.dexie.getRows('TASKRSRC');
+private async buildDashboard(project_id: number, opts: DashboardBuildOptions = {}): Promise<DashboardVm> {
+  const pid = Number(project_id);
 
-    let actCost = this.sumBy(trsAll, a => {
-  const ar = this.toNumberOrNull((a as any).act_reg_cost) ?? 0;
-  const ao = this.toNumberOrNull((a as any).act_ot_cost)  ?? 0;
-  const ac = this.toNumberOrNull((a as any).act_cost)     ?? 0;
-  return (ar + ao) || ac;
-});
+  const candidate = !!opts.candidate;
+  const prefixResolved = typeof opts.prefix === 'string'
+    ? opts.prefix
+    : (candidate ? 'C_' : '');
+  const variant = opts.variantName ?? (candidate ? 'candidate' : 'base');
 
-let targetCost = this.sumBy(trsAll, a => {
-  const tc = this.toNumberOrNull((a as any).target_cost);
-  if (tc != null) return tc;
-  const tq  = this.toNumberOrNull((a as any).target_qty);
-  const cpq = this.toNumberOrNull((a as any).cost_per_qty);
-  return (tq != null && cpq != null) ? tq * cpq : 0;
-});
+  // помощник для маппинга имен таблиц
+  const T = (name: string) => (prefixResolved ? `${prefixResolved}${name}` : name);
 
-// ==== Fallback на TASK.*, если из TASKRSRC ничего ====
-if (!targetCost || targetCost === 0) {
-  
-  const taskAct = this.sumBy(tasks, t =>
-    (this.toNumberOrNull((t as any).actual_total_cost)        ?? 0) ||
-    ((this.toNumberOrNull((t as any).actual_labor_cost)       ?? 0) +
-     (this.toNumberOrNull((t as any).actual_nonlabor_cost)    ?? 0))
+  // --- PROJECT ---
+  const projectRows = await this.dexie.getRows(T('PROJECT'));
+  const p = (projectRows as any[]).find(r => Number(r?.proj_id) === pid) ?? null;
+
+  const planStart  = this.toIsoDateOrNull(p?.plan_start_date ?? p?.fcst_start_date);
+  const planEnd    = this.toIsoDateOrNull(p?.plan_end_date   ?? p?.scd_end_date);
+  const dataDate   = this.toIsoDateOrNull(p?.next_data_date ?? p?.data_date );
+  const mustFinish = this.toIsoDateOrNull(p?.scd_end_date ?? p?.plan_end_date);
+
+  const lastRecalc =
+    this.toIsoDateOrNull(p?.last_recalc_date) ??
+    this.toIsoDateOrNull(p?.last_tasksum_date) ??
+    this.toIsoDateOrNull(p?.update_date) ?? null;
+
+  // --- TASK (все задачи проекта) ---
+  const taskRows = await this.dexie.getRows(T('TASK'));
+  const tasks = (taskRows as any[]).filter(t => Number(t?.proj_id) === pid);
+  const totalTasks = tasks.length;
+  const taskIdSet = new Set<number>(tasks.map(t => Number(t?.task_id)).filter(n => Number.isFinite(n)));
+
+  // float summary — если функция поддерживает options, она их получит; если нет, лишний аргумент будет проигнорирован
+  const floatSummary = await (floatSummaryForProject as any)(
+    this.dexie, pid,
+    { criticalLt: 1, nearCriticalLt: 21, highFloatGt: 49, units: 'days', candidate, prefix: prefixResolved }
   );
 
-  const taskTarget = this.sumBy(tasks, t =>
-    (this.toNumberOrNull((t as any).at_completion_total_cost) ?? 0) ||
-    ((this.toNumberOrNull((t as any).at_completion_labor_cost)    ?? 0) +
-     (this.toNumberOrNull((t as any).at_completion_nonlabor_cost) ?? 0)) ||
-    // как дополнительный фолбэк можно взять planned:
-    ((this.toNumberOrNull((t as any).planned_labor_cost)      ?? 0) +
-     (this.toNumberOrNull((t as any).planned_nonlabor_cost)   ?? 0))
-  );
-
-  actCost    = taskAct;
-  targetCost = taskTarget;
-}
-
-const progressCostPct =
-  this.clampPct(targetCost > 0 ? (actCost / targetCost) * 100 : 0);
-
-
-    const trs = (trsAll as any[]).filter(r =>
-      Number(r?.proj_id) === pid || taskIdSet.has(Number(r?.task_id))
-    );
-  
-    const num = (v: any) => this.toNumberOrNull(v) ?? 0;
-    const firstNum = (r: any, keys: string[]) => {
-      for (const k of keys) {
-        const v = num(r?.[k]);
-        if (v) return v;
-      }
-      return 0;
-    };
-    const sumKeys = (rows: any[], keys: string[]) =>
-      rows.reduce((s, r) => s + firstNum(r, keys), 0);
-  
-
-   // Берём ПЕРВЫЙ доступный ключ из списка приоритетов на каждую строку
-function sumByPrecedence(rows: any[], keys: string[]): number {
-  let total = 0;
-  for (const r of rows) {
-    let picked: number | null = null;
-    for (const k of keys) {
-      const v = r?.[k];
-      if (v !== undefined && v !== null) {
-        const n = Number(v);
-        if (Number.isFinite(n)) { picked = n; break; }
-      }
-    }
-    if (picked !== null) total += picked;
+  // --- RSRC (имена ресурсов) ---
+  const rsrcRows = await this.dexie.getRows(T('RSRC'));
+  const rsrcMap = new Map<number, string>();
+  for (const r of (rsrcRows as any[])) {
+    const id = Number(r?.rsrc_id);
+    if (!Number.isFinite(id)) continue;
+    const name = String(r?.rsrc_name ?? r?.rsrc_short_name ?? '').trim();
+    rsrcMap.set(id, name || `#${id}`);
   }
-  return total;
-}
 
-// --- RESOURCE LOADING (qty) ---  ✅ исправленный приоритет полей P6
-const KQ = {
-  // План на завершение (BAC) — приоритет тотальных/целевых
-  budget: ['target_total_qty', 'target_qty', 'budg_qty'],
+  // --- Группировки ---
+  const byStatus       = this.countBy(tasks, t => (t as any).status_code);
+  const byTaskType     = this.countBy(tasks, t => (t as any).task_type);
+  const byPriorityType = this.countBy(tasks, t => (t as any).priority_type);
+  const byDurationType = this.countBy(tasks, t => (t as any).duration_type);
+  const byRsrcId       = this.countBy(tasks, t => {
+    const raw = (t as any).rsrc_id;
+    if (raw === null || raw === undefined || raw === '') return '—';
+    const id = Number(raw);
+    if (!Number.isFinite(id)) return '—';
+    return rsrcMap.get(id) ?? `#${id}`;
+  });
 
-  // Факт "to date" — строго накопленные, периодические в самый низ
-  actual: ['act_total_qty', 'act_this_qty_to_date', 'actual_qty', 'act_qty'],
+  // --- Прогрессы ---
+  const completeCount = tasks.filter(t =>
+    (t as any).status_code === 'TK_Complete' || !!(t as any).act_end_date
+  ).length;
+  const progressSchedulePct = this.clampPct(totalTasks ? (completeCount / totalTasks) * 100 : 0);
+  const progressPhysicalPct = this.clampPct(
+    this.avgBy(tasks, t => this.toNumberOrNull((t as any).phys_complete_pct)) ?? 0
+  );
 
-  // Остаток — накопленные остатки, затем иные
-  remain: ['remain_total_qty', 'remaining_qty', 'remain_qty'],
+  const actUnits    = this.sumBy(tasks, t => this.toNumberOrNull((t as any).act_work_qty));
+  const targetUnits = this.sumBy(tasks, t => this.toNumberOrNull((t as any).target_work_qty));
+  const progressUnitsPct = this.clampPct(targetUnits > 0 ? (actUnits / targetUnits) * 100 : 0);
 
-  // Текущий период
-  period: ['this_per_qty', 'act_this_per_qty', 'act_qty'],
-};
+  // ================== COST LOADING ==================
+  const trsAll = await this.dexie.getRows(T('TASKRSRC'));
 
-let rsrcQtyBudgeted     = sumByPrecedence(trs, KQ.budget);
-let rsrcQtyActualToDate = sumByPrecedence(trs, KQ.actual);
-let rsrcQtyRemaining    = sumByPrecedence(trs, KQ.remain);
-let rsrcQtyThisPeriod   = sumByPrecedence(trs, KQ.period);
+  let actCost = this.sumBy(trsAll, a => {
+    const ar = this.toNumberOrNull((a as any).act_reg_cost) ?? 0;
+    const ao = this.toNumberOrNull((a as any).act_ot_cost)  ?? 0;
+    const ac = this.toNumberOrNull((a as any).act_cost)     ?? 0;
+    return (ar + ao) || ac;
+  });
 
-// Фоллбэк на TASK.* если TASKRSRC пуст/нулевой
-if (trs.length === 0 || (rsrcQtyBudgeted + rsrcQtyActualToDate + rsrcQtyRemaining + rsrcQtyThisPeriod) === 0) {
-  const getN = (t: any, k: string) => {
-    const n = Number(t?.[k]); return Number.isFinite(n) ? n : 0;
+  let targetCost = this.sumBy(trsAll, a => {
+    const tc = this.toNumberOrNull((a as any).target_cost);
+    if (tc != null) return tc;
+    const tq  = this.toNumberOrNull((a as any).target_qty);
+    const cpq = this.toNumberOrNull((a as any).cost_per_qty);
+    return (tq != null && cpq != null) ? tq * cpq : 0;
+  });
+
+  if (!targetCost || targetCost === 0) {
+    const taskAct = this.sumBy(tasks, t =>
+      (this.toNumberOrNull((t as any).actual_total_cost)        ?? 0) ||
+      ((this.toNumberOrNull((t as any).actual_labor_cost)       ?? 0) +
+       (this.toNumberOrNull((t as any).actual_nonlabor_cost)    ?? 0))
+    );
+
+    const taskTarget = this.sumBy(tasks, t =>
+      (this.toNumberOrNull((t as any).at_completion_total_cost) ?? 0) ||
+      ((this.toNumberOrNull((t as any).at_completion_labor_cost)    ?? 0) +
+       (this.toNumberOrNull((t as any).at_completion_nonlabor_cost) ?? 0)) ||
+      ((this.toNumberOrNull((t as any).planned_labor_cost)      ?? 0) +
+       (this.toNumberOrNull((t as any).planned_nonlabor_cost)   ?? 0))
+    );
+
+    actCost    = taskAct;
+    targetCost = taskTarget;
+  }
+
+  const progressCostPct = this.clampPct(targetCost > 0 ? (actCost / targetCost) * 100 : 0);
+
+  const trs = (trsAll as any[]).filter(r =>
+    Number(r?.proj_id) === pid || taskIdSet.has(Number(r?.task_id))
+  );
+
+  const num = (v: any) => this.toNumberOrNull(v) ?? 0;
+  const firstNum = (r: any, keys: string[]) => {
+    for (const k of keys) {
+      const v = num(r?.[k]);
+      if (v) return v;
+    }
+    return 0;
+  };
+  const sumKeys = (rows: any[], keys: string[]) =>
+    rows.reduce((s, r) => s + firstNum(r, keys), 0);
+
+  function sumByPrecedence(rows: any[], keys: string[]): number {
+    let total = 0;
+    for (const r of rows) {
+      let picked: number | null = null;
+      for (const k of keys) {
+        const v = r?.[k];
+        if (v !== undefined && v !== null) {
+          const n = Number(v);
+          if (Number.isFinite(n)) { picked = n; break; }
+        }
+      }
+      if (picked !== null) total += picked;
+    }
+    return total;
+  }
+
+  const KQ = {
+    budget: ['target_total_qty', 'target_qty', 'budg_qty'],
+    actual: ['act_total_qty', 'act_this_qty_to_date', 'actual_qty', 'act_qty'],
+    remain: ['remain_total_qty', 'remaining_qty', 'remain_qty'],
+    period: ['this_per_qty', 'act_this_per_qty', 'act_qty'],
   };
 
-  const sumTargetWork = tasks.reduce((s, t) => s + getN(t, 'target_work_qty'), 0);
-  const sumActWork    = tasks.reduce((s, t) => s + getN(t, 'act_work_qty'), 0);
-  const sumRemainWork = tasks.reduce((s, t) => {
-    const rem = Number(t?.remain_work_qty);
-    if (Number.isFinite(rem)) return s + rem;
-    const tgt = getN(t, 'target_work_qty');
-    const act = getN(t, 'act_work_qty');
-    return s + Math.max(0, tgt - act);
-  }, 0);
-  const sumThisPerWork = tasks.reduce((s, t) => s + getN(t, 'act_this_per_work_qty'), 0);
+  let rsrcQtyBudgeted     = sumByPrecedence(trs, KQ.budget);
+  let rsrcQtyActualToDate = sumByPrecedence(trs, KQ.actual);
+  let rsrcQtyRemaining    = sumByPrecedence(trs, KQ.remain);
+  let rsrcQtyThisPeriod   = sumByPrecedence(trs, KQ.period);
 
-  rsrcQtyBudgeted     = sumTargetWork;
-  rsrcQtyActualToDate = sumActWork;
-  rsrcQtyRemaining    = sumRemainWork;
-  rsrcQtyThisPeriod   = sumThisPerWork;
-}
+  if (trs.length === 0 || (rsrcQtyBudgeted + rsrcQtyActualToDate + rsrcQtyRemaining + rsrcQtyThisPeriod) === 0) {
+    const getN = (t: any, k: string) => {
+      const n = Number(t?.[k]); return Number.isFinite(n) ? n : 0;
+    };
+    const sumTargetWork = tasks.reduce((s, t) => s + getN(t, 'target_work_qty'), 0);
+    const sumActWork    = tasks.reduce((s, t) => s + getN(t, 'act_work_qty'), 0);
+    const sumRemainWork = tasks.reduce((s, t) => {
+      const rem = Number(t?.remain_work_qty);
+      if (Number.isFinite(rem)) return s + rem;
+      const tgt = getN(t, 'target_work_qty');
+      const act = getN(t, 'act_work_qty');
+      return s + Math.max(0, tgt - act);
+    }, 0);
+    const sumThisPerWork = tasks.reduce((s, t) => s + getN(t, 'act_this_per_work_qty'), 0);
 
-function toNum(x: any): number { const n = Number(x); return Number.isFinite(n) ? n : 0; }
-function isAllZero(vals: number[]): boolean { return vals.every(v => v === 0); }
+    rsrcQtyBudgeted     = sumTargetWork;
+    rsrcQtyActualToDate = sumActWork;
+    rsrcQtyRemaining    = sumRemainWork;
+    rsrcQtyThisPeriod   = sumThisPerWork;
+  }
 
-// ================== COST LOADING (TASKRSRC) ==================
-/**
- * Приоритеты полей подобраны так, чтобы:
- * - Budgeted (BAC): брать целевые/плановые ИМЕННО накопленные в приоритете, без EAC;
- * - Actual: брать строго накопленные поля вверху, периодические — только как низкий фоллбэк;
- * - Remaining: накопленные остатки; если нет — вычислять как max(0, Budgeted - Actual);
- * - Period: явные "this_per_*", затем возможно period-like;
- * - AtCompletion (EAC): явные at_completion_*; если нет — Actual + Remaining.
- */
-const KC = {
-  // План/бюджет (BAC), БЕЗ EAC. Исключаем at_completion_* из budget, чтобы не мешать семантику.
-  budget: ['target_total_cost', 'target_cost', 'budg_cost'],
+  function toNum(x: any): number { const n = Number(x); return Number.isFinite(n) ? n : 0; }
+  function isAllZero(vals: number[]): boolean { return vals.every(v => v === 0); }
 
-  // Факт "to date": накопленные поля выше, периодические — в самый низ.
-  actual: ['act_total_cost', 'act_this_cost_to_date', 'actual_cost', 'act_cost'],
+  const KC = {
+    budget: ['target_total_cost', 'target_cost', 'budg_cost'],
+    actual: ['act_total_cost', 'act_this_cost_to_date', 'actual_cost', 'act_cost'],
+    remain: ['remain_total_cost', 'remaining_cost', 'remain_cost'],
+    period: ['this_per_cost', 'act_this_per_cost', 'act_cost'],
+    atComp: ['at_completion_total_cost', 'at_completion_cost'],
+  };
 
-  // Остаток "to complete": накопленные остатки.
-  remain: ['remain_total_cost', 'remaining_cost', 'remain_cost'],
+  const baseCurrency = await (this.getBaseCurrencyFromDb as any)(p, { candidate, prefix: prefixResolved });
 
-  // За текущий период:
-  period: ['this_per_cost', 'act_this_per_cost', 'act_cost'],
+  let costBudgeted      = sumByPrecedence(trs, KC.budget);
+  let costActualToDate  = sumByPrecedence(trs, KC.actual);
+  let costRemaining     = sumByPrecedence(trs, KC.remain);
+  let costThisPeriod    = sumByPrecedence(trs, KC.period);
+  let costValue         = sumByPrecedence(trs, KC.atComp);
 
-  // Явный EAC:
-  atComp: ['at_completion_total_cost', 'at_completion_cost'],
-};
+  if (costRemaining === 0 && (costBudgeted !== 0 || costActualToDate !== 0)) {
+    costRemaining = Math.max(0, costBudgeted - costActualToDate);
+  }
+  if (costValue === 0) {
+    costValue = costActualToDate + costRemaining;
+  }
 
-// Базовая валюта проекта (если нужно для меток/форматирования)
-const baseCurrency = await this.getBaseCurrencyFromDb(p);
+  if (trs.length === 0 || isAllZero([costBudgeted, costActualToDate, costRemaining, costThisPeriod, costValue])) {
+    const defCostPerQty = toNum(p?.def_cost_per_qty);
+    const get = (t: any, k: string) => toNum(t?.[k]);
 
-// Основной путь: TASKRSRC
-let costBudgeted      = sumByPrecedence(trs, KC.budget);
-let costActualToDate  = sumByPrecedence(trs, KC.actual);
-let costRemaining     = sumByPrecedence(trs, KC.remain);
-let costThisPeriod    = sumByPrecedence(trs, KC.period);
-let costValue         = sumByPrecedence(trs, KC.atComp); // EAC, если есть явное поле
+    const fallbackBudgetedQty   = tasks.reduce((s, t) => s + get(t, 'target_work_qty'), 0);
+    const fallbackActualQty     = tasks.reduce((s, t) => s + get(t, 'act_work_qty'), 0);
+    const fallbackRemainQty     = tasks.reduce((s, t) => {
+      const rem = Number(t?.remain_work_qty);
+      if (Number.isFinite(rem)) return s + rem;
+      const tgt = get(t, 'target_work_qty');
+      const act = get(t, 'act_work_qty');
+      return s + Math.max(0, tgt - act);
+    }, 0);
+    const fallbackThisPerQty    = tasks.reduce((s, t) => s + get(t, 'act_this_per_work_qty'), 0);
 
-// Если нет явного Remaining — считаем как BAC - Actual (не отрицательное)
-if (costRemaining === 0 && (costBudgeted !== 0 || costActualToDate !== 0)) {
-  costRemaining = Math.max(0, costBudgeted - costActualToDate);
-}
+    costBudgeted     = fallbackBudgetedQty * defCostPerQty;
+    costActualToDate = fallbackActualQty   * defCostPerQty;
+    costRemaining    = fallbackRemainQty   * defCostPerQty;
+    costThisPeriod   = fallbackThisPerQty  * defCostPerQty;
+    costValue        = costActualToDate + costRemaining;
+  }
 
-// Если нет явного EAC — считаем как Actual + Remaining
-if (costValue === 0) {
-  costValue = costActualToDate + costRemaining;
-}
+  const cpi = await (computeCPIFromDexie as any)(this.dexie, pid, { candidate, prefix: prefixResolved });
 
-// ---------------- Fallback на TASK при пустых/нулевых TASKRSRC ----------------
-if (trs.length === 0 || isAllZero([costBudgeted, costActualToDate, costRemaining, costThisPeriod, costValue])) {
-  const defCostPerQty = toNum(p?.def_cost_per_qty);
+  const spiRes = await (computeSpiForProject as any)(this.dexie, pid, {
+    weight: 'work',
+    asOf:  dataDate ?? lastRecalc,
+    debug: false,
+    candidate,
+    prefix: prefixResolved
+  });
 
-  const get = (t: any, k: string) => toNum(t?.[k]);
+  if (!costValue) costValue = costActualToDate + costRemaining || costBudgeted;
 
-  const fallbackBudgetedQty   = tasks.reduce((s, t) => s + get(t, 'target_work_qty'), 0);
-  const fallbackActualQty     = tasks.reduce((s, t) => s + get(t, 'act_work_qty'), 0);
-  const fallbackRemainQty     = tasks.reduce((s, t) => {
-    const rem = Number(t?.remain_work_qty);
-    if (Number.isFinite(rem)) return s + rem;
-    const tgt = get(t, 'target_work_qty');
-    const act = get(t, 'act_work_qty');
-    return s + Math.max(0, tgt - act);
-  }, 0);
-  const fallbackThisPerQty    = tasks.reduce((s, t) => s + get(t, 'act_this_per_work_qty'), 0);
+  // summarize — если есть C_SUMMARIZE, можно читать его напрямую по префиксу
+  const summarize =
+    (typeof (this as any).getSummarizeFromDb === 'function')
+      ? await (this as any).getSummarizeFromDb({ candidate, prefix: prefixResolved })
+      : await this.dexie.getRows(T('SUMMARIZE'));
 
-  // Стоимость как qty * дефолтная стоимость за qty (если в данных нет детальной стоимости по ресурсам)
-  costBudgeted     = fallbackBudgetedQty * defCostPerQty;
-  costActualToDate = fallbackActualQty   * defCostPerQty;
-  costRemaining    = fallbackRemainQty   * defCostPerQty;
-  costThisPeriod   = fallbackThisPerQty  * defCostPerQty;
-  costValue        = costActualToDate + costRemaining; // EAC
-}
+  // Ensure dashboard store exists
+  try {
+    if (typeof (this.dexie as any).ensureDashboardStore === 'function') {
+      await (this.dexie as any).ensureDashboardStore();
+    }
+  } catch (e) {
+    console.warn('[Dexie] ensureDashboardStore before persist failed:', e);
+  }
 
-    const cpi = await computeCPIFromDexie(this.dexie, pid);
+  // === Persist Dashboard snapshot ===
+  try {
+    const record = {
+      id: `${pid}::${variant}`,
+      createdAt: Date.now(),
+      project_id: pid,
+      name: variant,                // <-- 'candidate' | 'base' (или своё из opts.variantName)
+      prefix: prefixResolved,       // для дебага
+      candidate,                    // флаг источника
+      updated_at: new Date().toISOString(),
+      payload: {
+        variant,
+        sourcePrefix: prefixResolved,
+        candidate,
+        projectId: pid,
+        planStart,
+        planEnd,
+        lastRecalc,
+        summarize,
+        dataDate,
+        mustFinish,
+        costValue,
+        costActualToDate,
+        costRemaining,
+        costBudgeted,
+        costThisPeriod,
+        baseCurrency,
+        progressSchedulePct,
+        progressPhysicalPct,
+        progressCostPct,
+        rsrcQtyActualToDate,
+        rsrcQtyRemaining,
+        rsrcQtyBudgeted,
+        rsrcQtyThisPeriod,
+        floatSummary,
+        spi: {
+          asOf: spiRes.asOf,
+          EV: spiRes.EV,
+          PV: spiRes.PV,
+          SPI: spiRes.SPI,
+          method: spiRes.method
+        },
+        cpi,
+        totalTasks,
+        byStatus,
+        byTaskType,
+        byPriorityType,
+        byDurationType,
+        byRsrcId,
+      }
+    } as const;
 
-    const spiRes = await computeSpiForProject(this.dexie, pid, {
-      weight: 'work',            // можно переключить на 'equal'
-      asOf:  dataDate ?? lastRecalc,
-      debug: false
-    });
-      
-    // Если at-completion исчезающе мал — тоже EAC
-    if (!costValue) costValue = costActualToDate + costRemaining || costBudgeted;
 
-    const summarize = await this.getSummarizeFromDb();
-
-    // Ensure DASHBOARD store exists proactively
+    // на всякий случай — открыта ли БД
     try {
-      if (typeof (this.dexie as any).ensureDashboardStore === 'function') {
-        await (this.dexie as any).ensureDashboardStore();
+      const d: any = this.dexie as any;
+      if (d?.db && typeof d.db.open === 'function' && d.db.isOpen && !d.db.isOpen()) {
+        await d.db.open();
       }
     } catch (e) {
-      console.warn('[Dexie] ensureDashboardStore before persist failed:', e);
-    }
-    // === Persist Dashboard snapshot ===
-    // Name is not provided -> save as base
-    try {
-      const record = {
-        id: `${pid}::base`,           // stable key per project for the base variant
-        project_id: pid,
-        name: 'base',
-        updated_at: new Date().toISOString(),
-        payload: {
-          projectId: pid,
-          planStart,
-          planEnd,
-          lastRecalc,
-          summarize,
-          dataDate,
-          mustFinish,
-          costValue,
-          costActualToDate,
-          costRemaining,
-          costBudgeted,
-          costThisPeriod,
-          baseCurrency,
-          progressSchedulePct,
-          progressPhysicalPct,
-          progressCostPct,
-          rsrcQtyActualToDate,
-          rsrcQtyRemaining,
-          rsrcQtyBudgeted,
-          rsrcQtyThisPeriod,
-          floatSummary,
-          spi: {
-            asOf: spiRes.asOf,
-            EV: spiRes.EV,
-            PV: spiRes.PV,
-            SPI: spiRes.SPI,
-            method: spiRes.method
-          },
-          cpi,
-          totalTasks,
-          byStatus,
-          byTaskType,
-          byPriorityType,
-          byDurationType,
-          byRsrcId,
-        }
-      } as const;
-      try {
-        const d: any = this.dexie as any;
-        
-        if (d?.db && typeof d.db.open === 'function' && d.db.isOpen && !d.db.isOpen()) {
-          await d.db.open();
-        }
-      } catch (e) {
-        console.warn('[Dexie] DB open check failed before save:', e);
-      }
-      await this.saveDashboardToDb(record);
-    } catch (persistErr) {
-      console.warn('[Dashboard] persist skipped:', persistErr);
+      console.warn('[Dexie] DB open check failed before save:', e);
     }
 
-    return {
-      projectId: pid,
-      planStart,
-      planEnd,
-      lastRecalc,
-
-      summarize,
-
-      dataDate,
-      mustFinish,
-
-      // ✨ Cost loading
-      costValue,
-      costActualToDate,
-      costRemaining,
-      costBudgeted,
-      costThisPeriod,
-
-      baseCurrency,
-
-      // Прогрессы
-      progressSchedulePct,
-      progressPhysicalPct,
-      progressCostPct,
-
-      rsrcQtyActualToDate,
-      rsrcQtyRemaining,
-      rsrcQtyBudgeted,
-      rsrcQtyThisPeriod,
-
-      floatSummary,
-
-      spi: {
-        asOf: spiRes.asOf,
-        EV: spiRes.EV,
-        PV: spiRes.PV,
-        SPI: spiRes.SPI,
-        method: spiRes.method
-      },
-
-      cpi: cpi,
-
-      // Группировки
-      totalTasks,
-      byStatus,
-      byTaskType,
-      byPriorityType,
-      byDurationType,
-      byRsrcId,
-    };
+    await this.saveDashboardToDb(record);
+  } catch (persistErr) {
+    console.warn('[Dashboard] persist skipped:', persistErr);
   }
+
+  // Возвращаем VM без «лишней» служебки
+  return {
+    projectId: pid,
+    planStart,
+    planEnd,
+    lastRecalc,
+    summarize,
+    dataDate,
+    mustFinish,
+    costValue,
+    costActualToDate,
+    costRemaining,
+    costBudgeted,
+    costThisPeriod,
+    baseCurrency,
+    progressSchedulePct,
+    progressPhysicalPct,
+    progressCostPct,
+    rsrcQtyActualToDate,
+    rsrcQtyRemaining,
+    rsrcQtyBudgeted,
+    rsrcQtyThisPeriod,
+    floatSummary,
+    spi: {
+      asOf: spiRes.asOf,
+      EV: spiRes.EV,
+      PV: spiRes.PV,
+      SPI: spiRes.SPI,
+      method: spiRes.method
+    },
+    cpi,
+    totalTasks,
+    byStatus,
+    byTaskType,
+    byPriorityType,
+    byDurationType,
+    byRsrcId,
+  };
+}
+
 
   private async getBaseCurrencyFromDb(projectRow?: any): Promise<string | null> {
     // 1) SUMMARIZE

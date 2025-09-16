@@ -99,7 +99,6 @@ export class DashboardTabComponent implements OnInit {
 
   // Если нужен напрямую сервис гистограммы/пивота — оставьте/используйте:
   private readonly hist = inject(HistogramService);
-  private readonly histogramPivotService = inject(HistogramPivotService);
 
   // --- данные для графиков/таблиц
   /** Данные помесячного агрегата по ресурсам для <histogramPivotChart> */
@@ -176,7 +175,7 @@ public toggleDurationTypeView(): void { this.showDurationTypeChart = !this.showD
   error: string | null = null;
 
   histogramCostResult: MonthlyUnitsRow[] = [];
-selectedMeasureCost: MeasureKey = 'Budgeted';
+  selectedMeasureCost: MeasureKey = 'Budgeted';
 
   /** выбор метрики */
   selectedMeasure: MeasureKey = 'Budgeted';

@@ -1,0 +1,413 @@
+/* ================================
+   БАЗА / ТОКЕНЫ
+   ================================ */
+   :host {
+    display: block;
+    height: auto; /* страница может расти по высоте */
+  }
+  
+  /* ================================
+     ЛЕЙАУТ ДАШБОРДА
+     ================================ */
+  .dash-viewport {
+    height: calc(100vh - 150px);
+    width: 1200px;                 /* фиксированная ширина */
+    max-width: calc(100vw - 32px); /* влезает на узких экранах */
+    margin: 0 auto;                /* центрирование */
+    overflow: auto;                /* внутренний скролл */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    display: block;
+  }
+  
+  .dash-wrap {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  /* ================================
+     TOP BAR
+     ================================ */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+  .grow { flex: 1 1 auto; }
+  
+  /* ================================
+     KPI СЕТКИ
+     ================================ */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: start; /* карточки 1–2 не тянутся по высоте третьей */
+  }
+  
+  .kpis4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+  
+  .kpi-card {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .kpi-card .mat-mdc-card-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;  /* значение -> подпись */
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 16px 20px;
+  }
+  
+  /* крупные значения */
+  .kpi-value {
+    font-size: 28px;
+    line-height: 1.1;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+    color: rgba(0, 0, 0, 0.87);
+  }
+  
+  .kpi-value-small {
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: 0.2px;
+  }
+  
+  .kpi-value-date {
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: 0.2px;
+  }
+  
+  .kpi-caption {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.35;
+    opacity: .72;
+  }
+  
+  /* стопка из трёх KPI (вертикально) */
+  .kpi-stack {
+    display: grid;
+    grid-template-rows: repeat(3, minmax(0, auto));
+    gap: 12px;
+  }
+  
+  /* ================================
+     ПРОГРЕСС-БАРЫ / ЧИПЫ / ДИВАЙДЕР
+     ================================ */
+  .progress-cell {
+    position: relative;
+    height: 20px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    position: absolute;
+    inset: 0 0 0 0;
+    width: var(--progress, 0%);
+    background: var(--mat-sys-primary);
+    transition: width 0.3s ease;
+  }
+  .progress-text {
+    position: relative;
+    z-index: 1;
+    font-size: 12px;
+    color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+  
+  .chip { margin-left: 8px; }
+  .divider { margin: 4px 0 2px; opacity: .6; }
+  
+  /* ================================
+     ТАБЛИЦЫ
+     ================================ */
+  /* Без sticky-заголовков, таблица растёт по контенту */
+  .tables {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(320px, 1fr));
+    gap: 12px;
+  }
+  
+  .table-card {
+    display: block; /* не flex, чтобы контент свободно расширял высоту */
+    border-radius: 14px;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  th.mat-mdc-header-cell {
+    position: static;  /* было sticky — убрано */
+    top: auto;
+    z-index: auto;
+    background: var(--mat-sys-surface);
+    box-shadow: none;
+  }
+  
+  td.mat-mdc-cell,
+  th.mat-mdc-header-cell {
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+  
+  tr.mat-mdc-row:hover td.mat-mdc-cell {
+    background: color-mix(in oklab, var(--mat-sys-surface) 92%, transparent);
+  }
+  
+  /* ================================
+     КОНТЕЙНЕР ВКЛАДКИ COMPARE
+     ================================ */
+  .cmp-root {
+    display: grid;
+    gap: 16px;
+  }
+  
+  /* Информер «кандидат не найден» */
+  .cmp-empty {
+    border: 1px dashed #e0e0e0;
+    border-radius: 12px;
+    background: #fff;
+  }
+  .cmp-empty__content {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .cmp-empty__icon {
+    color: rgba(0, 0, 0, 0.54);
+    font-size: 28px;
+  }
+  .cmp-empty__text {
+    display: grid;
+    gap: 8px;
+  }
+  .cmp-empty__title {
+    font-weight: 500;
+    font-size: 16px;
+  }
+  .cmp-empty__desc {
+    color: rgba(0, 0, 0, 0.75);
+  }
+  .cmp-empty__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .cmp-empty__hint {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  
+  /* Общая ошибка сравнения */
+  .cmp-error {
+    border-left: 4px solid #d32f2f;
+    border-radius: 8px;
+  }
+  .cmp-error__content {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .cmp-error__icon {
+    color: #d32f2f;
+    font-size: 28px;
+  }
+  .cmp-error__text {
+    display: grid;
+    gap: 6px;
+  }
+  .cmp-error__title { font-weight: 600; }
+  .cmp-error__actions { margin-top: 2px; }
+  
+  /* Прогресс сравнения */
+  .cmp-progress {
+    display: grid;
+    gap: 8px;
+    align-items: center;
+  }
+  .cmp-progress__label {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  
+  /* Решётка результатов сравнения */
+  .cmp-result-grid {
+    display: grid;
+    gap: 12px;
+  }
+  
+  /* ================================
+     СТАТУС-БЕЙДЖИ
+     ================================ */
+  .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .status-TK_NotStart { background-color: #9e9e9e; } /* серый — Not Started */
+  .status-TK_Active   { background-color: #1976d2; } /* синий — In Progress */
+  .status-TK_Suspend  { background-color: #fbc02d; color: #000; } /* жёлтый — Suspended */
+  .status-TK_Complete { background-color: #388e3c; } /* зелёный — Completed */
+  .status-TK_Inactive { background-color: #d32f2f; } /* красный — Inactive */
+  
+  /* ================================
+     ГЛОБАЛЬНЫЕ СТИЛИ ДЛЯ mat-card
+     ================================ */
+  :root,
+  .mat-app-background {
+    --mdc-elevated-card-container-color: #f9fafb;
+    --mdc-outlined-card-container-color: #f9fafb;
+    --mdc-filled-card-container-color: #f9fafb;
+  }
+  
+  .mat-mdc-card,
+  mat-card,
+  .mdc-card {
+    border-radius: 12px !important;
+    background-color: #fff !important; /* светлый фон */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); /* мягкая тень */
+    border: 1px solid #e0e0e0; /* тонкая рамка */
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+  }
+  
+  /* Внутренние отступы 20px */
+  .mat-mdc-card .mat-mdc-card-header,
+  .mat-mdc-card .mat-mdc-card-content,
+  .mat-mdc-card .mat-mdc-card-actions {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .mat-mdc-card .mat-mdc-card-header  { padding-top: 20px; padding-bottom: 6px; }
+  .mat-mdc-card .mat-mdc-card-content { padding-top: 10px; padding-bottom: 20px; }
+  .mat-mdc-card .mat-mdc-card-actions { padding-top: 12px; padding-bottom: 16px; }
+  
+  /* ================================
+     ТЁМНАЯ ТЕМА
+     ================================ */
+  @media (prefers-color-scheme: dark) {
+    .topbar {
+      border-color: color-mix(in oklab, var(--mat-sys-outline-variant) 40%, transparent);
+      background: color-mix(in oklab, var(--mat-sys-surface-container) 86%, transparent);
+    }
+  
+    tr.mat-mdc-row:hover td.mat-mdc-cell {
+      background: color-mix(in oklab, var(--mat-sys-surface-container) 88%, transparent);
+    }
+  
+    .mat-mdc-card,
+    mat-card,
+    .mdc-card {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+      border-color: rgba(255, 255, 255, .08);
+    }
+  }
+  
+  /* ================================
+     АДАПТИВ
+     ================================ */
+  @media (max-width: 1100px) {
+    .kpis { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+  }
+  @media (max-width: 900px) {
+    .kpis   { grid-template-columns: 1fr; }
+    .tables { grid-template-columns: 1fr; }
+  }
+  
+
+  /* Контейнер строки — растягиваем на всю ширину карточки */
+.cmp-summary__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* центрируем «vs» */
+  gap: 16px;
+  padding: 4px 0;
+}
+
+/* Левая и правая части занимают всё доступное место поровну */
+.cmp-summary__side {
+  flex: 1 1 0;   /* ключ: равное распределение ширины */
+  min-width: 0;  /* важно для работы ellipsis при узком месте */
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+/* Подписи и имя проекта — без изменений */
+.cmp-summary__label {
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,.6);
+}
+
+.cmp-summary__name {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.25;
+  color: rgba(0,0,0,.87);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* ваши линии под названием — оставлены */
+  /* .cmp-summary__side--base / --candidate задают цвет бордера */
+}
+
+.cmp-summary__side--base .cmp-summary__name {
+  border-bottom: 2px solid color-mix(in oklab, var(--mat-sys-primary) 40%, transparent);
+}
+.cmp-summary__side--candidate .cmp-summary__name {
+  border-bottom: 2px solid color-mix(in oklab, var(--mat-sys-secondary) 40%, transparent);
+}
+
+/* Центральный разделитель занимает только свою фактическую ширину */
+.cmp-summary__vs {
+  flex: 0 0 auto;     /* не растягивается */
+  padding: 0 6px;
+  font-weight: 700;
+  white-space: nowrap; /* «vs» не переносится */
+  opacity: .85;
+}
+
+/* Контент карточек на всю ширину */
+.mat-mdc-card .mat-mdc-card-content {
+  width: 100%;
+  display: block;       /* страхуемся, если вдруг где-то flex */
+  box-sizing: border-box;
+}
+
+/* (опционально) если где-то используется селектор тега */
+mat-card-content {
+  width: 100%;
+  display: block;
+  box-sizing: border-box; }
