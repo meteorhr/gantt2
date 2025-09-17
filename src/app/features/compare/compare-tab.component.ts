@@ -27,9 +27,9 @@ import { ProgressCompareTableComponent } from './shared/progress/progress-compar
     MatSelectModule,
     MatTableModule,
     MatButtonModule,
-    CostCompareTableComponent,
-    RsrcQtyCompareTableComponent,
-    IndexCompareTableComponent,
+    //CostCompareTableComponent,
+    //RsrcQtyCompareTableComponent,
+    //IndexCompareTableComponent,
     DateCompareTableComponent,
     ProgressCompareTableComponent
   ],

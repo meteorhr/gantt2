@@ -1,0 +1,76 @@
+.dlg-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .dlg-body {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 16px;
+    min-height: 380px;
+  }
+  
+  .left-nav {
+    border-right: 1px solid rgba(0,0,0,0.08);
+    padding-right: 4px;
+  
+    a.mat-mdc-list-item {
+      cursor: pointer;
+      .num {
+        width: 28px;
+        display: inline-block;
+        font-weight: 600;
+        opacity: .85;
+      }
+      .label {
+        opacity: .9;
+      }
+      &.active {
+        background: rgba(0,0,0,0.04);
+      }
+    }
+  }
+  
+  .right-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .pane-header .title {
+    display: flex;
+    flex-direction: column;
+    .cid {
+      font-weight: 700;
+      font-size: 14px;
+      opacity: .8;
+    }
+    .cname {
+      font-size: 18px;
+      font-weight: 600;
+    }
+  }
+  
+  .form {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+  }
+  
+  .hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: .8;
+    font-size: 12px;
+  }
+  
+  .dlg-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    .fx { flex: 1 1 auto; }
+  }
+  

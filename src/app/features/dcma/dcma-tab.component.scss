@@ -37,3 +37,12 @@
 /* Optional: лёгкий визуальный акцент в ячейке */
 :host ::ng-deep td.mat-mdc-cell mat-icon.ok { filter: drop-shadow(0 0 0 rgba(46,125,50,.15)); }
 :host ::ng-deep td.mat-mdc-cell mat-icon.bad { filter: drop-shadow(0 0 0 rgba(198,40,40,.15)); }
+
+/* в dcma-tab.component.scss */
+.dcma-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  .fx { flex: 1 1 auto; }
+}
