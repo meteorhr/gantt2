@@ -1,4 +1,4 @@
-import { ConstraintNorm } from "../dcma.service";
+import { ConstraintNorm } from "../src/utils";
 
 /** Минимальные типы под XER/XML таблицы, используемые в расчёте */
 export interface TaskRow {

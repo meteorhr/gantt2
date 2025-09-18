@@ -1,7 +1,14 @@
-// src/app/p6/services/dcma/src/check/check1.service.ts
 import { Injectable, inject } from '@angular/core';
 import { P6DexieService } from '../../../../dexie.service';
-import { DcmaCheck1Item, DcmaCheck1Options, DcmaCheck1Result, TaskPredRow, TaskRow } from '../../models/dcma.model';
+import {
+  DcmaCheck1Item,
+  DcmaCheck1Options,
+  DcmaCheck1Result,
+  TaskPredRow,
+  TaskRow,
+  DcmaActivityFilters,
+  DcmaThresholds,
+} from '../../models/check1.model';
 import { round2 } from '../utils/num.util';
 
 @Injectable({ providedIn: 'root' })
@@ -10,54 +17,83 @@ export class DcmaCheck1Service {
 
   /**
    * Анализ DCMA Check 1 (Logic) для заданного proj_id.
-   * Берём TASK, TASKPRED, при необходимости — PROJECT (для валидации наличия проекта).
    */
   async analyzeCheck1(
     projId: number,
     opts: DcmaCheck1Options = {}
   ): Promise<DcmaCheck1Result> {
-    // Defaults
-    const excludeTypes = new Set(
-      opts.excludeTypes ?? [
-        'TT_WBS',       // WBS Summary — исключаем из "eligible"
-      ]
-    );
-    const milestoneTypes = new Set(
-      opts.milestoneTypes ?? [
-        'TT_Mile',
-        'TT_StartMile',
-        'TT_FinMile',
-      ]
-    );
+    // ===== Activity Filters defaults =====
+    const afDefaults: DcmaActivityFilters = {
+      taskResourceDependent: true,
+      milestones: true,
+      levelOfEffort: false,
+      wbsSummary: false,
+      completed: true,
+      obsolete: true,
+    };
+    const af: DcmaActivityFilters = { ...afDefaults, ...(opts.activityFilters ?? {}) };
+
+    // ===== Thresholds defaults (оба порога настраиваемые пользователем) =====
+    const thDefaults: DcmaThresholds = { greatPct: 5, averagePct: 25 };
+    const th: DcmaThresholds = { ...thDefaults, ...(opts.thresholds ?? {}) };
+    // Санитизация порогов
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+    const greatRaw = Number.isFinite(th.greatPct) ? th.greatPct : 5;
+    const avgRaw = Number.isFinite(th.averagePct) ? th.averagePct : 25;
+    const greatClamped = clamp(greatRaw, 0, 100);
+    const avgClamped = clamp(avgRaw, 0, 100);
+    const thresholdGreatPct = Math.min(greatClamped, avgClamped);
+    const thresholdAveragePct = Math.max(greatClamped, avgClamped);
+
+    // ===== Исходные дефолты из старого кода =====
+    const excludeTypesInput = opts.excludeTypes ?? ['TT_WBS'];
+    const excludeTypes = new Set(Array.isArray(excludeTypesInput) ? excludeTypesInput : [...excludeTypesInput]);
+
+    const milestoneTypesInput = opts.milestoneTypes ?? ['TT_Mile', 'TT_StartMile', 'TT_FinMile'];
+    const milestoneTypes = new Set(Array.isArray(milestoneTypesInput) ? milestoneTypesInput : [...milestoneTypesInput]);
+
     const includeLists = opts.includeLists ?? true;
-    const excludeCompleted = opts.excludeCompleted ?? false;
-    const excludeLoEAndHammock = opts.excludeLoEAndHammock ?? true;
+
+    // Эффективные флаги исключений с учётом Activity Filters
+    const excludeCompletedEffective = (opts.excludeCompleted ?? false) || (af.completed === false);
+    const excludeLoEAndHammockEffective = (opts.excludeLoEAndHammock ?? true) || (af.levelOfEffort === false);
+    const wbsIncluded = af.wbsSummary === true;
+    if (!wbsIncluded) excludeTypes.add('TT_WBS');
+
     const treatMilestonesAsExceptions = opts.treatMilestonesAsExceptions ?? true;
+    const ignoreLoEAndHammockLinksInLogic = opts.ignoreLoEAndHammockLinksInLogic ?? false;
+    const includeDQ = opts.includeDQ ?? true;
+
     const statusMap = opts.statusMap ?? {
       'NOT STARTED': 'NOT_STARTED',
       'IN PROGRESS': 'IN_PROGRESS',
       'COMPLETED': 'COMPLETED',
       'TK_COMPLETE': 'COMPLETED',
       'FINISHED': 'COMPLETED',
+      'INACTIVE': 'UNKNOWN',
+      'TK_INACTIVE': 'UNKNOWN',
+      'OBSOLETE': 'UNKNOWN',
+      'CANCELLED': 'UNKNOWN',
     };
 
-    // Загружаем необходимые таблицы
+    const statusObsoleteKeys = (opts.statusObsoleteKeys && opts.statusObsoleteKeys.length > 0)
+      ? opts.statusObsoleteKeys.map(s => s.toUpperCase())
+      : ['INACTIVE', 'TK_INACTIVE', 'OBSOLETE', 'CANCELLED'];
+
+    // ===== Загрузка таблиц =====
     const [taskRows, predRows, projRows] = await Promise.all([
       this.dexie.getRows('TASK') as Promise<TaskRow[]>,
       this.dexie.getRows('TASKPRED') as Promise<TaskPredRow[]>,
       this.dexie.getRows('PROJECT') as Promise<Array<{ proj_id: number; proj_short_name?: string }>>,
     ]);
 
-    // Быстрая проверка на существование проекта
     const hasProject = projRows.some(p => p.proj_id === projId);
     if (!hasProject) {
       throw new Error(`Проект с proj_id=${projId} не найден в таблице PROJECT.`);
     }
 
-    // После загрузки таблиц: taskIdSet и фильтрация связей только внутри проекта
+    // ===== Индексы и DQ по всем связям =====
     const taskIdSet = new Set<number>((taskRows || []).filter(t => t.proj_id === projId).map(t => t.task_id));
-
-    // DQ статистика и карты «всех» связей (до фильтра по проекту)
     const allTaskIdSet = new Set<number>((taskRows || []).map(t => t.task_id));
     let dqDuplicateLinks = 0;
     let dqSelfLoops = 0;
@@ -80,7 +116,6 @@ export class DcmaCheck1Service {
       const as = allSuccByPred.get(predId) ?? []; as.push(l); allSuccByPred.set(predId, as);
     }
 
-    // Индексы связей: для быстрого поиска предшественников/преемников (только внутри проекта, с дедупликацией)
     const predBySuccessor = new Map<number, TaskPredRow[]>();
     const succByPredecessor = new Map<number, TaskPredRow[]>();
     const seenInternal = new Set<string>();
@@ -98,20 +133,26 @@ export class DcmaCheck1Service {
       const arrSucc = succByPredecessor.get(predId) ?? []; arrSucc.push(link); succByPredecessor.set(predId, arrSucc);
     }
 
-    const ignoreLoEAndHammockLinksInLogic = opts.ignoreLoEAndHammockLinksInLogic ?? false;
-    const includeDQ = opts.includeDQ ?? true;
-
-    // Helpers: статус, типы, milestone flags
+    // ===== Helpers =====
     const normStatus = (s: unknown): 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'UNKNOWN' => {
       const key = (typeof s === 'string' ? s : String(s ?? '')).trim().toUpperCase();
       return statusMap[key] ?? 'UNKNOWN';
     };
-    const isLoEOrHammock = (t: TaskRow): boolean => {
+    const isLoEOrHammockOrSummary = (t: TaskRow): boolean => {
       const ty = (t.task_type ?? '').trim().toUpperCase();
       return ty === 'TT_LOE' || ty === 'TT_HAMMOCK' || ty === 'TT_SUMMARY';
     };
     const isStartMilestone = (t: TaskRow): boolean => (t.task_type ?? '').trim() === 'TT_StartMile';
     const isFinishMilestone = (t: TaskRow): boolean => (t.task_type ?? '').trim() === 'TT_FinMile';
+    const isMilestoneType = (t: TaskRow): boolean => milestoneTypes.has((t.task_type ?? '').trim());
+    const isTaskOrResourceDependent = (t: TaskRow): boolean => {
+      const ty = (t.task_type ?? '').trim().toUpperCase();
+      return ty === 'TT_TASK' || ty === 'TT_RSRC' || ty === 'TT_RSRC_DEP' || ty === 'TT_RSRCDEPENDENT';
+    };
+    const isObsolete = (t: TaskRow): boolean => {
+      const raw = (typeof t.status_code === 'string' ? t.status_code : String(t.status_code ?? '')).trim().toUpperCase();
+      return statusObsoleteKeys.includes(raw);
+    };
 
     const taskById = new Map<number, TaskRow>();
     for (const t of (taskRows || [])) if (t && typeof t.task_id === 'number') taskById.set(t.task_id, t);
@@ -122,47 +163,80 @@ export class DcmaCheck1Service {
       for (const l of links) {
         const other = taskById.get(getOtherId(l));
         if (!other) continue;
-        if (!isLoEOrHammock(other)) { anyReal = true; break; }
+        if (!isLoEOrHammockOrSummary(other)) { anyReal = true; break; }
       }
-      return !anyReal; // true, если все противоположные — LOE/Hammock
+      return !anyReal; // true, если все противоположные — LOE/Hammock/Summary
     };
 
-    // Eligible: two-phase, compute totalEligibleRaw before exclusions
+    // ===== Eligible: формирование знаменателя =====
     const tasksInProject = (taskRows || []).filter(t => t.proj_id === projId);
 
-    // Сначала отсечём WBS
-    let eligibleTasks = tasksInProject.filter(t => (t.task_type ?? '').trim() !== 'TT_WBS');
+    // 0) WBS summary: если фильтром не включены — исключаем
+    let eligibleTasks = tasksInProject.filter(t => {
+      const ty = (t.task_type ?? '').trim().toUpperCase();
+      return !(excludeTypes.has(ty));
+    });
     const totalEligibleRaw = eligibleTasks.length;
 
     // Счётчики исключений
     let excludedWbs = tasksInProject.length - eligibleTasks.length;
     let excludedCompleted = 0;
     let excludedLoEOrHammock = 0;
-    const excludedByType: Record<string, number> = {};
+    let excludedByType: Record<string, number> = {};
+    let excludedObsolete = 0;
+    let excludedTaskResource = 0;
+    let excludedMilestones = 0;
 
-    // Правила исключений из знаменателя
-    if (excludeCompleted) {
+    // 1) Completed
+    if (excludeCompletedEffective) {
       const keep = eligibleTasks.filter(t => normStatus(t.status_code) !== 'COMPLETED');
       excludedCompleted = eligibleTasks.length - keep.length;
       eligibleTasks = keep;
     }
-    if (excludeLoEAndHammock) {
-      const keep = eligibleTasks.filter(t => !isLoEOrHammock(t));
+
+    // 2) Obsolete/Inactive
+    if (af.obsolete === false) {
+      const keep = eligibleTasks.filter(t => !isObsolete(t));
+      excludedObsolete = eligibleTasks.length - keep.length;
+      eligibleTasks = keep;
+    }
+
+    // 3) LOE/Hammock/Summary
+    if (excludeLoEAndHammockEffective) {
+      const keep = eligibleTasks.filter(t => !isLoEOrHammockOrSummary(t));
       excludedLoEOrHammock = eligibleTasks.length - keep.length;
       eligibleTasks = keep;
     }
+
+    // 4) Task/Resource dependent выключены?
+    if (af.taskResourceDependent === false) {
+      const keep = eligibleTasks.filter(t => !isTaskOrResourceDependent(t));
+      excludedTaskResource = eligibleTasks.length - keep.length;
+      eligibleTasks = keep;
+    }
+
+    // 5) Milestones выключены?
+    if (af.milestones === false) {
+      const keep = eligibleTasks.filter(t => !isMilestoneType(t));
+      excludedMilestones = eligibleTasks.length - keep.length;
+      eligibleTasks = keep;
+    }
+
+    // 6) Доп. исключения по типам (явно переданным)
     if (excludeTypes.size) {
-      eligibleTasks = eligibleTasks.filter(t => {
+      const keep: TaskRow[] = [];
+      for (const t of eligibleTasks) {
         const ty = (t.task_type ?? '').trim();
         if (excludeTypes.has(ty)) {
           excludedByType[ty] = (excludedByType[ty] ?? 0) + 1;
-          return false;
+          continue;
         }
-        return true;
-      });
+        keep.push(t);
+      }
+      eligibleTasks = keep;
     }
 
-    // Формируем detailItems с причинами/флагами
+    // ===== Детализация =====
     const detailItems: DcmaCheck1Item[] = eligibleTasks.map(t => {
       const id = t.task_id;
       const predecessorsAll = allPredBySucc.get(id) ?? [];
@@ -171,7 +245,6 @@ export class DcmaCheck1Service {
       const predecessors = predBySuccessor.get(id) ?? [];
       const successors   = succByPredecessor.get(id) ?? [];
 
-      // Признак наличия внешних соседей (в полном наборе связей)
       const hasExternalPred = predecessorsAll.length > 0 && (predecessors.length === 0);
       const hasExternalSucc = successorsAll.length > 0 && (successors.length === 0);
 
@@ -200,9 +273,6 @@ export class DcmaCheck1Service {
         else if (isMile) reasonSucc = 'ExceptionByRule';
       }
 
-      // Исключён по правилам? — уже исключили выше
-      const excludedFromEligible = false;
-
       return {
         task_id: id,
         task_code: t.task_code,
@@ -216,27 +286,36 @@ export class DcmaCheck1Service {
         isMilestone: isMile,
         reasonMissingPred: reasonPred,
         reasonMissingSucc: reasonSucc,
-        excludedFromEligible,
+        excludedFromEligible: false,
       };
     });
 
-    // Выделяем нарушения с учётом treatMilestonesAsExceptions
-    const isPredViolation = (i: DcmaCheck1Item) => !i.hasPredecessor && !(treatMilestonesAsExceptions && (i.reasonMissingPred === 'StartMilestone' || i.reasonMissingPred === 'ExceptionByRule'));
-    const isSuccViolation = (i: DcmaCheck1Item) => !i.hasSuccessor && !(treatMilestonesAsExceptions && (i.reasonMissingSucc === 'FinishMilestone' || i.reasonMissingSucc === 'ExceptionByRule'));
+    // Нарушения с учётом исключений для вех
+    const isPredViolation = (i: DcmaCheck1Item) =>
+      !i.hasPredecessor && !(treatMilestonesAsExceptions && (i.reasonMissingPred === 'StartMilestone' || i.reasonMissingPred === 'ExceptionByRule'));
+    const isSuccViolation = (i: DcmaCheck1Item) =>
+      !i.hasSuccessor && !(treatMilestonesAsExceptions && (i.reasonMissingSucc === 'FinishMilestone' || i.reasonMissingSucc === 'ExceptionByRule'));
 
     const missingPredList = detailItems.filter(isPredViolation);
     const missingSuccList = detailItems.filter(isSuccViolation);
     const missingBothList = detailItems.filter(i => isPredViolation(i) && isSuccViolation(i));
 
-    const totalEligible = detailItems.length; // после исключений
+    const totalEligible = detailItems.length;
     const missingAnySet = new Set<number>();
     for (const i of missingPredList) missingAnySet.add(i.task_id);
     for (const i of missingSuccList) missingAnySet.add(i.task_id);
 
     const uniqueMissingAny = missingAnySet.size;
     const percentMissingAny = totalEligible > 0 ? (uniqueMissingAny / totalEligible) * 100 : 0;
+
+    // Исторический порог DCMA 5% в штуках
     const threshold5PercentValue = Math.ceil(totalEligible * 0.05);
     const threshold5PercentExceeded = percentMissingAny > 5;
+
+    // Оценка производительности по пользовательским порогам
+    let performance: 'Great' | 'Average' | 'Poor' = 'Poor';
+    if (percentMissingAny <= thresholdGreatPct) performance = 'Great';
+    else if (percentMissingAny <= thresholdAveragePct) performance = 'Average';
 
     const result: DcmaCheck1Result = {
       proj_id: projId,
@@ -249,6 +328,13 @@ export class DcmaCheck1Service {
       percentMissingAny: round2(percentMissingAny),
       threshold5PercentValue,
       threshold5PercentExceeded,
+
+      thresholdGreatPct,
+      thresholdAveragePct,
+      performance,
+
+      appliedActivityFilters: af,
+
       details: includeLists ? {
         items: detailItems,
         missingPredList,
@@ -259,6 +345,9 @@ export class DcmaCheck1Service {
           excludedCompleted,
           excludedLoEOrHammock,
           excludedByType,
+          excludedObsolete,
+          excludedTaskResource,
+          excludedMilestones,
         },
         dq: includeDQ ? {
           duplicateLinks: dqDuplicateLinks,

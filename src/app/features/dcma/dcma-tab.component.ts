@@ -26,11 +26,14 @@ import {
   DcmaCheck14Service,
 } from '../../p6/services/dcma';
 
-import { DcmaCheck10Result, DcmaCheck11Result, DcmaCheck12Result, DcmaCheck13Result, DcmaCheck14Result, DcmaCheck1Result, DcmaCheck2Result, DcmaCheck3Result, DcmaCheck4Result, DcmaCheck5Result, DcmaCheck6Result, DcmaCheck7Result, DcmaCheck8Result, DcmaCheck9Result } from '../../p6/services/dcma/models/dcma.model';
+import { DcmaCheck10Result, DcmaCheck11Result, DcmaCheck12Result, DcmaCheck13Result, DcmaCheck14Result, DcmaCheck2Result, DcmaCheck3Result, DcmaCheck4Result, DcmaCheck5Result, DcmaCheck6Result, DcmaCheck7Result, DcmaCheck8Result, DcmaCheck9Result } from '../../p6/services/dcma/models/dcma.model';
 import { DcmaDetailsDialogComponent } from './dialog/dcma-dialog.component';
 import { DcmaInfoDialogComponent } from './dialog/dcma-dialog-info.component';
 import { DcmaSettingsDialogComponent } from './dialog/dcma-settings-dialog.component';
 import { DcmaCheckId, DcmaSettingsService } from './services/dcma-settings.service';
+import { DcmaCheck1Result } from '../../p6/services/dcma/models/check1.model';
+
+
 
 interface DcmaRow {
   check: DcmaCheckId;
@@ -58,12 +61,12 @@ interface DcmaRow {
       </div>
 
       @if (loading()) { <p>{{ 'common.loading' | transloco }}</p> } @else {
-        <table mat-table [dataSource]="rows()" class="mat-elevation-z1 fullw">
+        <table mat-table [dataSource]="filteredRows()" class="mat-elevation-z1 fullw">
           <ng-container matColumnDef="check">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.check' | transloco }}</th>
             <td mat-cell *matCellDef="let r">{{ r.check }}</td>
+            
           </ng-container>
-
           <ng-container matColumnDef="metric">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.metric' | transloco }}</th>
             <td mat-cell *matCellDef="let r">
@@ -73,35 +76,25 @@ interface DcmaRow {
               </button>
             </td>
           </ng-container>
-
           <ng-container matColumnDef="description">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.description' | transloco }}</th>
             <td mat-cell *matCellDef="let r">{{ r.description }}</td>
           </ng-container>
-
           <ng-container matColumnDef="percent">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.percent' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">{{ r.percent === null || r.percent === undefined ? '—' : r.percent }}</td>
+            <td mat-cell *matCellDef="let r">{{ (r.percent === null || r.percent === undefined) ? '—' : (r.percent | number:'1.0-2') }}</td>
           </ng-container>
-
           <ng-container matColumnDef="passed">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.passed' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">
-              <mat-icon [ngClass]="r.passed ? 'ok' : 'bad'">
-                {{ r.passed ? 'check_circle' : 'cancel' }}
-              </mat-icon>
-            </td>
+            <td mat-cell *matCellDef="let r"><mat-icon [ngClass]="r.passed ? 'ok' : 'bad'">{{ r.passed ? 'check_circle' : 'cancel' }}</mat-icon></td>
           </ng-container>
 
           <ng-container matColumnDef="details">
             <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.details' | transloco }}</th>
             <td mat-cell *matCellDef="let r">
-              <button mat-button (click)="openDetails(r)">
-                <mat-icon>list</mat-icon> {{ 'dcma.table.btnDetails' | transloco }}
-              </button>
-            </td>
+              <button mat-button (click)="openDetails(r)"><mat-icon>list</mat-icon> {{ 'dcma.table.btnDetails' | transloco }}
+            </button></td>
           </ng-container>
-
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
         </table>
@@ -110,31 +103,30 @@ interface DcmaRow {
   `,
 })
 export class DcmaChecksComponent {
-  private check1  = inject(DcmaCheck1Service);
-  private check2  = inject(DcmaCheck2Service);
-  private check3  = inject(DcmaCheck3Service);
-  private check4  = inject(DcmaCheck4Service);
-  private check5  = inject(DcmaCheck5Service);
-  private check6  = inject(DcmaCheck6Service);
-  private check7  = inject(DcmaCheck7Service);
-  private check8  = inject(DcmaCheck8Service);
-  private check9  = inject(DcmaCheck9Service);
-  private check10 = inject(DcmaCheck10Service);
-  private check11 = inject(DcmaCheck11Service);
-  private check12 = inject(DcmaCheck12Service);
-  private check13 = inject(DcmaCheck13Service);
-  private check14 = inject(DcmaCheck14Service);
+
+  private svc1 = inject(DcmaCheck1Service);
+  private svc2 = inject(DcmaCheck2Service);
+  private svc3 = inject(DcmaCheck3Service);
+  private svc4 = inject(DcmaCheck4Service);
+  private svc5 = inject(DcmaCheck5Service);
+  private svc6 = inject(DcmaCheck6Service);
+  private svc7 = inject(DcmaCheck7Service);
+  private svc8 = inject(DcmaCheck8Service);
+  private svc9 = inject(DcmaCheck9Service);
+  private svc10 = inject(DcmaCheck10Service);
+  private svc11 = inject(DcmaCheck11Service);
+  private svc12 = inject(DcmaCheck12Service);
+  private svc13 = inject(DcmaCheck13Service);
+  private svc14 = inject(DcmaCheck14Service);
 
   private wm = inject(AppStateService);
-  private dialog = inject(MatDialog);
   private cfg = inject(DcmaSettingsService);
-
   displayedColumns = ['check', 'metric', 'description', 'percent', 'passed', 'details'];
-
   rows = signal<DcmaRow[]>([]);
+  private dialog = inject(MatDialog);
+
   projId = signal<number>(this.wm.selectedProjectId()!);
   loading = signal<boolean>(false);
-
   r1 = signal<DcmaCheck1Result | null>(null);
   r2 = signal<DcmaCheck2Result | null>(null);
   r3 = signal<DcmaCheck3Result | null>(null);
@@ -149,40 +141,36 @@ export class DcmaChecksComponent {
   r12 = signal<DcmaCheck12Result | null>(null);
   r13 = signal<DcmaCheck13Result | null>(null);
   r14 = signal<DcmaCheck14Result | null>(null);
+  constructor() { this.run(); }
+  
 
-  constructor() {
-    this.run();
-  }
 
   async run() {
     this.loading.set(true);
     try {
-      const [
-        check1, check2, check3, check4, check5, check6, check7, check8, check9, check10, check11, check12, check13, check14,
-      ] = await Promise.all([
-        this.check1.analyzeCheck1(this.projId(), {
+      const [check1, check2, check3, check4, check5, check6, check7, check8, check9, check10, check11, check12, check13, check14] = await Promise.all([
+        this.svc1.analyzeCheck1(this.projId(), {
           excludeCompleted: true,
           excludeLoEAndHammock: true,
-          ignoreLoEAndHammockLinksInLogic: true,
+          ignoreLoEAndHammockLinksInLogic: true, 
           treatMilestonesAsExceptions: true,
           includeLists: true,
           includeDQ: true,
         }),
-        this.check2.analyzeCheck2(this.projId(), true),
-        this.check3.analyzeCheck3(this.projId(), true),
-        this.check4.analyzeCheck4(this.projId(), true),
-        this.check5.analyzeCheck5(this.projId(), true),
-        this.check6.analyzeCheck6(this.projId(), true),
-        this.check7.analyzeCheck7(this.projId(), true),
-        this.check8.analyzeCheck8(this.projId(), true),
-        this.check9.analyzeCheck9(this.projId(), true),
-        this.check10.analyzeCheck10(this.projId(), true, 8),
-        this.check11.analyzeCheck11(this.projId(), true),
-        this.check12.analyzeCheck12(this.projId(), true, { hoursPerDay: 8 }),
-        this.check13.analyzeCheck13(this.projId(), { hoursPerDay: 8 }),
-        this.check14.analyzeCheck14(this.projId(), true),
+        this.svc2.analyzeCheck2(this.projId(), true),
+        this.svc3.analyzeCheck3(this.projId(), true),
+        this.svc4.analyzeCheck4(this.projId(), true),
+        this.svc5.analyzeCheck5(this.projId(), true),
+        this.svc6.analyzeCheck6(this.projId(), true),
+        this.svc7.analyzeCheck7(this.projId(), true),
+        this.svc8.analyzeCheck8(this.projId(), true),
+        this.svc9.analyzeCheck9(this.projId(), true),
+        this.svc10.analyzeCheck10(this.projId(), true, 8),
+        this.svc11.analyzeCheck11(this.projId(), true),
+        this.svc12.analyzeCheck12(this.projId(), true, { hoursPerDay: 8 }),
+        this.svc13.analyzeCheck13(this.projId(), { hoursPerDay: 8 }),
+        this.svc14.analyzeCheck14(this.projId(), true),
       ]);
-
       this.r1.set(check1);
       this.r2.set(check2);
       this.r3.set(check3);
@@ -197,12 +185,13 @@ export class DcmaChecksComponent {
       this.r12.set(check12);
       this.r13.set(check13);
       this.r14.set(check14);
-
       this.buildRows();
     } finally {
       this.loading.set(false);
     }
   }
+
+
 
   openDetails(row: any) {
     this.dialog.open(DcmaDetailsDialogComponent, {
@@ -227,25 +216,19 @@ export class DcmaChecksComponent {
       data: { startCheckId: 1 },
     });
     ref.afterClosed().subscribe(res => {
+      // Если настройки изменились — пересчёт
       if (res?.saved) this.run();
-      else this.buildRows();
+      else this.buildRows(); // на случай, если меняли только видимость
     });
   }
 
   filteredRows = computed(() => {
     const map = this.cfg.settings();
-    return this.rows().filter(r => map[r.check].showInTable !== false);
+    return this.rows().filter(r => (map[r.check]?.showInTable ?? true));
   });
 
   private buildRows() {
-    type RowT = {
-      check: DcmaCheckId;
-      metric: string;
-      description: string;
-      percent: number | null;
-      passed: boolean;
-      result: any;
-    };
+    type RowT = { check: DcmaCheckId; metric: string; description: string; percent: number | null; passed: boolean; result: any };
     const rows: RowT[] = [];
     const push = (check: DcmaCheckId, metric: string, description: string, percent: number | null, passed: boolean, result: any) =>
       rows.push({ check, metric, description, percent, passed, result });
@@ -264,7 +247,6 @@ export class DcmaChecksComponent {
     const r12 = this.r12(); if (r12) push(12 as DcmaCheckId, 'Critical Path Test', `Single chain & ends at PF: ${r12.isSingleChain && r12.reachedProjectFinish ? 'OK' : 'Issue'}`, null, !!r12.testPassLikely, r12);
     const r13 = this.r13(); if (r13) push(13 as DcmaCheckId, 'CPLI', `CPL: ${r13.criticalPathLengthDays} • PTF: ${r13.projectTotalFloatDays}`, r13.cpli ?? null, !!r13.cpliWithin5pct, r13);
     const r14 = this.r14(); if (r14) push(14 as DcmaCheckId, 'BEI', `Planned/Actual: ${r14.plannedToComplete}/${r14.actuallyCompleted}`, r14.bei ?? null, !!r14.beiWithin95pct, r14);
-
     this.rows.set(rows);
   }
 }

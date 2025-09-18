@@ -1,41 +1,58 @@
-.dlg-title {
+/* Отключаем общий скролл у mat-dialog-content и лимит высоты Material,
+   чтобы скроллились только левая/правая панели */
+   mat-dialog-content.mat-mdc-dialog-content {
+    padding: 0 24px 24px;
+    max-height: none !important;
+    overflow: hidden !important;
+  }
+  
+  :host {
+    display: block;
+  }
+  
+  .dlg-title {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-top: 10px;
   }
   
-  .dlg-body {
+  /* ВАЖНО: задаем фиксированную высоту контента диалога и прячем общий скролл,
+     чтобы скроллились независимые левые/правые панели */
+  .dlg-body.split-scroll {
     display: grid;
     grid-template-columns: 260px 1fr;
     gap: 16px;
-    min-height: 380px;
+    height: min(68dvh, 720px);
+    overflow: hidden; /* общий скролл не нужен */
+  }
+  
+  /* Критично для корректного вложенного скролла в CSS Grid/Flex */
+  .left-nav,
+  .right-pane {
+    min-height: 0;
   }
   
   .left-nav {
-    border-right: 1px solid rgba(0,0,0,0.08);
+    overflow: auto;
     padding-right: 4px;
-  
-    a.mat-mdc-list-item {
-      cursor: pointer;
-      .num {
-        width: 28px;
-        display: inline-block;
-        font-weight: 600;
-        opacity: .85;
-      }
-      .label {
-        opacity: .9;
-      }
-      &.active {
-        background: rgba(0,0,0,0.04);
-      }
-    }
+    border-right: 1px solid rgba(0,0,0,0.08);
   }
   
   .right-pane {
+    overflow: auto;
+    padding-right: 8px;
     display: flex;
     flex-direction: column;
     gap: 16px;
+  }
+  
+  .pane-header.sticky {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 4px 0 8px 0;
+    background: var(--mdc-dialog-container-color, #fff);
   }
   
   .pane-header .title {
@@ -66,7 +83,29 @@
     font-size: 12px;
   }
   
-  .dlg-actions {
+  /* Стили элементов навигации */
+  .left-nav a.mat-mdc-list-item {
+    cursor: pointer;
+  }
+  .left-nav a.mat-mdc-list-item .num {
+    width: 28px;
+    display: inline-block;
+    font-weight: 600;
+    opacity: .85;
+  }
+  .left-nav a.mat-mdc-list-item .label {
+    opacity: .9;
+  }
+  .left-nav a.mat-mdc-list-item.active {
+    background: rgba(0,0,0,0.04);
+  }
+  .left-nav a.mat-mdc-list-item:focus-visible {
+    outline: 2px solid rgba(25,118,210,0.6);
+    outline-offset: -2px;
+  }
+  
+  /* Кнопочная полоса действий */
+  mat-dialog-actions {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -74,3 +113,30 @@
     .fx { flex: 1 1 auto; }
   }
   
+   
+  .section-title {
+    margin: 14px 0 8px;
+    font-weight: 600;
+    color: rgba(0,0,0,0.72);
+  }
+  
+  .row-line {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+    padding: 6px 0;
+  }
+  .row-text .row-title {
+    font-size: 14px;
+  }
+  .pct-field {
+    width: 120px;
+  }
+  
+  .threshold-bar {
+    height: 14px;
+    border-radius: 8px;
+    margin-top: 12px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  }
