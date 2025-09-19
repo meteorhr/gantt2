@@ -41,14 +41,42 @@
     width: 120px;
     margin-left: auto;
   }
-  
-  /* визуальная полоса порогов */
-  .threshold-bar {
-    height: 8px;
-    border-radius: 4px;
-    margin: 8px 0 16px;
-    background: #e0e0e0; /* переопределяется через [style.background] */
+
+  .row-block {
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+    padding: 8px 0 2px;
   }
+  
+  .muted { opacity: .8; font-size: 12px; }
+  
+  .block-title { margin-bottom: 2px; }
+  
+  
+/* Вертикальные радио (HPD source) */
+.radio-vert {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end; /* выравниваем маркеры по левому краю */
+}
+
+/* Вертикальные тогглы (Relationship types) */
+.toggle-vert {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+/* полоса визуализации порогов (если понадобится в этом шаблоне) */
+.threshold-bar {
+  height: 10px;
+  border-radius: 4px;
+  margin: 8px 0 16px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+}
   
   /* компакт без размытия (необязательно, но согласовано по высоте строки) */
   :host ::ng-deep .row-line > mat-slide-toggle .mdc-form-field {

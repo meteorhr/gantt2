@@ -14,6 +14,7 @@ import { DcmaSettingsService, DcmaCheckId, DCMA_IDS, DCMA_CHECK_LABELS } from '.
 import { DcmaCheck1SettingsPaneComponent } from './panes/check1-settings-pane.component';
 import { DcmaEmptySettingsPaneComponent } from './panes/empty-settings-pane.component';
 import { TranslocoModule } from '@jsverse/transloco';
+import { DcmaCheck2SettingsPaneComponent } from './panes/check2-settings-pane.component';
 
 // Подключаем панельки (отдельные файлы)
 
@@ -24,7 +25,7 @@ import { TranslocoModule } from '@jsverse/transloco';
   imports: [
     CommonModule, FormsModule, MatDialogModule, MatListModule, MatSlideToggleModule,
     MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatDividerModule,
-    DcmaCheck1SettingsPaneComponent, DcmaEmptySettingsPaneComponent, TranslocoModule
+    DcmaCheck1SettingsPaneComponent, DcmaEmptySettingsPaneComponent, TranslocoModule, DcmaCheck2SettingsPaneComponent
   ],
   styleUrls: ['./dcma-settings-dialog.component.scss'],
   templateUrl: './dcma-settings-dialog.component.html',

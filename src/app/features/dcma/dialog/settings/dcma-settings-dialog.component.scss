@@ -111,6 +111,7 @@ mat-dialog-content.mat-mdc-dialog-content {
   flex: 0 0 auto;
 }
 
+
   /* компакт без размытия (необязательно, но согласовано по высоте строки) */
   :host ::ng-deep .row-line > mat-slide-toggle .mdc-form-field {
     min-height: 24px;
@@ -138,13 +139,6 @@ mat-dialog-content.mat-mdc-dialog-content {
   margin-left: auto;
 }
 
-/* полоса визуализации порогов (если понадобится в этом шаблоне) */
-.threshold-bar {
-  height: 8px;
-  border-radius: 4px;
-  margin: 8px 0 16px;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
-}
 
 /* нижняя полоса действий */
 mat-dialog-actions {

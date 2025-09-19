@@ -164,7 +164,8 @@ export class DcmaChecksComponent {
       const id = this.projId();
 
       const p1  = s[1].enabled  ? this.svc1.analyzeCheck1(id, this.cfg.buildCheck1Options()) : Promise.resolve(null);
-      const p2  = s[2].enabled  ? this.svc2.analyzeCheck2(id, true) : Promise.resolve(null);
+      const p2  = s[2].enabled ? this.svc2.analyzeCheck2(id, true, this.cfg.buildCheck2Options()) : Promise.resolve(null);
+
       const p3  = s[3].enabled  ? this.svc3.analyzeCheck3(id, true) : Promise.resolve(null);
       const p4  = s[4].enabled  ? this.svc4.analyzeCheck4(id, true) : Promise.resolve(null);
       const p5  = s[5].enabled  ? this.svc5.analyzeCheck5(id, true) : Promise.resolve(null);
@@ -230,7 +231,17 @@ export class DcmaChecksComponent {
       rows.push({ check, metric, description, percent, passed, result });
 
     const r1 = this.r1(); if (r1) push(1 as DcmaCheckId, 'Logic', `Missing any: ${r1.uniqueMissingAny}/${r1.totalEligible}`, r1.percentMissingAny, r1.percentMissingAny <= 5, r1);
-    const r2 = this.r2(); if (r2) push(2 as DcmaCheckId, 'Leads', `Lead links: ${r2.leadCount}/${r2.totalRelationships}`, r2.leadPercent, r2.leadCount === 0, r2);
+    const r2 = this.r2();
+    if (r2) {
+      const grade = this.cfg.evaluateCheck2Grade(r2.leadPercent);
+      const label = grade === 'great' ? 'Great' : grade === 'average' ? 'Average' : 'Poor';
+      push(2 as DcmaCheckId, 'Leads',
+        `Lead links: ${r2.leadCount}/${r2.totalRelationships} • ${label}`,
+        r2.leadPercent,
+        this.cfg.evaluateCheck2Pass(r2),
+        r2);
+    }
+    
     const r3 = this.r3(); if (r3) push(3 as DcmaCheckId, 'Lags', `Lag links: ${r3.lagCount}/${r3.totalRelationships}`, r3.lagPercent, r3.lagPercent <= 5, r3);
     const r4 = this.r4(); if (r4) push(4 as DcmaCheckId, 'Relationship Types', `FS: ${r4.countFS} (of ${r4.totalRelationships})`, r4.percentFS, r4.percentFS >= 90, r4);
     const r5 = this.r5(); if (r5) push(5 as DcmaCheckId, 'Hard Constraints', `Hard: ${r5.hardCount}/${r5.totalWithConstraints}`, r5.hardPercent, r5.hardPercent <= 5, r5);

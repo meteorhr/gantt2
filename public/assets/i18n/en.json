@@ -366,6 +366,49 @@
         "average": "Average Performance"
       }
     },
+    "check2": {
+      "title": {
+        "general": "General",
+        "calendar": "Lag unit conversion",
+        "filters": "Filters",
+        "tolerance": "Tolerance (non-DCMA)",
+        "thresholds": "Threshold levels (custom KPI)"
+      },
+      "general": {
+        "strictZero": "Strict DCMA rule (no leads allowed)",
+        "includeDetails": "Include details in results",
+        "detailsLimit": "Details limit"
+      },
+      "calendar": {
+        "source": "HPD source for lag conversion",
+        "successor": "Successor calendar",
+        "predecessor": "Predecessor calendar",
+        "fixed": "Fixed value",
+        "fixedHpd": "Fixed hours per day",
+        "defaultHpd": "Default hours per day"
+      },
+      "filters": {
+        "types": "Relationship types",
+        "ignoreMilestones": "Ignore relations with milestones",
+        "ignoreLoE": "Ignore relations with Level of Effort activities",
+        "ignoreWbsSummary": "Ignore relations with WBS summary activities",
+        "ignoreCompleted": "Ignore relations with completed activities"
+      },
+      "tolerance": {
+        "percent": "Allowed leads, percent",
+        "count": "Allowed leads, count",
+        "hours": "Allowed total lead hours"
+      },
+      "thresholds": {
+        "great": "Great Performance",
+        "average": "Average Performance"
+      },
+      "note": {
+        "dcmaZero": "Per DCMA-14, any leads are non-compliant (target = 0%). Thresholds below are for custom KPIs only and do not change the DCMA rule unless you disable the Strict rule."
+      }
+    }
+  
+  ,
     "checks": {
       "names": {
         "1": "Logic",

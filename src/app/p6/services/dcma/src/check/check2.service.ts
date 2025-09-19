@@ -16,8 +16,10 @@ export type CalendarSource = 'successor' | 'predecessor' | 'fixed';
 export interface DcmaCheck2Options {
   /** Часы в дне по умолчанию (если календарь пуст) */
   hoursPerDay?: number;
+
   /** Источник часов/день для конвертации лагов */
   calendarSource?: CalendarSource;
+
   /** Фиксированное значение HPD, если выбран calendarSource='fixed' */
   fixedHoursPerDay?: number;
 
@@ -26,6 +28,11 @@ export interface DcmaCheck2Options {
 
   /** Игнорировать связи, где предшественник/преемник — веха */
   ignoreMilestoneRelations?: boolean;
+
+  /** ДОБАВЛЕНО: игнорировать связи c LoE / WBS Summary / Completed активностями */
+  ignoreLoERelations?: boolean;
+  ignoreWbsSummaryRelations?: boolean;
+  ignoreCompletedRelations?: boolean;
 
   /** Управление деталями */
   includeDetails?: boolean;
@@ -87,7 +94,7 @@ export class DcmaCheck2Service {
     const taskById = new Map<number, TaskRow>();
     for (const t of tasksInProject) taskById.set(t.task_id, t);
 
-    // Календарь: часы/день по источнику
+    // ========================= helpers =========================
     const calById = new Map<string | number, CALENDARRow>();
     for (const c of (calRows || [])) if (c && c.clndr_id != null) calById.set(c.clndr_id, c);
 
@@ -109,31 +116,62 @@ export class DcmaCheck2Service {
         return extractHPDFromCal(cal) ?? hoursPerDayDefault;
       }
       // predecessor
-      const cal = pred?.clndr_id != null ? calById.get(pred.clndr_id) : undefined;
+      const cal = pred?.clndr_id != null ? calById.get(pred!.clndr_id) : undefined;
       return extractHPDFromCal(cal) ?? hoursPerDayDefault;
     };
 
-    // хелпер: milestone?
+    // Определение типа активности (грубые, но безопасные эвристики под разные схемы БД P6)
+    const getTaskTypeCode = (t?: TaskRow): string => {
+      const a = t as any;
+      const tt = String(a?.task_type ?? a?.tsk_type ?? a?.tasktype ?? '').toUpperCase();
+      return tt;
+    };
+
     const isMilestone = (t?: TaskRow): boolean => {
       const a = t as any;
       if (!a) return false;
-      // разные возможные поля из P6
+      // По типу
+      const tt = getTaskTypeCode(t);
+      if (tt.includes('MILESTONE')) return true;
+      // По длительности (многие экспорты 0 = веха)
       if (a?.remain_drtn_hr_cnt === 0 || a?.orig_drtn_hr_cnt === 0) return true;
       if (a?.orig_dur_hr_cnt === 0 || a?.remain_dur_hr_cnt === 0) return true;
-      if (a?.task_type === 'MILESTONE' || a?.task_type === 1 /* иногда enum */) return true;
       return false;
     };
 
-    // Связи внутри проекта (дедуп считаем по типу/лагу/юнитам)
+    const isLoE = (t?: TaskRow): boolean => {
+      const tt = getTaskTypeCode(t);
+      return tt.includes('LEVEL') || tt.includes('EFFORT') || tt.includes('LOE');
+    };
+
+    const isWbsSummary = (t?: TaskRow): boolean => {
+      const tt = getTaskTypeCode(t);
+      return tt.includes('WBS') || tt.includes('SUMMARY') || tt.includes('WBS_SUMMARY');
+    };
+
+    const isCompleted = (t?: TaskRow): boolean => {
+      const a = t as any;
+      if (!a) return false;
+      const st = String(a?.status ?? a?.task_status ?? a?.tsk_status ?? '').toUpperCase();
+      if (st.includes('COMPLETE') || st === 'TK_COMPLETE' || st === 'COMPLETED') return true;
+      if (typeof a?.pct_complete === 'number' && a.pct_complete >= 100) return true;
+      if (a?.act_end_date || a?.actv_end_date || a?.act_finish_date) return true;
+      return false;
+    };
+
+    // ========================= фильтрация связей =========================
     const seen = new Set<string>();
     let dqDuplicateLinks = 0, dqSelfLoops = 0, dqExternal = 0;
     const linksInProject: TaskPredRow[] = [];
 
     for (const l of (predRows || [])) {
       if (!l || typeof l.task_id !== 'number' || typeof l.pred_task_id !== 'number') continue;
+
       const succId = l.task_id;
       const predId = l.pred_task_id;
+
       if (succId === predId) { dqSelfLoops++; continue; }
+
       const internal = taskIdSet.has(succId) && taskIdSet.has(predId);
       if (!internal) { dqExternal++; continue; }
 
@@ -142,8 +180,19 @@ export class DcmaCheck2Service {
 
       const pred = taskById.get(predId);
       const succ = taskById.get(succId);
-      if (options?.ignoreMilestoneRelations) {
-        if (isMilestone(pred) || isMilestone(succ)) continue;
+
+      // Учитываем флаги игнорирования типов активностей
+      if (options?.ignoreMilestoneRelations && (isMilestone(pred) || isMilestone(succ))) {
+        continue;
+      }
+      if (options?.ignoreLoERelations && (isLoE(pred) || isLoE(succ))) {
+        continue;
+      }
+      if (options?.ignoreWbsSummaryRelations && (isWbsSummary(pred) || isWbsSummary(succ))) {
+        continue;
+      }
+      if (options?.ignoreCompletedRelations && (isCompleted(pred) || isCompleted(succ))) {
+        continue;
       }
 
       const key = `${succId}|${predId}|${linkType}|${String(l.lag_hr_cnt ?? '')}|${String(l.lag_units ?? '')}|${String(l.lag_raw ?? '')}`;
@@ -191,6 +240,7 @@ export class DcmaCheck2Service {
               successor_name: succ?.task_name,
               link_type: normalizeLinkType(l.pred_type),
               lag_hr_cnt: lagHrs,
+              // На самом деле тут «в днях календаря связи», не обязательно 8h:
               lag_days_8h: Math.round((lagHrs / hpd) * 100) / 100,
               lag_units: l.lag_units ?? null,
               lag_raw: l.lag_raw ?? null,
@@ -201,12 +251,13 @@ export class DcmaCheck2Service {
 
     const leadCount = leadLinks.length;
     const leadPercent = totalRelationships > 0 ? (leadCount / totalRelationships) * 100 : 0;
+
     const totalLeadHoursAbs = leadLinks.reduce((acc, l) => {
       const v = toHours(l).hrs;
       return acc + Math.abs(v < 0 ? v : 0);
     }, 0);
 
-    // DCMA: zero is required. Но поддержим гибкую оценку
+    // DCMA: zero is required. Но поддержим гибкую оценку по толерансам
     let passByTolerance = false;
     if (!strictZero) {
       const pctOk = (leadPercent <= tolPercent);
