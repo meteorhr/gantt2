@@ -47,7 +47,7 @@ interface DcmaRow {
       <div class="dcma-header">
         <h3>{{ 'dcma.summary.title' | transloco }}</h3>
         <span class="fx"></span>
-        <button mat-stroked-button (click)="openSettings()" aria-label="Настройки DCMA">
+        <button mat-button (click)="openSettings()" aria-label="Настройки DCMA">
           <mat-icon>settings</mat-icon>
           <span>{{ 'common.settings' | transloco }}</span>
         </button>
