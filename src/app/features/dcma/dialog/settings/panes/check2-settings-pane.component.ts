@@ -72,7 +72,7 @@ export type DcmaCheck2Advanced = {
 
     <!-- HPD source: вертикальные радио, блоком «слева» -->
     <div class="row-block">
-      <div class="row-title block-title">{{ 'dcma.check2.calendar.source' | transloco }}</div>
+      <div class="row-title block-title">{{ 'dcma.check2.calendar.source' | transloco }}:</div>
       <mat-radio-group
         class="radio-vert"
         [value]="adv().calendarSource"

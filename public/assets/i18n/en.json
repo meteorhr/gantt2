@@ -409,6 +409,48 @@
     }
   
   ,
+  "check3": {
+      "title": {
+        "general": "General",
+        "calendar": "HPD source for lag conversion",
+        "filters": "Filters",
+        "tolerance": "Tolerance",
+        "thresholds": "Great / Average KPI"
+      },
+      "general": {
+        "includeDetails": "Include details in results",
+        "detailsLimit": "Limit details (rows)"
+      },
+      "calendar": {
+        "source": "HPD source",
+        "note": "Choose which calendar’s hours-per-day to use when converting lags to hours/days.",
+        "successor": "Successor’s calendar",
+        "predecessor": "Predecessor’s calendar",
+        "fixed": "Fixed value",
+        "fixedHpd": "Fixed hours per day",
+        "defaultHpd": "Default hours per day"
+      },
+      "filters": {
+        "types": "Relationship types",
+        "ignoreMilestones": "Ignore milestone relations",
+        "ignoreLoE": "Ignore Level of Effort relations",
+        "ignoreWbsSummary": "Ignore WBS summary relations",
+        "ignoreCompleted": "Ignore completed activity relations"
+      },
+      "tolerance": {
+        "strictFive": "Enforce DCMA limit 5% (strict)",
+        "percent": "Allowed % of lag links",
+        "count": "Allowed absolute count",
+        "hours": "Allowed total lag hours"
+      },
+      "thresholds": {
+        "great": "Great ≤ %",
+        "average": "Average ≤ %"
+      },
+      "note": {
+        "dcmaFive": "DCMA recommends no more than 5% of relationships with positive lag."
+      }
+    },
     "checks": {
       "names": {
         "1": "Logic",

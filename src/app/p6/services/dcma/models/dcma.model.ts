@@ -463,3 +463,6 @@ export interface DcmaCheck14Result {
     completedAheadOfPlan: Array<{ task_id: number; task_code?: string; task_name?: string; act_finish?: string | Date | null; baseline_finish?: string | Date | null }>; // AF<=DD, но BL>DD
   };
 }
+
+
+export type CalendarSource = 'successor' | 'predecessor' | 'fixed';

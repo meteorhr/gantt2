@@ -5,7 +5,7 @@ import {
   DcmaCheckCommonSettings, SETTINGS_STORAGE_KEY,
   DEFAULT_PERSISTED_V1, PersistedSettingsV1, normalizePersisted, DCMA_CHECK_LABELS
 } from './dcma-checks.config';
-import type { DcmaCheck2Options } from '../../../p6/services/dcma';
+import type { DcmaCheck2Options, DcmaCheck3Options } from '../../../p6/services/dcma';
 
 export { DCMA_IDS, DCMA_CHECK_LABELS };
 export type { DcmaCheckId, DcmaCheck1Advanced, DcmaCheck1AdvancedPatch };
@@ -28,6 +28,28 @@ export type DcmaCheck2Advanced = {
   thresholds: { greatPct: number; averagePct: number };
   /** Допуски, если strictZero=false */
   tolerance: { percent: number; count: number; totalLeadHours: number };
+};
+
+export type DcmaCheck3Advanced = {
+  includeDetails: boolean;
+  detailsLimit: number;
+
+  hoursPerDay: number;
+  calendarSource: 'successor' | 'predecessor' | 'fixed';
+  fixedHoursPerDay: number;
+
+  includeLinkTypes: { FS: boolean; SS: boolean; FF: boolean; SF: boolean };
+
+  ignoreMilestoneRelations: boolean;
+  ignoreLoERelations: boolean;
+  ignoreWbsSummaryRelations: boolean;
+  ignoreCompletedRelations: boolean;
+
+  /** KPI-пороги для визуальной оценки (не влияют на pass) */
+  thresholds: { greatPct: number; averagePct: number };
+
+  /** Допуски (если strictFivePct=false) */
+  tolerance: { strictFivePct: boolean; percent: number; count: number; totalLagHours: number };
 };
 
 @Injectable({ providedIn: 'root' })
@@ -278,4 +300,112 @@ export class DcmaSettingsService {
       tolerance: { percent: 0, count: 0, totalLeadHours: 0 }
     };
   }
+
+  /** Advanced для Check 3 — отдельный ключ */
+  private readonly adv3Key = 'dcma.adv.3';
+  private adv3Signal = signal<DcmaCheck3Advanced>(this.loadAdv3());
+
+  // ======== Advanced Check 3 ========
+
+  adv3(): DcmaCheck3Advanced { return this.adv3Signal(); }
+
+  patchAdv3(patch: Partial<DcmaCheck3Advanced>) {
+    const cur = this.adv3Signal();
+    const next: DcmaCheck3Advanced = {
+      ...cur,
+      ...patch,
+      includeLinkTypes: patch.includeLinkTypes
+        ? { ...cur.includeLinkTypes, ...patch.includeLinkTypes }
+        : cur.includeLinkTypes,
+      thresholds: patch.thresholds
+        ? { ...cur.thresholds, ...patch.thresholds }
+        : cur.thresholds,
+      tolerance: patch.tolerance
+        ? { ...cur.tolerance, ...patch.tolerance }
+        : cur.tolerance,
+    };
+    this.adv3Signal.set(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.adv3Key, JSON.stringify(next));
+    }
+  }
+
+  /** Опции для сервиса анализа Check 3 */
+  buildCheck3Options(): DcmaCheck3Options {
+    const a = this.adv3();
+    return {
+      hoursPerDay: a.hoursPerDay,
+      calendarSource: a.calendarSource,
+      fixedHoursPerDay: a.fixedHoursPerDay,
+      includeLinkTypes: (['FS','SS','FF','SF'] as const).filter(k => a.includeLinkTypes[k]),
+      ignoreMilestoneRelations: a.ignoreMilestoneRelations,
+      ignoreLoERelations: a.ignoreLoERelations,
+      ignoreWbsSummaryRelations: a.ignoreWbsSummaryRelations,
+      ignoreCompletedRelations: a.ignoreCompletedRelations,
+      includeDetails: a.includeDetails,
+      detailsLimit: a.detailsLimit,
+      tolerance: {
+        strictFivePct: a.tolerance.strictFivePct,
+        percent: a.tolerance.percent,
+        count: a.tolerance.count,
+        totalLagHours: a.tolerance.totalLagHours,
+      }
+    };
+  }
+
+  /** Визуальная оценка KPI */
+  evaluateCheck3Grade(lagPercent: number): 'great'|'average'|'poor' {
+    const { greatPct, averagePct } = this.adv3().thresholds;
+    if (lagPercent <= greatPct) return 'great';
+    if (lagPercent <= averagePct) return 'average';
+    return 'poor';
+  }
+
+  /** Pass/Fail для Check 3 */
+  evaluateCheck3Pass(r: { lagCount: number; lagPercent: number; totalLagHours?: number }): boolean {
+    const a = this.adv3();
+    if (a.tolerance.strictFivePct) return r.lagPercent <= 5;
+    const hrs = r.totalLagHours ?? 0;
+    return r.lagPercent <= a.tolerance.percent
+        && r.lagCount   <= a.tolerance.count
+        && hrs          <= a.tolerance.totalLagHours;
+  }
+
+  // ======== I/O adv3 ========
+
+  private loadAdv3(): DcmaCheck3Advanced {
+    if (typeof window === 'undefined') return this.defaultAdv3();
+    const raw = localStorage.getItem(this.adv3Key);
+    if (raw) {
+      try { return { ...this.defaultAdv3(), ...JSON.parse(raw) }; } catch {}
+    }
+    const def = this.defaultAdv3();
+    localStorage.setItem(this.adv3Key, JSON.stringify(def));
+    return def;
+  }
+
+  private defaultAdv3(): DcmaCheck3Advanced {
+    return {
+      includeDetails: true,
+      detailsLimit: 500,
+
+      hoursPerDay: 8,
+      calendarSource: 'successor',
+      fixedHoursPerDay: 8,
+
+      includeLinkTypes: { FS: true, SS: true, FF: true, SF: true },
+
+      ignoreMilestoneRelations: false,
+      ignoreLoERelations: false,
+      ignoreWbsSummaryRelations: false,
+      ignoreCompletedRelations: false,
+
+      // KPI: «Great» до 2%, «Average» до 5% (DCMA порог)
+      thresholds: { greatPct: 2, averagePct: 5 },
+
+      // Толерансы: по умолчанию строжайшее правило DCMA 5%
+      tolerance: { strictFivePct: true, percent: 5, count: Number.POSITIVE_INFINITY, totalLagHours: Number.POSITIVE_INFINITY },
+    };
+  }
+
 }

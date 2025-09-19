@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { P6DexieService } from '../../../../dexie.service';
 import { CALENDARRow } from '../../../../models';
 import {
+  CalendarSource,
   DcmaCheck2LinkItem,
   DcmaCheck2Result,
   TaskPredRow,
@@ -11,7 +12,6 @@ import {
 import { normalizeLinkType } from '../utils/link-type.util';
 import { parseNum } from '../utils/num.util';
 
-export type CalendarSource = 'successor' | 'predecessor' | 'fixed';
 
 export interface DcmaCheck2Options {
   /** Часы в дне по умолчанию (если календарь пуст) */
