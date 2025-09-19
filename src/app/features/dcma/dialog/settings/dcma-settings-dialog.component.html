@@ -1,0 +1,67 @@
+<h2 mat-dialog-title class="dlg-title">
+  <mat-icon>tune</mat-icon>
+  <span>{{ 'dcma.settings.title' | transloco }}</span>
+</h2>
+
+<mat-dialog-content>
+  <div class="dlg-body split-scroll" role="group" [attr.aria-label]="'dcma.settings.splitAria' | transloco">
+    <nav class="left-nav" [attr.aria-label]="'dcma.settings.navAria' | transloco">
+      <mat-nav-list>
+        @for (id of ids; track id) {
+          <a mat-list-item
+             (click)="select(id)"
+             [class.active]="selected() === id"
+             [attr.aria-selected]="selected() === id"
+             [attr.aria-controls]="'pane-' + id"
+             role="tab">
+            <span class="num">{{ id }}</span>
+            <!-- вариант через transloco вместо labels[id]: -->
+            <span class="label">{{ ('dcma.checks.names.' + id) | transloco }}</span>
+          </a>
+        }
+      </mat-nav-list>
+    </nav>
+
+    @if (currentId(); as cid) {
+      <section class="right-pane" [attr.id]="'pane-' + cid" role="tabpanel" tabindex="0">
+        <!-- заголовок вкладки можно вернуть при необходимости -->
+
+        <div class="row-line">
+          <div class="row-text"><div class="row-title">{{ 'dcma.settings.enableAnalysis' | transloco }}</div></div>
+          <mat-slide-toggle
+            [checked]="curEnabled()"
+            (change)="onToggleEnabled($event.checked)"
+            [attr.aria-label]="'dcma.settings.enableAnalysis' | transloco">
+          </mat-slide-toggle>
+        </div>
+
+        <div class="row-line">
+          <div class="row-text"><div class="row-title">{{ 'dcma.settings.showInTable' | transloco }}</div></div>
+          <mat-slide-toggle
+            [checked]="curShown()"
+            (change)="onToggleShown($event.checked)"
+            [disabled]="!curEnabled()"
+            [attr.aria-label]="'dcma.settings.showInTable' | transloco">
+          </mat-slide-toggle>
+        </div>
+
+        <!-- Индивидуальные панели -->
+        @if (cid === 1) {
+          <app-dcma-check1-settings-pane></app-dcma-check1-settings-pane>
+        } @else {
+          <app-dcma-empty-settings-pane [checkId]="cid"></app-dcma-empty-settings-pane>
+        }
+      </section>
+    }
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-stroked-button color="primary" (click)="reset()">
+    <mat-icon>restart_alt</mat-icon>
+    {{ 'dcma.settings.resetToDefaults' | transloco }}
+  </button>
+  <span class="fx"></span>
+  <button mat-button (click)="close(false)">{{ 'common.cancel' | transloco }}</button>
+  <button mat-flat-button color="primary" (click)="close(true)">{{ 'dcma.settings.done' | transloco }}</button>
+</mat-dialog-actions>

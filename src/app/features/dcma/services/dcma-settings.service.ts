@@ -1,193 +1,122 @@
-// src/app/features/dcma/services/dcma-settings.service.ts
 import { Injectable, signal } from '@angular/core';
+import {
+  DcmaCheckId, DCMA_IDS, DcmaCheck1Advanced, DcmaCheck1AdvancedPatch,
+  DcmaCheckCommonSettings, SETTINGS_STORAGE_KEY,
+  DEFAULT_PERSISTED_V1, PersistedSettingsV1, normalizePersisted, DCMA_CHECK_LABELS
+} from './dcma-checks.config';
 
-export interface DcmaCheckSettings {
-  enabled: boolean;
-  showInTable: boolean;
-}
-
-export type DcmaCheck1AdvancedPatch =
-  Partial<Omit<DcmaCheck1Advanced, 'thresholds'>> & {
-    thresholds?: Partial<DcmaCheck1Advanced['thresholds']>;
-  };
-
-// Фиксированный набор ID чеков DCMA
-export type DcmaCheckId =
-  1|2|3|4|5|6|7|8|9|10|11|12|13|14;
-
-export const DCMA_IDS: readonly DcmaCheckId[] =
-  [1,2,3,4,5,6,7,8,9,10,11,12,13,14] as const;
-
-export type DcmaSettingsMap = Record<DcmaCheckId, DcmaCheckSettings>;
-
-function buildDefaults(): DcmaSettingsMap {
-  const map = {} as DcmaSettingsMap;
-  for (const id of DCMA_IDS) map[id] = { enabled: true, showInTable: true };
-  return map;
-}
-
-// ====== ADVANCED НАСТРОЙКИ (Check 1 — Missing Logic) ======
-export interface DcmaCheck1Advanced {
-  /** Плитка на главном экране (Dashboard) */
-  showOnMain: boolean;
-  /** Включать task/resource dependent activities */
-  includeTaskResDep: boolean;
-  /** Включать milestones */
-  includeMilestones: boolean;
-  /** Включать level of effort */
-  includeLoE: boolean;
-  /** Включать WBS summary */
-  includeWbsSummary: boolean;
-  /** Включать завершённые */
-  includeCompleted: boolean;
-  /** Включать obsolete (зарезервировано) */
-  includeObsolete: boolean;
-  /** Пороговые уровни для визуализации */
-  thresholds: { greatPct: number; averagePct: number };
-}
-
-export type DcmaAdvancedSettings = {
-  1: DcmaCheck1Advanced;
-};
-
-function adv1Defaults(): DcmaCheck1Advanced {
-  return {
-    showOnMain: false,
-    includeTaskResDep: true,
-    includeMilestones: true,
-    includeLoE: false,
-    includeWbsSummary: false,
-    includeCompleted: false,
-    includeObsolete: false,
-    thresholds: { greatPct: 7, averagePct: 7 },
-  };
-}
-
-function buildAdvancedDefaults(): DcmaAdvancedSettings {
-  return { 1: adv1Defaults() };
-}
-// ===========================================================
+export { DCMA_IDS,  DCMA_CHECK_LABELS };
+export type { DcmaCheckId, DcmaCheck1Advanced, DcmaCheck1AdvancedPatch };
 
 @Injectable({ providedIn: 'root' })
 export class DcmaSettingsService {
-  private readonly storageKey    = 'dcma.checks.settings.v1';
-  private readonly storageKeyAdv = 'dcma.checks.advanced.v1';
+  /** Вся сохраненная структура (общие + advanced) */
+  private persisted = signal<PersistedSettingsV1>(DEFAULT_PERSISTED_V1);
 
-  /** Базовые флаги включения/видимости по каждому чеку (1..14) */
-  readonly settings = signal<DcmaSettingsMap>(this.load());
-  /** Расширенные настройки (пока — только Check 1) */
-  readonly advanced = signal<DcmaAdvancedSettings>(this.loadAdvanced());
+  /** Сигналы для удобного доступа */
+  readonly settings = signal<Record<DcmaCheckId, DcmaCheckCommonSettings>>(
+    structuredClone(DEFAULT_PERSISTED_V1.common)
+  );
+  readonly adv1 = signal<DcmaCheck1Advanced>(
+    structuredClone(DEFAULT_PERSISTED_V1.adv1)
+  );
 
-  // ---------- BASIC ----------
-  private load(): DcmaSettingsMap {
-    const def = buildDefaults();
-    try {
-      const raw = localStorage.getItem(this.storageKey);
-      if (!raw) return def;
-
-      const parsed = JSON.parse(raw) as Record<string, Partial<DcmaCheckSettings>>;
-      for (const [k, v] of Object.entries(parsed)) {
-        const idNum = Number(k);
-        if (Number.isInteger(idNum) && DCMA_IDS.includes(idNum as DcmaCheckId) && v) {
-          const id = idNum as DcmaCheckId;
-          def[id] = { ...def[id], ...v };
-        }
-      }
-    } catch (e) {
-      console.warn('[DcmaSettings] load failed:', e);
-    }
-    return def;
+  constructor() {
+    // Пытаемся загрузить из localStorage при создании сервиса (SSR-safe: только в браузере)
+    this.loadFromLocalStorage();
   }
 
-  private persist(next: DcmaSettingsMap): void {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(next));
-    } catch (e) {
-      console.warn('[DcmaSettings] save failed:', e);
+  /** Вызываем при инициализации вкладки: гарантирует, что localStorage заполнен дефолтами */
+  ensureInitialized(): void {
+    // если ключ не существует — записываем дефолты
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (!raw) this.saveToLocalStorage();
     }
   }
 
-  /** Полная замена карты настроек с безопасным мёржем. */
-  setAll(next: Partial<Record<DcmaCheckId, Partial<DcmaCheckSettings>>>): void {
-    const cur = buildDefaults();
-    for (const id of DCMA_IDS) {
-      const patch = next[id];
-      cur[id] = patch ? { ...cur[id], ...patch } : cur[id];
-    }
-    this.settings.set(cur);
-    this.persist(cur);
-  }
-
-  /** Точечное обновление одного чека. */
-  updateOne(id: DcmaCheckId, patch: Partial<DcmaCheckSettings>): void {
+  /** Обновить один чек (enabled/showInTable) */
+  updateOne(id: DcmaCheckId, patch: Partial<DcmaCheckCommonSettings>): void {
     const cur = this.settings();
-    const next: DcmaSettingsMap = { ...cur };
-    next[id] = { ...cur[id], ...patch };
+    const next = { ...cur, [id]: { ...cur[id], ...patch } };
     this.settings.set(next);
-    this.persist(next);
+
+    const p = this.persisted();
+    const p2: PersistedSettingsV1 = { ...p, common: next };
+    this.persisted.set(p2);
+    this.saveToLocalStorage();
   }
 
-  /** Сброс к значениям по умолчанию. */
+  /** Сброс к дефолтам */
   reset(): void {
-    const def = buildDefaults();
-    this.settings.set(def);
-    this.persist(def);
+    this.persisted.set(structuredClone(DEFAULT_PERSISTED_V1));
+    this.settings.set(structuredClone(DEFAULT_PERSISTED_V1.common));
+    this.adv1.set(structuredClone(DEFAULT_PERSISTED_V1.adv1));
+    this.saveToLocalStorage();
   }
 
-  // ---------- ADVANCED (Check 1) ----------
-  private loadAdvanced(): DcmaAdvancedSettings {
-    const def = buildAdvancedDefaults();
-    try {
-      const raw = localStorage.getItem(this.storageKeyAdv);
-      if (!raw) return def;
-      const parsed = JSON.parse(raw) as Partial<DcmaAdvancedSettings>;
-      const a1 = parsed?.[1];
-      if (a1) def[1] = {
-        ...def[1],
-        ...a1,
-        thresholds: { ...def[1].thresholds, ...(a1.thresholds ?? {}) },
-      };
-    } catch (e) {
-      console.warn('[DcmaSettings] load advanced failed:', e);
+  /** Патч advanced-настроек чек-1 */
+  patchAdv1(patch: DcmaCheck1AdvancedPatch): void {
+    const cur = this.adv1();
+    const next: DcmaCheck1Advanced = {
+      ...cur,
+      ...(patch as any),
+      thresholds: { ...cur.thresholds, ...(patch.thresholds ?? {}) },
+    };
+    this.adv1.set(next);
+
+    const p = this.persisted();
+    const p2: PersistedSettingsV1 = { ...p, adv1: next };
+    this.persisted.set(p2);
+    this.saveToLocalStorage();
+  }
+
+  /** Опции для сервиса analyzeCheck1 на основе adv1 */
+  buildCheck1Options(): {
+    excludeCompleted: boolean;
+    excludeLoEAndHammock: boolean;
+    ignoreLoEAndHammockLinksInLogic: boolean;
+    treatMilestonesAsExceptions: boolean;
+    includeLists: boolean;
+    includeDQ: boolean;
+  } {
+    const a = this.adv1();
+    return {
+      excludeCompleted: !a.includeCompleted,
+      // У нас один флаг на два типа; при включении ЛЮБОГО — не исключаем
+      excludeLoEAndHammock: !(a.includeLoE || a.includeWbsSummary),
+      ignoreLoEAndHammockLinksInLogic: true,
+      treatMilestonesAsExceptions: !!a.includeMilestones,
+      includeLists: true,
+      includeDQ: true,
+    };
+  }
+
+  private loadFromLocalStorage(): void {
+    if (typeof window === 'undefined') return;
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      this.persisted.set(structuredClone(DEFAULT_PERSISTED_V1));
+      this.settings.set(structuredClone(DEFAULT_PERSISTED_V1.common));
+      this.adv1.set(structuredClone(DEFAULT_PERSISTED_V1.adv1));
+      return;
     }
-    return def;
-  }
-
-  private persistAdvanced(next: DcmaAdvancedSettings): void {
     try {
-      localStorage.setItem(this.storageKeyAdv, JSON.stringify(next));
-    } catch (e) {
-      console.warn('[DcmaSettings] save advanced failed:', e);
+      const parsed = JSON.parse(raw);
+      const norm = normalizePersisted(parsed);
+      this.persisted.set(norm);
+      this.settings.set(structuredClone(norm.common));
+      this.adv1.set(structuredClone(norm.adv1));
+    } catch {
+      this.persisted.set(structuredClone(DEFAULT_PERSISTED_V1));
+      this.settings.set(structuredClone(DEFAULT_PERSISTED_V1.common));
+      this.adv1.set(structuredClone(DEFAULT_PERSISTED_V1.adv1));
     }
   }
 
-  /** Текущие настройки Check 1 (Missing Logic). */
-  adv1(): DcmaCheck1Advanced {
-    return this.advanced()[1];
+  private saveToLocalStorage(): void {
+    if (typeof window === 'undefined') return;
+    const p = this.persisted();
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(p));
   }
-
-  /** Патч настроек Check 1 с корректным мёржем thresholds. */
-patchAdv1(patch: DcmaCheck1AdvancedPatch): void {
-  const cur = this.advanced();
-  const next: DcmaAdvancedSettings = {
-    ...cur,
-    1: {
-      ...cur[1],
-      ...patch,
-      thresholds: { ...cur[1].thresholds, ...(patch.thresholds ?? {}) },
-    },
-  };
-  this.advanced.set(next);
-  this.persistAdvanced(next);
-}
-
-  /** Сброс только продвинутых опций Check 1. */
-  resetAdv1(): void {
-    const cur = this.advanced();
-    const next: DcmaAdvancedSettings = { ...cur, 1: adv1Defaults() };
-    this.advanced.set(next);
-    this.persistAdvanced(next);
-  }
-
-  
 }

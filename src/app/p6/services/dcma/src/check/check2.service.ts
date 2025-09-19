@@ -2,9 +2,47 @@
 import { Injectable, inject } from '@angular/core';
 import { P6DexieService } from '../../../../dexie.service';
 import { CALENDARRow } from '../../../../models';
-import { DcmaCheck2LinkItem, DcmaCheck2Result, TaskPredRow, TaskRow } from '../../models/dcma.model';
+import {
+  DcmaCheck2LinkItem,
+  DcmaCheck2Result,
+  TaskPredRow,
+  TaskRow
+} from '../../models/dcma.model';
 import { normalizeLinkType } from '../utils/link-type.util';
 import { parseNum } from '../utils/num.util';
+
+export type CalendarSource = 'successor' | 'predecessor' | 'fixed';
+
+export interface DcmaCheck2Options {
+  /** Часы в дне по умолчанию (если календарь пуст) */
+  hoursPerDay?: number;
+  /** Источник часов/день для конвертации лагов */
+  calendarSource?: CalendarSource;
+  /** Фиксированное значение HPD, если выбран calendarSource='fixed' */
+  fixedHoursPerDay?: number;
+
+  /** Какие типы связей учитывать в проверке (по умолчанию все) */
+  includeLinkTypes?: Array<'FS' | 'SS' | 'FF' | 'SF'>;
+
+  /** Игнорировать связи, где предшественник/преемник — веха */
+  ignoreMilestoneRelations?: boolean;
+
+  /** Управление деталями */
+  includeDetails?: boolean;
+  detailsLimit?: number;
+
+  /** Порог/толеранс: допускаемое кол-во leads */
+  tolerance?: {
+    /** Допустимый % ссылок с лидами от общего числа, по умолчанию 0 */
+    percent?: number;
+    /** Допустимое абсолютное кол-во ссылок с лидами, по умолчанию 0 */
+    count?: number;
+    /** Допустимая сумма лид-часов (по модулю), по умолчанию 0 */
+    totalLeadHours?: number;
+    /** Строгий режим DCMA (лиды запрещены) — имеет приоритет */
+    strictZero?: boolean;
+  };
+}
 
 @Injectable({ providedIn: 'root' })
 export class DcmaCheck2Service {
@@ -13,9 +51,10 @@ export class DcmaCheck2Service {
   /** DCMA Check 2 — Leads: связи с отрицательным лагом должны отсутствовать. */
   async analyzeCheck2(
     projId: number,
+    /** @deprecated — используйте options.includeDetails */
     includeDetails: boolean = true,
-    options?: { hoursPerDay?: number },
-  ): Promise<DcmaCheck2Result> {
+    options?: DcmaCheck2Options,
+  ): Promise<DcmaCheck2Result & { passByTolerance?: boolean; totalLeadHours?: number }> {
     const [taskRows, predRows, projRows, calRows] = await Promise.all([
       this.dexie.getRows('TASK') as Promise<TaskRow[]>,
       this.dexie.getRows('TASKPRED') as Promise<TaskPredRow[]>,
@@ -23,7 +62,22 @@ export class DcmaCheck2Service {
       this.dexie.getRows('CALENDAR') as Promise<CALENDARRow[]>,
     ]);
 
-    const hoursPerDay = options?.hoursPerDay ?? 8;
+    const includeDetailsEff = options?.includeDetails ?? includeDetails;
+    const hoursPerDayDefault = options?.hoursPerDay ?? 8;
+    const calendarSource = options?.calendarSource ?? 'successor';
+    const fixedHPD = options?.fixedHoursPerDay ?? hoursPerDayDefault;
+
+    const allowedTypes = (options?.includeLinkTypes?.length
+      ? options.includeLinkTypes
+      : (['FS', 'SS', 'FF', 'SF'] as const)
+    ).map(t => t.toUpperCase());
+
+    const tol = options?.tolerance ?? {};
+    const strictZero = !!tol.strictZero;
+    const tolPercent = Math.max(0, Number.isFinite(tol.percent ?? 0) ? (tol.percent as number) : 0);
+    const tolCount = Math.max(0, Number.isFinite(tol.count ?? 0) ? (tol.count as number) : 0);
+    const tolHours = Math.max(0, Number.isFinite(tol.totalLeadHours ?? 0) ? (tol.totalLeadHours as number) : 0);
+
     const hasProject = projRows.some(p => p.proj_id === projId);
     if (!hasProject) throw new Error(`Проект с proj_id=${projId} не найден в таблице PROJECT.`);
 
@@ -33,19 +87,41 @@ export class DcmaCheck2Service {
     const taskById = new Map<number, TaskRow>();
     for (const t of tasksInProject) taskById.set(t.task_id, t);
 
-    // Календарь: часы/день по clndr_id преемника
+    // Календарь: часы/день по источнику
     const calById = new Map<string | number, CALENDARRow>();
     for (const c of (calRows || [])) if (c && c.clndr_id != null) calById.set(c.clndr_id, c);
-    const getHpd = (t: TaskRow | undefined): number => {
-      if (!t) return hoursPerDay;
-      const cal = t?.clndr_id != null ? calById.get(t.clndr_id) : undefined;
+
+    const extractHPDFromCal = (cal?: CALENDARRow | undefined): number | null => {
+      const anyCal = cal as any;
       const h =
-        (cal as any)?.hours_per_day_eff ??
-        (cal as any)?.day_hr_cnt ??
-        ((cal as any)?.week_hr_cnt != null ? (cal as any).week_hr_cnt / 5 : null) ??
-        ((cal as any)?.month_hr_cnt != null ? (cal as any).month_hr_cnt / 21.667 : null) ??
-        ((cal as any)?.year_hr_cnt != null ? (cal as any).year_hr_cnt / 260 : null);
-      return (typeof h === 'number' && h > 0) ? h : hoursPerDay;
+        anyCal?.hours_per_day_eff ??
+        anyCal?.day_hr_cnt ??
+        (anyCal?.week_hr_cnt != null ? anyCal.week_hr_cnt / 5 : null) ??
+        (anyCal?.month_hr_cnt != null ? anyCal.month_hr_cnt / 21.667 : null) ??
+        (anyCal?.year_hr_cnt != null ? anyCal.year_hr_cnt / 260 : null);
+      return (typeof h === 'number' && h > 0) ? h : null;
+    };
+
+    const getHpd = (succ?: TaskRow, pred?: TaskRow): number => {
+      if (calendarSource === 'fixed') return fixedHPD;
+      if (calendarSource === 'successor') {
+        const cal = succ?.clndr_id != null ? calById.get(succ.clndr_id) : undefined;
+        return extractHPDFromCal(cal) ?? hoursPerDayDefault;
+      }
+      // predecessor
+      const cal = pred?.clndr_id != null ? calById.get(pred.clndr_id) : undefined;
+      return extractHPDFromCal(cal) ?? hoursPerDayDefault;
+    };
+
+    // хелпер: milestone?
+    const isMilestone = (t?: TaskRow): boolean => {
+      const a = t as any;
+      if (!a) return false;
+      // разные возможные поля из P6
+      if (a?.remain_drtn_hr_cnt === 0 || a?.orig_drtn_hr_cnt === 0) return true;
+      if (a?.orig_dur_hr_cnt === 0 || a?.remain_dur_hr_cnt === 0) return true;
+      if (a?.task_type === 'MILESTONE' || a?.task_type === 1 /* иногда enum */) return true;
+      return false;
     };
 
     // Связи внутри проекта (дедуп считаем по типу/лагу/юнитам)
@@ -60,7 +136,17 @@ export class DcmaCheck2Service {
       if (succId === predId) { dqSelfLoops++; continue; }
       const internal = taskIdSet.has(succId) && taskIdSet.has(predId);
       if (!internal) { dqExternal++; continue; }
-      const key = `${succId}|${predId}|${normalizeLinkType(l.pred_type)}|${String(l.lag_hr_cnt ?? '')}|${String(l.lag_units ?? '')}|${String(l.lag_raw ?? '')}`;
+
+      const linkType = normalizeLinkType(l.pred_type).toUpperCase();
+      if (!allowedTypes.includes(linkType as any)) continue;
+
+      const pred = taskById.get(predId);
+      const succ = taskById.get(succId);
+      if (options?.ignoreMilestoneRelations) {
+        if (isMilestone(pred) || isMilestone(succ)) continue;
+      }
+
+      const key = `${succId}|${predId}|${linkType}|${String(l.lag_hr_cnt ?? '')}|${String(l.lag_units ?? '')}|${String(l.lag_raw ?? '')}`;
       if (seen.has(key)) { dqDuplicateLinks++; continue; }
       seen.add(key);
       linksInProject.push(l);
@@ -70,8 +156,9 @@ export class DcmaCheck2Service {
 
     // Конвертация лагов к часам
     const toHours = (l: TaskPredRow): { hrs: number; hpd: number } => {
+      const pred = taskById.get(l.pred_task_id);
       const succ = taskById.get(l.task_id);
-      const hpd = getHpd(succ);
+      const hpd = getHpd(succ, pred);
       const direct = parseNum(l.lag_hr_cnt);
       if (direct != null) return { hrs: direct, hpd };
       const raw = parseNum(l.lag_raw);
@@ -86,43 +173,60 @@ export class DcmaCheck2Service {
 
     const leadLinks = linksInProject.filter(l => toHours(l).hrs < 0);
 
-    const leads: DcmaCheck2LinkItem[] = includeDetails
-      ? leadLinks.map(l => {
-          const pred = taskById.get(l.pred_task_id);
-          const succ = taskById.get(l.task_id);
-          const conv = toHours(l);
-          const lagHrs = conv.hrs;
-          const hpd = conv.hpd;
-          return {
-            predecessor_task_id: l.pred_task_id,
-            successor_task_id: l.task_id,
-            predecessor_code: pred?.task_code ?? l.predecessor_code,
-            predecessor_name: pred?.task_name,
-            successor_code: succ?.task_code ?? l.successor_code,
-            successor_name: succ?.task_name,
-            link_type: normalizeLinkType(l.pred_type),
-            lag_hr_cnt: lagHrs,
-            lag_days_8h: Math.round((lagHrs / hpd) * 100) / 100,
-            lag_units: l.lag_units ?? null,
-            lag_raw: l.lag_raw ?? null,
-            hours_per_day_used: hpd,
-          };
-        })
+    const leads: DcmaCheck2LinkItem[] = includeDetailsEff
+      ? leadLinks
+          .slice(0, Math.max(0, options?.detailsLimit ?? Number.POSITIVE_INFINITY))
+          .map(l => {
+            const pred = taskById.get(l.pred_task_id);
+            const succ = taskById.get(l.task_id);
+            const conv = toHours(l);
+            const lagHrs = conv.hrs;
+            const hpd = conv.hpd;
+            return {
+              predecessor_task_id: l.pred_task_id,
+              successor_task_id: l.task_id,
+              predecessor_code: pred?.task_code ?? l.predecessor_code,
+              predecessor_name: pred?.task_name,
+              successor_code: succ?.task_code ?? l.successor_code,
+              successor_name: succ?.task_name,
+              link_type: normalizeLinkType(l.pred_type),
+              lag_hr_cnt: lagHrs,
+              lag_days_8h: Math.round((lagHrs / hpd) * 100) / 100,
+              lag_units: l.lag_units ?? null,
+              lag_raw: l.lag_raw ?? null,
+              hours_per_day_used: hpd,
+            };
+          })
       : [];
 
     const leadCount = leadLinks.length;
     const leadPercent = totalRelationships > 0 ? (leadCount / totalRelationships) * 100 : 0;
+    const totalLeadHoursAbs = leadLinks.reduce((acc, l) => {
+      const v = toHours(l).hrs;
+      return acc + Math.abs(v < 0 ? v : 0);
+    }, 0);
+
+    // DCMA: zero is required. Но поддержим гибкую оценку
+    let passByTolerance = false;
+    if (!strictZero) {
+      const pctOk = (leadPercent <= tolPercent);
+      const cntOk = (leadCount <= tolCount);
+      const hrsOk = (totalLeadHoursAbs <= tolHours);
+      passByTolerance = pctOk && cntOk && hrsOk;
+    }
 
     return {
       proj_id: projId,
       totalRelationships,
       leadCount,
-      leadPercent: Math.round((leadPercent) * 100) / 100,
+      leadPercent: Math.round(leadPercent * 100) / 100,
       thresholdZeroViolated: leadLinks.length > 0,
-      details: includeDetails ? {
+      details: includeDetailsEff ? {
         leads,
         dq: { duplicateLinks: dqDuplicateLinks, selfLoops: dqSelfLoops, externalLinks: dqExternal },
       } : undefined,
+      passByTolerance,
+      totalLeadHours: Math.round(totalLeadHoursAbs * 100) / 100,
     };
   }
 }

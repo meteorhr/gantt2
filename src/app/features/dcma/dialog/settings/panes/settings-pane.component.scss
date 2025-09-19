@@ -1,0 +1,72 @@
+:host {
+    /* синхронизируем ритм отступов с диалогом */
+    --gap-s: 8px;
+    --gap-m: 12px;
+    --row-py: 8px;
+  
+    display: block;
+  }
+  
+  /* заголовки секций */
+  .section-title {
+    margin: 16px 0 8px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  
+  /* та же «строка настройки», что и в диалоге */
+  .row-line {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-m);
+    padding: var(--row-py) 0;
+  }
+  .row-text { flex: 1 1 auto; min-width: 0; }
+  .row-title {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--mat-sys-on-surface);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .row-line > mat-slide-toggle {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+  
+  /* поле процентов справа */
+  .pct-field {
+    width: 120px;
+    margin-left: auto;
+  }
+  
+  /* визуальная полоса порогов */
+  .threshold-bar {
+    height: 8px;
+    border-radius: 4px;
+    margin: 8px 0 16px;
+    background: #e0e0e0; /* переопределяется через [style.background] */
+  }
+  
+  /* компакт без размытия (необязательно, но согласовано по высоте строки) */
+  :host ::ng-deep .row-line > mat-slide-toggle .mdc-form-field {
+    min-height: 24px;
+    height: 24px;
+    align-items: center;
+    margin: 0;
+  }
+  :host ::ng-deep .row-line > mat-slide-toggle .mdc-switch,
+  :host ::ng-deep .row-line > mat-slide-toggle .mat-mdc-slide-toggle {
+    --mdc-switch-track-width: 30px;
+    --mdc-switch-track-height: 12px;
+    --mdc-switch-handle-width: 16px;
+    --mdc-switch-handle-height: 16px;
+    --mdc-switch-state-layer-size: 26px;
+  }
+  :host ::ng-deep .row-line > mat-slide-toggle .mdc-form-field > label {
+    margin: 0 0 0 6px;
+    line-height: 1.1;
+  }
+  

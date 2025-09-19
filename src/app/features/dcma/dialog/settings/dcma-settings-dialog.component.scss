@@ -1,0 +1,157 @@
+:host {
+  /* единая шкала отступов */
+  --pad-x: 24px;
+  --gap-s: 8px;
+  --gap-m: 12px;
+  --gap-l: 16px;
+  --row-py: 8px;
+  --left-col: 260px;
+
+  display: block;
+}
+
+/* отключаем общий скролл и лимит высоты у содержимого диалога,
+   чтобы скроллились только левая и правая панели */
+mat-dialog-content.mat-mdc-dialog-content {
+  padding: 0 var(--pad-x) var(--pad-x);
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+/* заголовок диалога */
+.dlg-title {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-s);
+  margin: 10px var(--pad-x) 0; /* сверху 10px как у вас, по бокам выравниваем с контентом */
+}
+
+/* двухпанельный лэйаут */
+.dlg-body.split-scroll {
+  display: grid;
+  grid-template-columns: var(--left-col) 1fr;
+  gap: var(--gap-l);
+  height: min(68dvh, 720px);
+  overflow: hidden; /* общий скролл не нужен */
+}
+
+/* критично для вложенного скролла в grid */
+.left-nav,
+.right-pane { min-height: 0; }
+
+/* левая панель (навигация) */
+.left-nav {
+  overflow: auto;
+  padding: var(--gap-s) 4px var(--gap-s) 0;
+  border-right: 1px solid rgba(0,0,0,0.08);
+}
+
+/* правая панель (контент) */
+.right-pane {
+  overflow: auto;
+  padding: var(--gap-s) 8px var(--gap-s) 0; /* справа 8px для «воздуха» у скроллбара */
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-l);
+}
+
+/* липкий хедер внутри правой панели */
+.pane-header.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 4px 0 8px;
+  background: var(--mdc-dialog-container-color, #fff);
+}
+
+/* список слева */
+.left-nav a.mat-mdc-list-item {
+  cursor: pointer;
+  min-height: 40px;
+  padding-left: 8px;
+}
+.left-nav a.mat-mdc-list-item .num {
+  width: 28px;
+  display: inline-block;
+  font-weight: 600;
+  opacity: .85;
+}
+.left-nav a.mat-mdc-list-item .label { opacity: .9; }
+.left-nav a.mat-mdc-list-item.active { background: rgba(0,0,0,0.04); }
+.left-nav a.mat-mdc-list-item:focus-visible {
+  outline: 2px solid rgba(25,118,210,0.6);
+  outline-offset: -2px;
+}
+
+/* форма с общими переключателями вверху правой панели */
+.form {
+  display: grid;
+  gap: var(--gap-m);
+  align-content: start;
+}
+
+/* единая «строка настройки»: текст слева, контрол справа */
+.row-line {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-m);
+}
+.row-text { flex: 1 1 auto; min-width: 0; }
+.row-title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--mat-sys-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-line > mat-slide-toggle {
+  margin-left: auto; /* прижать к правому краю */
+  flex: 0 0 auto;
+}
+
+  /* компакт без размытия (необязательно, но согласовано по высоте строки) */
+  :host ::ng-deep .row-line > mat-slide-toggle .mdc-form-field {
+    min-height: 24px;
+    height: 24px;
+    align-items: center;
+    margin: 0;
+  }
+  :host ::ng-deep .row-line > mat-slide-toggle .mdc-switch,
+  :host ::ng-deep .row-line > mat-slide-toggle .mat-mdc-slide-toggle {
+    --mdc-switch-track-width: 30px;
+    --mdc-switch-track-height: 12px;
+    --mdc-switch-handle-width: 16px;
+    --mdc-switch-handle-height: 16px;
+    --mdc-switch-state-layer-size: 26px;
+  }
+  :host ::ng-deep .row-line > mat-slide-toggle .mdc-form-field > label {
+    margin: 0 0 0 6px;
+    line-height: 1.1;
+  }
+  
+
+/* полям процентов тоже вправо и фикс. ширина */
+.pct-field {
+  width: 120px;
+  margin-left: auto;
+}
+
+/* полоса визуализации порогов (если понадобится в этом шаблоне) */
+.threshold-bar {
+  height: 8px;
+  border-radius: 4px;
+  margin: 8px 0 16px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+}
+
+/* нижняя полоса действий */
+mat-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-s);
+  margin-top: 12px;
+  padding: 0 var(--pad-x) var(--pad-x);
+}
+mat-dialog-actions .fx { flex: 1 1 auto; }

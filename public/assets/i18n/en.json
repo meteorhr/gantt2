@@ -5,7 +5,8 @@
     "loading": "Calculating…",
     "list": "List",
     "dq": "Data quality (DQ)",
-    "close": "Close"
+    "close": "Close",
+     "cancel": "Cancel"
   },
   "scheduleHealth": "Schedule Health",
   "changeControl": "Change Control",
@@ -331,6 +332,58 @@
     }
   },
   "dcma": {
+    "settings": {
+      "title": "DCMA Settings",
+      "splitAria": "DCMA settings split panes",
+      "navAria": "DCMA checks",
+      "enableAnalysis": "Enable analysis",
+      "showInTable": "Show in table",
+      "resetToDefaults": "Reset to defaults",
+      "done": "Done",
+      "empty": {
+        "text": "No extra parameters for the selected check. The global flags “Enable analysis” and “Show in table” are used."
+      }
+    },
+    "check1": {
+      "title": {
+        "visibility": "Visibility",
+        "filters": "Activity Filters",
+        "thresholds": "Threshold levels"
+      },
+      "visibility": {
+        "showOnMain": "Show this Health check on the main screen"
+      },
+      "filters": {
+        "taskResDep": "Task/resource dependent activities",
+        "milestones": "Milestones",
+        "loe": "Level of effort activities",
+        "wbsSummary": "WBS summary activities",
+        "completed": "Completed activities",
+        "obsolete": "Obsolete activities"
+      },
+      "thresholds": {
+        "great": "Great Performance",
+        "average": "Average Performance"
+      }
+    },
+    "checks": {
+      "names": {
+        "1": "Logic",
+        "2": "Leads",
+        "3": "Lags",
+        "4": "Relationship Types",
+        "5": "Hard Constraints",
+        "6": "High Float",
+        "7": "Negative Float",
+        "8": "High Duration",
+        "9": "Invalid Dates",
+        "10": "Resources",
+        "11": "Missed Tasks",
+        "12": "Critical Path Test",
+        "13": "CPLI",
+        "14": "BEI"
+      }
+    },
     "info": {
       "check": {
         "goal": "Goal",
