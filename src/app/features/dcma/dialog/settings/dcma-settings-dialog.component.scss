@@ -64,6 +64,12 @@ mat-dialog-content.mat-mdc-dialog-content {
   background: var(--mdc-dialog-container-color, #fff);
 }
 
+.section-title {
+  margin: 16px 0 8px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
 /* список слева */
 .left-nav a.mat-mdc-list-item {
   cursor: pointer;
@@ -99,7 +105,7 @@ mat-dialog-content.mat-mdc-dialog-content {
 .row-text { flex: 1 1 auto; min-width: 0; }
 .row-title {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.25;
   color: var(--mat-sys-on-surface);
   overflow: hidden;

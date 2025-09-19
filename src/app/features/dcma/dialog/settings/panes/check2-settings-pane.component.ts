@@ -37,29 +37,29 @@ export type DcmaCheck2Advanced = {
   template: `
     <mat-divider></mat-divider>
 
-    <h4 class="section-title">{{ 'dcma.check2.title.general' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.general' | transloco }}</h4>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.general.strictZero' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.general.strictZero' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv().strictZero"
         (change)="patch({ strictZero: $event.checked })"
-        [attr.aria-label]="'dcma.check2.general.strictZero' | transloco">
+        [attr.aria-label]="'dcma.common.general.strictZero' | transloco">
       </mat-slide-toggle>
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.general.includeDetails' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.general.includeDetails' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv().includeDetails"
         (change)="patch({ includeDetails: $event.checked })"
-        [attr.aria-label]="'dcma.check2.general.includeDetails' | transloco">
+        [attr.aria-label]="'dcma.common.general.includeDetails' | transloco">
       </mat-slide-toggle>
     </div>
 
     @if (adv().includeDetails) {
       <div class="row-line">
-        <div class="row-text"><div class="row-title">{{ 'dcma.check2.general.detailsLimit' | transloco }}</div></div>
+        <div class="row-text"><div class="row-title">{{ 'dcma.common.general.detailsLimit' | transloco }}</div></div>
         <mat-form-field class="pct-field" appearance="outline">
           <input matInput type="number" min="0" step="1"
                  [value]="adv().detailsLimit"
@@ -68,25 +68,25 @@ export type DcmaCheck2Advanced = {
       </div>
     }
 
-    <h4 class="section-title">{{ 'dcma.check2.title.calendar' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.calendar' | transloco }}</h4>
 
     <!-- HPD source: вертикальные радио, блоком «слева» -->
     <div class="row-block">
-      <div class="row-title block-title">{{ 'dcma.check2.calendar.source' | transloco }}:</div>
+      <div class="row-title block-title">{{ 'dcma.common.calendar.source' | transloco }}:</div>
       <mat-radio-group
         class="radio-vert"
         [value]="adv().calendarSource"
         (change)="patch({ calendarSource: $any($event.value) })"
-        [attr.aria-label]="'dcma.check2.calendar.source' | transloco">
-        <mat-radio-button value="successor">{{ 'dcma.check2.calendar.successor' | transloco }}</mat-radio-button>
-        <mat-radio-button value="predecessor">{{ 'dcma.check2.calendar.predecessor' | transloco }}</mat-radio-button>
-        <mat-radio-button value="fixed">{{ 'dcma.check2.calendar.fixed' | transloco }}</mat-radio-button>
+        [attr.aria-label]="'dcma.common.calendar.source' | transloco">
+        <mat-radio-button value="successor">{{ 'dcma.common.calendar.successor' | transloco }}</mat-radio-button>
+        <mat-radio-button value="predecessor">{{ 'dcma.common.calendar.predecessor' | transloco }}</mat-radio-button>
+        <mat-radio-button value="fixed">{{ 'dcma.common.calendar.fixed' | transloco }}</mat-radio-button>
       </mat-radio-group>
     </div>
 
     @if (adv().calendarSource === 'fixed') {
       <div class="row-line">
-        <div class="row-text"><div class="row-title">{{ 'dcma.check2.calendar.fixedHpd' | transloco }}</div></div>
+        <div class="row-text"><div class="row-title">{{ 'dcma.common.calendar.fixedHpd' | transloco }}</div></div>
         <mat-form-field class="pct-field" appearance="outline">
           <input matInput type="number" min="1" step="1"
                  [value]="adv().fixedHoursPerDay"
@@ -97,7 +97,7 @@ export type DcmaCheck2Advanced = {
     }
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.calendar.defaultHpd' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.calendar.defaultHpd' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="1" step="1"
                [value]="adv().hoursPerDay"
@@ -106,11 +106,11 @@ export type DcmaCheck2Advanced = {
       </mat-form-field>
     </div>
 
-    <h4 class="section-title">{{ 'dcma.check2.title.filters' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.filters' | transloco }}</h4>
 
     <!-- Relationship types: 4 слайд-тоггла вертикально -->
     <div class="row-block">
-      <div class="row-title block-title">{{ 'dcma.check2.filters.types' | transloco }}:</div>
+      <div class="row-title block-title">{{ 'dcma.common.filters.types' | transloco }}:</div>
 
 
     <div class="row-line">
@@ -136,25 +136,25 @@ export type DcmaCheck2Advanced = {
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.filters.ignoreMilestones' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreMilestones' | transloco }}</div></div>
       <mat-slide-toggle [checked]="adv().ignoreMilestoneRelations" (change)="patch({ ignoreMilestoneRelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.filters.ignoreLoE' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreLoE' | transloco }}</div></div>
       <mat-slide-toggle [checked]="adv().ignoreLoERelations" (change)="patch({ ignoreLoERelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.filters.ignoreWbsSummary' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreWbsSummary' | transloco }}</div></div>
       <mat-slide-toggle [checked]="adv().ignoreWbsSummaryRelations" (change)="patch({ ignoreWbsSummaryRelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.filters.ignoreCompleted' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreCompleted' | transloco }}</div></div>
       <mat-slide-toggle [checked]="adv().ignoreCompletedRelations" (change)="patch({ ignoreCompletedRelations: $event.checked })"></mat-slide-toggle>
     </div>
 
-    <h4 class="section-title">{{ 'dcma.check2.title.tolerance' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.tolerance' | transloco }}</h4>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.tolerance.percent' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.tolerance.percent' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" max="100" step="0.1"
                [value]="adv().tolerance.percent"
@@ -163,7 +163,7 @@ export type DcmaCheck2Advanced = {
       </mat-form-field>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.tolerance.count' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.tolerance.count' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" step="1"
                [value]="adv().tolerance.count"
@@ -171,7 +171,7 @@ export type DcmaCheck2Advanced = {
       </mat-form-field>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.tolerance.hours' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.tolerance.hours' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" step="0.1"
                [value]="adv().tolerance.totalLeadHours"
@@ -180,13 +180,13 @@ export type DcmaCheck2Advanced = {
       </mat-form-field>
     </div>
 
-    <h4 class="section-title">{{ 'dcma.check2.title.thresholds' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.thresholds' | transloco }}</h4>
     <p class="muted" style="margin: -4px 0 6px">
-      {{ 'dcma.check2.note.dcmaZero' | transloco }}
+      {{ 'dcma.common.note.dcmaZero' | transloco }}
     </p>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.thresholds.great' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.thresholds.great' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" max="100" step="0.1"
                [value]="adv().thresholds.greatPct"
@@ -196,7 +196,7 @@ export type DcmaCheck2Advanced = {
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check2.thresholds.average' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.thresholds.average' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" max="100" step="0.1"
                [value]="adv().thresholds.averagePct"

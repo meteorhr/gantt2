@@ -10,7 +10,7 @@
   /* заголовки секций */
   .section-title {
     margin: 16px 0 8px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.25;
   }
   
@@ -24,7 +24,7 @@
   .row-text { flex: 1 1 auto; min-width: 0; }
   .row-title {
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1.25;
     color: var(--mat-sys-on-surface);
     overflow: hidden;
@@ -72,7 +72,7 @@
 
 /* полоса визуализации порогов (если понадобится в этом шаблоне) */
 .threshold-bar {
-  height: 10px;
+  height: 20px;
   border-radius: 4px;
   margin: 8px 0 16px;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);

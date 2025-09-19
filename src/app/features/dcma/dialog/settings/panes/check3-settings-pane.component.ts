@@ -21,10 +21,10 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
   template: `
     <mat-divider></mat-divider>
 
-    <h4 class="section-title">{{ 'dcma.check3.title.general' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.general' | transloco }}</h4>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.general.includeDetails' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.general.includeDetails' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv().includeDetails"
         (change)="patch({ includeDetails: $event.checked })">
@@ -33,7 +33,7 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
 
     @if (adv().includeDetails) {
       <div class="row-line">
-        <div class="row-text"><div class="row-title">{{ 'dcma.check3.general.detailsLimit' | transloco }}</div></div>
+        <div class="row-text"><div class="row-title">{{ 'dcma.common.general.detailsLimit' | transloco }}</div></div>
         <mat-form-field class="pct-field" appearance="outline">
           <input matInput type="number" min="0" step="1"
                  [value]="adv().detailsLimit"
@@ -42,12 +42,12 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
       </div>
     }
 
-    <h4 class="section-title">{{ 'dcma.check3.title.calendar' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.calendar' | transloco }}</h4>
 
     <div class="row-line">
       <div class="row-text">
-        <div class="row-title">{{ 'dcma.check3.calendar.source' | transloco }}</div>
-        <div class="muted">{{ 'dcma.check3.calendar.note' | transloco }}</div>
+        <div class="row-title">{{ 'dcma.common.calendar.source' | transloco }}</div>
+        <div class="muted">{{ 'dcma.common.calendar.note' | transloco }}</div>
       </div>
 
     </div>
@@ -56,16 +56,16 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
           [value]="adv().calendarSource"
           (change)="patch({ calendarSource: $any($event.value) })"
           class="radio-vert">
-          <mat-radio-button value="successor">{{ 'dcma.check3.calendar.successor' | transloco }}</mat-radio-button>
-          <mat-radio-button value="predecessor">{{ 'dcma.check3.calendar.predecessor' | transloco }}</mat-radio-button>
-          <mat-radio-button value="fixed">{{ 'dcma.check3.calendar.fixed' | transloco }}</mat-radio-button>
+          <mat-radio-button value="successor">{{ 'dcma.common.calendar.successor' | transloco }}</mat-radio-button>
+          <mat-radio-button value="predecessor">{{ 'dcma.common.calendar.predecessor' | transloco }}</mat-radio-button>
+          <mat-radio-button value="fixed">{{ 'dcma.common.calendar.fixed' | transloco }}</mat-radio-button>
         </mat-radio-group>
       </div>
 
 
     @if (adv().calendarSource === 'fixed') {
       <div class="row-line">
-        <div class="row-text"><div class="row-title">{{ 'dcma.check3.calendar.fixedHpd' | transloco }}</div></div>
+        <div class="row-text"><div class="row-title">{{ 'dcma.common.calendar.fixedHpd' | transloco }}</div></div>
         <mat-form-field class="pct-field" appearance="outline">
           <input matInput type="number" min="1" step="1"
                  [value]="adv().fixedHoursPerDay"
@@ -76,7 +76,7 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
     }
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.calendar.defaultHpd' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.calendar.defaultHpd' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="1" step="1"
                [value]="adv().hoursPerDay"
@@ -85,10 +85,10 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
       </mat-form-field>
     </div>
 
-    <h4 class="section-title">{{ 'dcma.check3.title.filters' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.filters' | transloco }}</h4>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.filters.types' | transloco }}:</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.types' | transloco }}:</div></div>
     </div>
 
     <div class="row-line">
@@ -113,24 +113,24 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.filters.ignoreMilestones' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreMilestones' | transloco }}</div></div>
       <mat-slide-toggle [checked]="adv().ignoreMilestoneRelations" (change)="patch({ ignoreMilestoneRelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.filters.ignoreLoE' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreLoE' | transloco }}</div></div>
       <mat-slide-toggle [checked]="adv().ignoreLoERelations" (change)="patch({ ignoreLoERelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.filters.ignoreWbsSummary' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreWbsSummary' | transloco }}</div></div>
       <mat-slide-toggle [checked]="adv().ignoreWbsSummaryRelations" (change)="patch({ ignoreWbsSummaryRelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.filters.ignoreCompleted' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreCompleted' | transloco }}</div></div>
       <mat-slide-toggle [checked]="adv().ignoreCompletedRelations" (change)="patch({ ignoreCompletedRelations: $event.checked })"></mat-slide-toggle>
     </div>
 
-    <h4 class="section-title">{{ 'dcma.check3.title.tolerance' | transloco }}</h4>
-    <p class="muted">{{ 'dcma.check3.note.dcmaFive' | transloco }}</p>
+    <h4 class="section-title">{{ 'dcma.common.title.tolerance' | transloco }}</h4>
+    <p class="muted">{{ 'dcma.common.notes.dcmaFive' | transloco }}</p>
 
     <div class="row-line">
       <div class="row-text"><div class="row-title">{{ 'dcma.check3.tolerance.strictFive' | transloco }}</div></div>
@@ -142,7 +142,7 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
 
     @if (!adv().tolerance.strictFivePct) {
       <div class="row-line">
-        <div class="row-text"><div class="row-title">{{ 'dcma.check3.tolerance.percent' | transloco }}</div></div>
+        <div class="row-text"><div class="row-title">{{ 'dcma.common.tolerance.percent' | transloco }}</div></div>
         <mat-form-field class="pct-field" appearance="outline">
           <input matInput type="number" min="0" max="100" step="0.1"
                  [value]="adv().tolerance.percent"
@@ -152,7 +152,7 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
       </div>
 
       <div class="row-line">
-        <div class="row-text"><div class="row-title">{{ 'dcma.check3.tolerance.count' | transloco }}</div></div>
+        <div class="row-text"><div class="row-title">{{ 'dcma.common.tolerance.count' | transloco }}</div></div>
         <mat-form-field class="pct-field" appearance="outline">
           <input matInput type="number" min="0" step="1"
                  [value]="adv().tolerance.count"
@@ -161,7 +161,7 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
       </div>
 
       <div class="row-line">
-        <div class="row-text"><div class="row-title">{{ 'dcma.check3.tolerance.hours' | transloco }}</div></div>
+        <div class="row-text"><div class="row-title">{{ 'dcma.common.tolerance.hours' | transloco }}</div></div>
         <mat-form-field class="pct-field" appearance="outline">
           <input matInput type="number" min="0" step="0.1"
                  [value]="adv().tolerance.totalLagHours"
@@ -171,9 +171,9 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
       </div>
     }
 
-    <h4 class="section-title">{{ 'dcma.check3.title.thresholds' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.thresholds' | transloco }}</h4>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.thresholds.great' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.thresholds.great' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" max="100" step="0.1"
                [value]="adv().thresholds.greatPct"
@@ -182,7 +182,7 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-
       </mat-form-field>
     </div>
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check3.thresholds.average' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.thresholds.average' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" max="100" step="0.1"
                [value]="adv().thresholds.averagePct"

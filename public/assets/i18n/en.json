@@ -1,6 +1,7 @@
 {
   "common": {
     "start": "Start",
+    "settings": "Settings",
     "end": "End",
     "loading": "Calculating…",
     "list": "List",
@@ -344,40 +345,24 @@
         "text": "No extra parameters for the selected check. The global flags “Enable analysis” and “Show in table” are used."
       }
     },
-    "check1": {
+    "common": {
       "title": {
         "visibility": "Visibility",
         "filters": "Activity Filters",
-        "thresholds": "Threshold levels"
-      },
-      "visibility": {
-        "showOnMain": "Show this Health check on the main screen"
-      },
-      "filters": {
-        "taskResDep": "Task/resource dependent activities",
-        "milestones": "Milestones",
-        "loe": "Level of effort activities",
-        "wbsSummary": "WBS summary activities",
-        "completed": "Completed activities",
-        "obsolete": "Obsolete activities"
-      },
-      "thresholds": {
-        "great": "Great Performance",
-        "average": "Average Performance"
-      }
-    },
-    "check2": {
-      "title": {
+        "thresholds": "Threshold levels",
         "general": "General",
         "calendar": "Lag unit conversion",
-        "filters": "Filters",
-        "tolerance": "Tolerance (non-DCMA)",
-        "thresholds": "Threshold levels (custom KPI)"
+        "tolerance": "Tolerance"
       },
       "general": {
         "strictZero": "Strict DCMA rule (no leads allowed)",
         "includeDetails": "Include details in results",
         "detailsLimit": "Details limit"
+      },
+      "details": {
+        "include": "Include details in results",
+        "limit": "Details limit",
+        "limitRows": "Limit details (rows)"
       },
       "calendar": {
         "source": "HPD source for lag conversion",
@@ -385,70 +370,54 @@
         "predecessor": "Predecessor calendar",
         "fixed": "Fixed value",
         "fixedHpd": "Fixed hours per day",
-        "defaultHpd": "Default hours per day"
+        "defaultHpd": "Default hours per day",
+        "note": "Choose which calendar’s hours-per-day to use when converting lags or leads to hours/days."
       },
       "filters": {
         "types": "Relationship types",
         "ignoreMilestones": "Ignore relations with milestones",
         "ignoreLoE": "Ignore relations with Level of Effort activities",
         "ignoreWbsSummary": "Ignore relations with WBS summary activities",
-        "ignoreCompleted": "Ignore relations with completed activities"
-      },
-      "tolerance": {
-        "percent": "Allowed leads, percent",
-        "count": "Allowed leads, count",
-        "hours": "Allowed total lead hours"
+        "ignoreCompleted": "Ignore relations with completed activities",
+        "taskResDep": "Task/resource dependent activities",
+        "milestones": "Milestones",
+        "loe": "Level of effort activities",
+        "wbsSummary": "Include WBS Summary activities",
+        "completed": "Completed activities",
+        "obsolete": "Obsolete activities"
       },
       "thresholds": {
         "great": "Great Performance",
-        "average": "Average Performance"
-      },
-      "note": {
-        "dcmaZero": "Per DCMA-14, any leads are non-compliant (target = 0%). Thresholds below are for custom KPIs only and do not change the DCMA rule unless you disable the Strict rule."
-      }
-    }
-  
-  ,
-  "check3": {
-      "title": {
-        "general": "General",
-        "calendar": "HPD source for lag conversion",
-        "filters": "Filters",
-        "tolerance": "Tolerance",
-        "thresholds": "Great / Average KPI"
-      },
-      "general": {
-        "includeDetails": "Include details in results",
-        "detailsLimit": "Limit details (rows)"
-      },
-      "calendar": {
-        "source": "HPD source",
-        "note": "Choose which calendar’s hours-per-day to use when converting lags to hours/days.",
-        "successor": "Successor’s calendar",
-        "predecessor": "Predecessor’s calendar",
-        "fixed": "Fixed value",
-        "fixedHpd": "Fixed hours per day",
-        "defaultHpd": "Default hours per day"
-      },
-      "filters": {
-        "types": "Relationship types",
-        "ignoreMilestones": "Ignore milestone relations",
-        "ignoreLoE": "Ignore Level of Effort relations",
-        "ignoreWbsSummary": "Ignore WBS summary relations",
-        "ignoreCompleted": "Ignore completed activity relations"
+        "average": "Average Performance",
+        "greatLeq": "Great ≤ %",
+        "averageLeq": "Average ≤ %"
       },
       "tolerance": {
-        "strictFive": "Enforce DCMA limit 5% (strict)",
-        "percent": "Allowed % of lag links",
-        "count": "Allowed absolute count",
-        "hours": "Allowed total lag hours"
+        "percent": "Allowed percent",
+        "count": "Allowed count",
+        "hours": "Allowed total hours"
       },
-      "thresholds": {
-        "great": "Great ≤ %",
-        "average": "Average ≤ %"
-      },
-      "note": {
+      "notes": {
+        "dcmaZero": "Per DCMA-14, any leads are non-compliant (target = 0%). Thresholds below are for custom KPIs only and do not change the DCMA rule unless you disable the Strict rule.",
         "dcmaFive": "DCMA recommends no more than 5% of relationships with positive lag."
+      }
+    },
+
+    "check1": {
+      "visibility": {
+        "showOnMain": "Show this Health check on the main screen"
+      }
+    },
+
+    "check2": {
+      "general": {
+        "strictZero": "Strict DCMA rule (no leads allowed)"
+      }
+    },
+
+    "check3": {
+      "tolerance": {
+        "strictFive": "Enforce DCMA limit 5% (strict)"
       }
     },
     "checks": {

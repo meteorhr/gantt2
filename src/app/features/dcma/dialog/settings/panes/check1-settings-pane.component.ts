@@ -24,79 +24,70 @@ import type { DcmaCheck1AdvancedPatch } from '../../../services/dcma-settings.se
   template: `
     <mat-divider></mat-divider>
 
-    <h4 class="section-title">{{ 'dcma.check1.title.visibility' | transloco }}</h4>
-    <div class="row-line">
-      <div class="row-text">
-        <div class="row-title">{{ 'dcma.check1.visibility.showOnMain' | transloco }}</div>
-      </div>
-      <mat-slide-toggle
-        [checked]="adv1().showOnMain"
-        (change)="patchAdv1({ showOnMain: $event.checked })"
-        [attr.aria-label]="'dcma.check1.visibility.showOnMain' | transloco">
-      </mat-slide-toggle>
-    </div>
 
-    <h4 class="section-title">{{ 'dcma.check1.title.filters' | transloco }}</h4>
+
+
+    <h4 class="section-title">{{ 'dcma.common.title.filters' | transloco }}</h4>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check1.filters.taskResDep' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.taskResDep' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv1().includeTaskResDep"
         (change)="patchAdv1({ includeTaskResDep: $event.checked })"
-        [attr.aria-label]="'dcma.check1.filters.taskResDep' | transloco">
+        [attr.aria-label]="'dcma.common.filters.taskResDep' | transloco">
       </mat-slide-toggle>
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check1.filters.milestones' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.milestones' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv1().includeMilestones"
         (change)="patchAdv1({ includeMilestones: $event.checked })"
-        [attr.aria-label]="'dcma.check1.filters.milestones' | transloco">
+        [attr.aria-label]="'dcma.common.filters.milestones' | transloco">
       </mat-slide-toggle>
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check1.filters.loe' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.loe' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv1().includeLoE"
         (change)="patchAdv1({ includeLoE: $event.checked })"
-        [attr.aria-label]="'dcma.check1.filters.loe' | transloco">
+        [attr.aria-label]="'dcma.common.filters.loe' | transloco">
       </mat-slide-toggle>
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check1.filters.wbsSummary' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.wbsSummary' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv1().includeWbsSummary"
         (change)="patchAdv1({ includeWbsSummary: $event.checked })"
-        [attr.aria-label]="'dcma.check1.filters.wbsSummary' | transloco">
+        [attr.aria-label]="'dcma.common.filters.wbsSummary' | transloco">
       </mat-slide-toggle>
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check1.filters.completed' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.completed' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv1().includeCompleted"
         (change)="patchAdv1({ includeCompleted: $event.checked })"
-        [attr.aria-label]="'dcma.check1.filters.completed' | transloco">
+        [attr.aria-label]="'dcma.common.filters.completed' | transloco">
       </mat-slide-toggle>
     </div>
-
+    <!--
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check1.filters.obsolete' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.obsolete' | transloco }}</div></div>
       <mat-slide-toggle
         [checked]="adv1().includeObsolete"
         (change)="patchAdv1({ includeObsolete: $event.checked })"
         [disabled]="true"
-        [attr.aria-label]="'dcma.check1.filters.obsolete' | transloco">
+        [attr.aria-label]="'dcma.common.filters.obsolete' | transloco">
       </mat-slide-toggle>
     </div>
-
-    <h4 class="section-title">{{ 'dcma.check1.title.thresholds' | transloco }}</h4>
+-->
+    <h4 class="section-title">{{ 'dcma.common.title.thresholds' | transloco }}</h4>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check1.thresholds.great' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.thresholds.great' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" max="100" step="1"
                [value]="adv1().thresholds.greatPct"
@@ -106,7 +97,7 @@ import type { DcmaCheck1AdvancedPatch } from '../../../services/dcma-settings.se
     </div>
 
     <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.check1.thresholds.average' | transloco }}</div></div>
+      <div class="row-text"><div class="row-title">{{ 'dcma.common.thresholds.average' | transloco }}</div></div>
       <mat-form-field class="pct-field" appearance="outline">
         <input matInput type="number" min="0" max="100" step="1"
                [value]="adv1().thresholds.averagePct"
