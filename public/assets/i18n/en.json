@@ -420,6 +420,10 @@
         "strictFive": "Enforce DCMA limit 5% (strict)"
       }
     },
+    "check4": {
+      "dedup": { "byType": "By type (FS/SS/FF/SF)", "byTypeAndLag": "By type + lag" },
+      "note": { "kpiOnly": "Custom KPI thresholds are for grading only. No hard requirement is enforced." }
+    },
     "checks": {
       "names": {
         "1": "Logic",

@@ -8,23 +8,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { TranslocoModule } from '@jsverse/transloco';
 
 import { DcmaSettingsService } from '../../../services/dcma-settings.service';
-
-export type DcmaCheck4Advanced = {
-  includeDetails: boolean;
-  detailsLimit: number;
-
-  // фильтры по связям
-  ignoreMilestoneRelations: boolean;
-  ignoreLoERelations: boolean;
-  ignoreWbsSummaryRelations: boolean;
-  ignoreCompletedRelations: boolean;
-
-  // как дедуплицировать связи
-  dedupMode: 'byType' | 'byTypeAndLag';
-
-  // KPI и проходной порог
-  thresholds: { greatPct: number; averagePct: number; requiredPct: number };
-};
+import type { DcmaCheck4Advanced } from '../../../services/dcma-settings.service'; // ✅ импортируем type
 
 @Component({
   standalone: true,
@@ -38,7 +22,7 @@ export type DcmaCheck4Advanced = {
   template: `
     <mat-divider></mat-divider>
 
-    <h4 class="section-title">{{ 'dcma.check4.title.general' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.general' | transloco }}</h4>
 
     <div class="row-line">
       <div class="row-text"><div class="row-title">{{ 'dcma.common.general.includeDetails' | transloco }}</div></div>
@@ -48,50 +32,35 @@ export type DcmaCheck4Advanced = {
       </mat-slide-toggle>
     </div>
 
-    @if(adv().includeDetails){
-    <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.common.general.detailsLimit' | transloco }}</div></div>
-      <mat-form-field class="pct-field" appearance="outline">
-        <input matInput type="number" min="0" step="1"
-               [value]="adv().detailsLimit"
-               (input)="patchNum('detailsLimit', $any($event.target).value)">
-      </mat-form-field>
-    </div>
+    @if (adv().includeDetails) {
+      <div class="row-line">
+        <div class="row-text"><div class="row-title">{{ 'dcma.common.general.detailsLimit' | transloco }}</div></div>
+        <mat-form-field class="pct-field" appearance="outline">
+          <input matInput type="number" min="0" step="1"
+                 [value]="adv().detailsLimit"
+                 (input)="patchNum('detailsLimit', $any($event.target).value)">
+        </mat-form-field>
+      </div>
     }
-
-
-    <h4 class="section-title">{{ 'dcma.check4.title.filters' | transloco }}</h4>
-
+    <h4 class="section-title">{{ 'dcma.common.title.filters' | transloco }}</h4>
     <div class="row-line">
       <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreMilestones' | transloco }}</div></div>
-      <mat-slide-toggle
-        [checked]="adv().ignoreMilestoneRelations"
-        (change)="patch({ ignoreMilestoneRelations: $event.checked })">
-      </mat-slide-toggle>
+      <mat-slide-toggle [checked]="adv().ignoreMilestoneRelations" (change)="patch({ ignoreMilestoneRelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
       <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreLoE' | transloco }}</div></div>
-      <mat-slide-toggle
-        [checked]="adv().ignoreLoERelations"
-        (change)="patch({ ignoreLoERelations: $event.checked })">
-      </mat-slide-toggle>
+      <mat-slide-toggle [checked]="adv().ignoreLoERelations" (change)="patch({ ignoreLoERelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
       <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreWbsSummary' | transloco }}</div></div>
-      <mat-slide-toggle
-        [checked]="adv().ignoreWbsSummaryRelations"
-        (change)="patch({ ignoreWbsSummaryRelations: $event.checked })">
-      </mat-slide-toggle>
+      <mat-slide-toggle [checked]="adv().ignoreWbsSummaryRelations" (change)="patch({ ignoreWbsSummaryRelations: $event.checked })"></mat-slide-toggle>
     </div>
     <div class="row-line">
       <div class="row-text"><div class="row-title">{{ 'dcma.common.filters.ignoreCompleted' | transloco }}</div></div>
-      <mat-slide-toggle
-        [checked]="adv().ignoreCompletedRelations"
-        (change)="patch({ ignoreCompletedRelations: $event.checked })">
-      </mat-slide-toggle>
+      <mat-slide-toggle [checked]="adv().ignoreCompletedRelations" (change)="patch({ ignoreCompletedRelations: $event.checked })"></mat-slide-toggle>
     </div>
 
-    <h4 class="section-title">{{ 'dcma.check4.title.dedup' | transloco }}</h4>
+    <h4 class="section-title">{{ 'dcma.common.title.dedup' | transloco }}</h4>
     <div class="row-line">
       <mat-radio-group
         [value]="adv().dedupMode"
@@ -104,7 +73,7 @@ export type DcmaCheck4Advanced = {
 
     <h4 class="section-title">{{ 'dcma.common.title.thresholds' | transloco }}</h4>
     <p class="muted" style="margin:-4px 0 6px">
-      {{ 'dcma.check4.note.dcma90' | transloco }}
+      {{ 'dcma.check4.note.kpiOnly' | transloco }}
     </p>
 
     <div class="row-line">
@@ -146,18 +115,19 @@ export class DcmaCheck4SettingsPaneComponent {
     if (!Number.isFinite(n)) return;
     n = Math.max(0, Math.min(100, n));
 
-    const th = { ...this.adv().thresholds, [key]: n };
-    // для FS «больше — лучше»: required ≤ average ≤ great
-    if (th.requiredPct > th.averagePct) th.averagePct = th.requiredPct;
-    if (th.averagePct > th.greatPct) th.greatPct = th.averagePct;
-
-    this.patch({ thresholds: th });
+    const th = this.adv().thresholds;
+    const next = { ...th, [key]: n };
+    // FS: чем больше, тем лучше → average ≤ great
+    if (next.averagePct > next.greatPct) {
+      if (key === 'averagePct') next.greatPct = next.averagePct;
+      else next.averagePct = next.greatPct;
+    }
+    this.patch({ thresholds: next });
   }
 
   private clampPct(x: number) { return Math.max(0, Math.min(100, Math.round(x))); }
 
   thresholdGradient(): string {
-    // 0..avg = red, avg..great = yellow, great..100 = green
     const { averagePct, greatPct } = this.adv().thresholds;
     const r = '#EF5350', y = '#FFC107', g = '#4CAF50';
     const a = this.clampPct(averagePct);

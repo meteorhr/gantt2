@@ -262,7 +262,8 @@ export interface DcmaCheck4Result {
   countFF: number;
   countSF: number;
   percentFS: number;                 // % FS от totalRelationships
-  fsThreshold90Failed: boolean;      // true, если percentFS < 90
+  //fsThreshold90Failed: boolean;      
+  // // true, если percentFS < 90
   details?: { 
     nonFsList: DcmaCheck4NonFsItem[];
     dq?: {

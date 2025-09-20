@@ -32,7 +32,7 @@ export class DcmaCheck4Service {
       this.dexie.getRows('PROJECT') as Promise<Array<{ proj_id: number; proj_short_name?: string }>>,
     ]);
 
-    const includeDetailsEff = options?.includeDetails ?? includeDetails;
+    const includeDetailsEff = options?.includeDetails; //?? includeDetails;
     const dedup = options?.dedupMode ?? 'byType';
 
     const hasProject = projRows.some(p => p.proj_id === projId);
@@ -142,7 +142,7 @@ export class DcmaCheck4Service {
       countFF,
       countSF,
       percentFS,
-      fsThreshold90Failed: percentFS < 90, // информативный флаг «по DCMA»
+      //fsThreshold90Failed: percentFS < 90, 
       details: includeDetailsEff ? {
         nonFsList,
         dq: { duplicateLinks: dqDuplicate, selfLoops: dqSelf, externalLinks: dqExternal, unknownType: dqUnknownType },
