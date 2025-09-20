@@ -46,14 +46,12 @@
         </div>
 
         <!-- Индивидуальные панели -->
-        @if (cid === 1) {
-          <app-dcma-check1-settings-pane></app-dcma-check1-settings-pane>
-        } @else if (cid === 2) {
-          <app-dcma-check2-settings-pane></app-dcma-check2-settings-pane>
-        } @else if (cid === 3) {
-          <app-dcma-check3-settings-pane></app-dcma-check3-settings-pane>
-        } @else {
-          <app-dcma-empty-settings-pane [checkId]="cid"></app-dcma-empty-settings-pane>
+        @switch (cid) {
+          @case (1) { <app-dcma-check1-settings-pane /> }
+          @case (2) { <app-dcma-check2-settings-pane /> }
+          @case (3) { <app-dcma-check3-settings-pane /> }
+          @case (4) { <app-dcma-check4-settings-pane /> }  <!-- Новое -->
+          @default  { <app-dcma-empty-settings-pane [checkId]="cid" /> }
         }
       </section>
     }

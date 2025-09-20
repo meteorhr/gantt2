@@ -16,6 +16,7 @@ import { DcmaEmptySettingsPaneComponent } from './panes/empty-settings-pane.comp
 import { TranslocoModule } from '@jsverse/transloco';
 import { DcmaCheck2SettingsPaneComponent } from './panes/check2-settings-pane.component';
 import { DcmaCheck3SettingsPaneComponent } from './panes/check3-settings-pane.component';
+import { DcmaCheck4SettingsPaneComponent } from './panes/check4-settings-pane.component';
 
 // Подключаем панельки (отдельные файлы)
 
@@ -24,9 +25,24 @@ import { DcmaCheck3SettingsPaneComponent } from './panes/check3-settings-pane.co
   selector: 'app-dcma-settings-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, FormsModule, MatDialogModule, MatListModule, MatSlideToggleModule,
-    MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatDividerModule,
-    DcmaCheck1SettingsPaneComponent, DcmaEmptySettingsPaneComponent, TranslocoModule, DcmaCheck2SettingsPaneComponent, DcmaCheck3SettingsPaneComponent
+    CommonModule, 
+    FormsModule, 
+    MatDialogModule, 
+    MatListModule, 
+    MatSlideToggleModule,
+    MatIconModule, 
+    MatButtonModule, 
+    MatFormFieldModule, 
+    MatInputModule, 
+    MatDividerModule,
+  
+    TranslocoModule, 
+
+    DcmaEmptySettingsPaneComponent, 
+    DcmaCheck1SettingsPaneComponent, 
+    DcmaCheck2SettingsPaneComponent, 
+    DcmaCheck3SettingsPaneComponent,
+    DcmaCheck4SettingsPaneComponent,
   ],
   styleUrls: ['./dcma-settings-dialog.component.scss'],
   templateUrl: './dcma-settings-dialog.component.html',

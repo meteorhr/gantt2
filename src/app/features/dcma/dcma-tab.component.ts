@@ -165,11 +165,9 @@ export class DcmaChecksComponent {
 
       const p1  = s[1].enabled  ? this.svc1.analyzeCheck1(id, this.cfg.buildCheck1Options()) : Promise.resolve(null);
       const p2  = s[2].enabled ? this.svc2.analyzeCheck2(id, true, this.cfg.buildCheck2Options()) : Promise.resolve(null);
-
       const p3  = s[3].enabled ? this.svc3.analyzeCheck3(id, true, this.cfg.buildCheck3Options()) : Promise.resolve(null);
+      const p4  = s[4].enabled ? this.svc4.analyzeCheck4(id, true, this.cfg.buildCheck4Options()) : Promise.resolve(null);
 
-
-      const p4  = s[4].enabled  ? this.svc4.analyzeCheck4(id, true) : Promise.resolve(null);
       const p5  = s[5].enabled  ? this.svc5.analyzeCheck5(id, true) : Promise.resolve(null);
       const p6  = s[6].enabled  ? this.svc6.analyzeCheck6(id, true) : Promise.resolve(null);
       const p7  = s[7].enabled  ? this.svc7.analyzeCheck7(id, true) : Promise.resolve(null);
@@ -243,7 +241,6 @@ export class DcmaChecksComponent {
         this.cfg.evaluateCheck2Pass(r2),
         r2);
     }
-    
     const r3 = this.r3();
     if (r3) {
       const grade3 = this.cfg.evaluateCheck3Grade(r3.lagPercent);
@@ -254,7 +251,16 @@ export class DcmaChecksComponent {
         this.cfg.evaluateCheck3Pass(r3 as any),
         r3);
     }
-    const r4 = this.r4(); if (r4) push(4 as DcmaCheckId, 'Relationship Types', `FS: ${r4.countFS} (of ${r4.totalRelationships})`, r4.percentFS, r4.percentFS >= 90, r4);
+    const r4 = this.r4();
+    if (r4) {
+      const grade4 = this.cfg.evaluateCheck4Grade(r4.percentFS);
+      const label4 = grade4 === 'great' ? 'Great' : grade4 === 'average' ? 'Average' : 'Poor';
+      push(4 as DcmaCheckId, 'Relationship Types',
+        `FS: ${r4.countFS} (of ${r4.totalRelationships}) • ${label4}`,
+        r4.percentFS,
+        this.cfg.evaluateCheck4Pass(r4.percentFS),
+        r4);
+    }
     const r5 = this.r5(); if (r5) push(5 as DcmaCheckId, 'Hard Constraints', `Hard: ${r5.hardCount}/${r5.totalWithConstraints}`, r5.hardPercent, r5.hardPercent <= 5, r5);
     const r6 = this.r6(); if (r6) push(6 as DcmaCheckId, 'High Float', `High TF: ${r6.highFloatCount}/${r6.totalEligible}`, r6.highFloatPercent, r6.highFloatPercent <= 5, r6);
     const r7 = this.r7(); if (r7) push(7 as DcmaCheckId, 'Negative Float', `Neg TF count: ${r7.negativeFloatCount}`, null, !r7.hasNegativeFloat, r7);
