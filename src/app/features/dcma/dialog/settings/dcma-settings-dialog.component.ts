@@ -10,13 +10,23 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
 
-import { DcmaSettingsService, DcmaCheckId, DCMA_IDS, DCMA_CHECK_LABELS } from '../../services/dcma-settings.service';
+import { DcmaSettingsService, DcmaCheckId, DCMA_IDS, DCMA_CHECK_LABELS } from '../../services/adv/dcma-settings.service';
 import { DcmaCheck1SettingsPaneComponent } from './panes/check1-settings-pane.component';
 import { DcmaEmptySettingsPaneComponent } from './panes/empty-settings-pane.component';
 import { TranslocoModule } from '@jsverse/transloco';
 import { DcmaCheck2SettingsPaneComponent } from './panes/check2-settings-pane.component';
 import { DcmaCheck3SettingsPaneComponent } from './panes/check3-settings-pane.component';
 import { DcmaCheck4SettingsPaneComponent } from './panes/check4-settings-pane.component';
+import { DcmaCheck5SettingsPaneComponent } from './panes/check5-settings-pane.component';
+import { DcmaCheck6SettingsPaneComponent } from './panes/check6-settings-pane.component';
+import { DcmaCheck7SettingsPaneComponent } from './panes/check7-settings-pane.component';
+import { DcmaCheck8SettingsPaneComponent } from './panes/check8-settings-pane.component';
+import { DcmaCheck10SettingsPaneComponent } from './panes/check10-settings-pane.component';
+import { DcmaCheck9SettingsPaneComponent } from './panes/check9-settings-pane.component';
+import { DcmaCheck11SettingsPaneComponent } from './panes/check11-settings-pane.component';
+import { DcmaCheck12SettingsPaneComponent } from './panes/check12-settings-pane.component';
+import { DcmaCheck13SettingsPaneComponent } from './panes/check13-settings-pane.component';
+import { DcmaCheck14SettingsPaneComponent } from './panes/check14-settings-pane.component';
 
 // Подключаем панельки (отдельные файлы)
 
@@ -43,6 +53,16 @@ import { DcmaCheck4SettingsPaneComponent } from './panes/check4-settings-pane.co
     DcmaCheck2SettingsPaneComponent, 
     DcmaCheck3SettingsPaneComponent,
     DcmaCheck4SettingsPaneComponent,
+    DcmaCheck5SettingsPaneComponent,
+    DcmaCheck6SettingsPaneComponent,
+    DcmaCheck7SettingsPaneComponent,
+    DcmaCheck8SettingsPaneComponent,
+    DcmaCheck9SettingsPaneComponent, 
+    DcmaCheck10SettingsPaneComponent,
+    DcmaCheck11SettingsPaneComponent,
+    DcmaCheck12SettingsPaneComponent,
+    DcmaCheck13SettingsPaneComponent,
+    DcmaCheck14SettingsPaneComponent
   ],
   styleUrls: ['./dcma-settings-dialog.component.scss'],
   templateUrl: './dcma-settings-dialog.component.html',

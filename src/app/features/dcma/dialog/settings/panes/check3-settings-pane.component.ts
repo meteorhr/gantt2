@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslocoModule } from '@jsverse/transloco';
 
-import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/dcma-settings.service';
+import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/adv/dcma-settings.service';
 
 @Component({
   standalone: true,

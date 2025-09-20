@@ -26,7 +26,7 @@ import { DcmaSettingsDialogComponent } from './dialog/settings/dcma-settings-dia
 import { DcmaCheck1Result } from '../../p6/services/dcma/models/check1.model';
 
 // ВАЖНО: теперь типы и сервис берём отсюда
-import { DcmaSettingsService, DcmaCheckId } from './services/dcma-settings.service';
+import { DcmaSettingsService, DcmaCheckId } from './services/adv/dcma-settings.service';
 
 interface DcmaRow {
   check: DcmaCheckId;
@@ -164,19 +164,26 @@ export class DcmaChecksComponent {
       const id = this.projId();
 
       const p1  = s[1].enabled  ? this.svc1.analyzeCheck1(id, this.cfg.buildCheck1Options()) : Promise.resolve(null);
-      const p2  = s[2].enabled ? this.svc2.analyzeCheck2(id, true, this.cfg.buildCheck2Options()) : Promise.resolve(null);
-      const p3  = s[3].enabled ? this.svc3.analyzeCheck3(id, true, this.cfg.buildCheck3Options()) : Promise.resolve(null);
-      const p4  = s[4].enabled ? this.svc4.analyzeCheck4(id, true, this.cfg.buildCheck4Options()) : Promise.resolve(null);
+      const p2  = s[2].enabled  ? this.svc2.analyzeCheck2(id, true, this.cfg.buildCheck2Options()) : Promise.resolve(null);
+      const p3  = s[3].enabled  ? this.svc3.analyzeCheck3(id, true, this.cfg.buildCheck3Options()) : Promise.resolve(null);
+      const p4  = s[4].enabled  ? this.svc4.analyzeCheck4(id, true, this.cfg.buildCheck4Options()) : Promise.resolve(null);
       const p5  = s[5].enabled  ? this.svc5.analyzeCheck5(id, true, this.cfg.buildCheck5Options()) : Promise.resolve(null);
-      const p6  = s[6].enabled  ? this.svc6.analyzeCheck6(id, true) : Promise.resolve(null);
-      const p7  = s[7].enabled  ? this.svc7.analyzeCheck7(id, true) : Promise.resolve(null);
-      const p8  = s[8].enabled  ? this.svc8.analyzeCheck8(id, true) : Promise.resolve(null);
-      const p9  = s[9].enabled  ? this.svc9.analyzeCheck9(id, true) : Promise.resolve(null);
-      const p10 = s[10].enabled ? this.svc10.analyzeCheck10(id, true, 8) : Promise.resolve(null);
-      const p11 = s[11].enabled ? this.svc11.analyzeCheck11(id, true) : Promise.resolve(null);
-      const p12 = s[12].enabled ? this.svc12.analyzeCheck12(id, true, { hoursPerDay: 8 }) : Promise.resolve(null);
-      const p13 = s[13].enabled ? this.svc13.analyzeCheck13(id, { hoursPerDay: 8 }) : Promise.resolve(null);
-      const p14 = s[14].enabled ? this.svc14.analyzeCheck14(id, true) : Promise.resolve(null);
+      const o6  = this.cfg.buildCheck6Options();
+      const p6  = s[6].enabled
+        ? this.svc6.analyzeCheck6(id, o6.includeDetails)
+        : Promise.resolve(null);
+
+      const p7  = s[7].enabled  ? this.svc7.analyzeCheck7(id, true, this.cfg.buildCheck7Options()) : Promise.resolve(null);
+      const p8  = s[8].enabled  ? this.svc8.analyzeCheck8(id, true, this.cfg.buildCheck8Options()) : Promise.resolve(null);
+      const p9  = s[9].enabled  ? this.svc9.analyzeCheck9(id, true, this.cfg.buildCheck9Options()) : Promise.resolve(null);
+      const o10 = this.cfg.buildCheck10Options();
+      const p10 = s[10].enabled
+        ? this.svc10.analyzeCheck10(id, o10.includeDetails)
+        : Promise.resolve(null);
+      const p11 = s[11].enabled ? this.svc11.analyzeCheck11(id, true, this.cfg.buildCheck11Options()) : Promise.resolve(null);
+      const p12 = s[12].enabled ? this.svc12.analyzeCheck12(id, true, this.cfg.buildCheck12Options()) : Promise.resolve(null);
+      const p13 = s[13].enabled ? this.svc13.analyzeCheck13(id, this.cfg.buildCheck13Options()) : Promise.resolve(null);
+      const p14 = s[14].enabled ? this.svc14.analyzeCheck14(id, true, this.cfg.buildCheck14Options()) : Promise.resolve(null);
 
       const [
         check1, check2, check3, check4, check5, check6, check7, check8, check9,
@@ -260,28 +267,122 @@ export class DcmaChecksComponent {
         this.cfg.evaluateCheck4Pass(r4.percentFS),
         r4);
     }
+    
     const r5 = this.r5();
     if (r5) {
-      const pct = (r5 as any).percentHard ?? (r5 as any).hardPercent;
+      const pctAll = (r5 as any).percentHardAllActivities
+        ?? (r5 as any).percentHard
+        ?? (r5 as any).hardPercent;
       const cnt = (r5 as any).countHard ?? (r5 as any).hardCount;
       const tot = (r5 as any).totalActivities ?? (r5 as any).totalWithConstraints;
-      const grade5 = this.cfg.evaluateCheck5Grade(pct);
+      const grade5 = this.cfg.evaluateCheck5Grade(pctAll);
       const label5 = grade5 === 'great' ? 'Great' : grade5 === 'average' ? 'Average' : 'Poor';
-          push(5 as DcmaCheckId, 'Hard Constraints',
-            `Hard constraints: ${cnt} (of ${tot}) • ${label5}`,
-            pct,
-            this.cfg.evaluateCheck5Pass(pct),
-            r5);
-        }    
-    const r6 = this.r6(); if (r6) push(6 as DcmaCheckId, 'High Float', `High TF: ${r6.highFloatCount}/${r6.totalEligible}`, r6.highFloatPercent, r6.highFloatPercent <= 5, r6);
-    const r7 = this.r7(); if (r7) push(7 as DcmaCheckId, 'Negative Float', `Neg TF count: ${r7.negativeFloatCount}`, null, !r7.hasNegativeFloat, r7);
-    const r8 = this.r8(); if (r8) push(8 as DcmaCheckId, 'High Duration', `>44d remain: ${r8.highDurationCount}/${r8.totalEligible}`, r8.highDurationPercent, r8.highDurationPercent <= 5, r8);
-    const r9 = this.r9(); if (r9) push(9 as DcmaCheckId, 'Invalid Dates', `9a: ${r9.invalidForecastCount} • 9b: ${r9.invalidActualCount}`, null, !r9.hasInvalidDates, r9);
-    const r10 = this.r10(); if (r10) push(10 as DcmaCheckId, 'Resources', `No resources: ${r10.withoutResourceCount}/${r10.totalEligible}`, r10.percentWithoutResource, r10.withoutResourceCount === 0, r10);
-    const r11 = this.r11(); if (r11) push(11 as DcmaCheckId, 'Missed Tasks', `Missed: ${r11.missedCount}/${r11.totalCompleted}`, r11.missedPercent, r11.missedPercent <= 5, r11);
-    const r12 = this.r12(); if (r12) push(12 as DcmaCheckId, 'Critical Path Test', `Single chain & ends at PF: ${r12.isSingleChain && r12.reachedProjectFinish ? 'OK' : 'Issue'}`, null, !!r12.testPassLikely, r12);
-    const r13 = this.r13(); if (r13) push(13 as DcmaCheckId, 'CPLI', `CPL: ${r13.criticalPathLengthDays} • PTF: ${r13.projectTotalFloatDays}`, r13.cpli ?? null, !!r13.cpliWithin5pct, r13);
-    const r14 = this.r14(); if (r14) push(14 as DcmaCheckId, 'BEI', `Planned/Actual: ${r14.plannedToComplete}/${r14.actuallyCompleted}`, r14.bei ?? null, !!r14.beiWithin95pct, r14);
+      push(5 as DcmaCheckId, 'Hard Constraints',
+        `Hard constraints: ${cnt} (of ${tot}) • ${label5}`,
+        pctAll,
+        this.cfg.evaluateCheck5Pass(pctAll),
+        r5);
+    }
+
+    const r6 = this.r6();
+    if (r6) {
+      const grade6 = this.cfg.evaluateCheck6Grade(r6.highFloatPercent);
+      const label6 = grade6 === 'great' ? 'Great' : grade6 === 'average' ? 'Average' : 'Poor';
+      push(6 as DcmaCheckId, 'High Float',
+        `High TF: ${r6.highFloatCount}/${r6.totalEligible} • ${label6}`,
+        r6.highFloatPercent,
+        this.cfg.evaluateCheck6Pass(r6.highFloatPercent),
+        r6);
+    }
+
+    const r7 = this.r7();
+    if (r7) {
+      const grade7 = this.cfg.evaluateCheck7Grade({ negativeFloatCount: r7.negativeFloatCount, totalEligible: r7.totalEligible });
+      const label7 = grade7 === 'great' ? 'Great' : grade7 === 'average' ? 'Average' : 'Poor';
+      push(7 as DcmaCheckId, 'Negative Float',
+        `Neg TF count: ${r7.negativeFloatCount} • ${label7}`,
+        null,
+        this.cfg.evaluateCheck7Pass({ negativeFloatCount: r7.negativeFloatCount, totalEligible: r7.totalEligible }),
+        r7);
+    }
+
+    const r8 = this.r8();
+    if (r8) {
+      const grade8 = this.cfg.evaluateCheck8Grade(r8.highDurationPercent);
+      const label8 = grade8 === 'great' ? 'Great' : grade8 === 'average' ? 'Average' : 'Poor';
+      push(8 as DcmaCheckId, 'High Duration',
+        `>44d remain: ${r8.highDurationCount}/${r8.totalEligible} • ${label8}`,
+        r8.highDurationPercent,
+        this.cfg.evaluateCheck8Pass(r8.highDurationPercent),
+        r8);
+    }
+
+    const r9 = this.r9();
+    if (r9) {
+      const invalidCount = (r9.invalidForecastCount ?? 0) + (r9.invalidActualCount ?? 0);
+      const grade9 = this.cfg.evaluateCheck9Grade(invalidCount);
+      const label9 = grade9 === 'great' ? 'Great' : grade9 === 'average' ? 'Average' : 'Poor';
+      push(9 as DcmaCheckId, 'Invalid Dates',
+        `9a: ${r9.invalidForecastCount} • 9b: ${r9.invalidActualCount} • ${label9}`,
+        null,
+        this.cfg.evaluateCheck9Pass(invalidCount),
+        r9);
+    }
+
+    const r10 = this.r10();
+    if (r10) {
+      const grade10 = this.cfg.evaluateCheck10Grade(r10.percentWithoutResource);
+      const label10 = grade10 === 'great' ? 'Great' : grade10 === 'average' ? 'Average' : 'Poor';
+      push(10 as DcmaCheckId, 'Resources',
+        `No resources: ${r10.withoutResourceCount}/${r10.totalEligible} • ${label10}`,
+        r10.percentWithoutResource,
+        this.cfg.evaluateCheck10Pass(r10.percentWithoutResource),
+        r10);
+    }
+
+    const r11 = this.r11();
+    if (r11) {
+      const grade11 = this.cfg.evaluateCheck11Grade(r11.missedPercent);
+      const label11 = grade11 === 'great' ? 'Great' : grade11 === 'average' ? 'Average' : 'Poor';
+      push(11 as DcmaCheckId, 'Missed Tasks',
+        `Missed: ${r11.missedCount}/${r11.totalCompleted} • ${label11}`,
+        r11.missedPercent,
+        this.cfg.evaluateCheck11Pass(r11.missedPercent),
+        r11);
+    }
+
+    const r12 = this.r12();
+    if (r12) {
+      const grade12 = this.cfg.evaluateCheck12Grade(!!r12.testPassLikely);
+      const label12 = grade12 === 'great' ? 'Great' : grade12 === 'average' ? 'Average' : 'Poor';
+      push(12 as DcmaCheckId, 'Critical Path Test',
+        `Single chain & ends at PF: ${r12.isSingleChain && r12.reachedProjectFinish ? 'OK' : 'Issue'} • ${label12}`,
+        null,
+        this.cfg.evaluateCheck12Pass(!!r12.testPassLikely),
+        r12);
+    }
+
+    const r13 = this.r13();
+    if (r13) {
+      const grade13 = this.cfg.evaluateCheck13Grade(r13.cpli ?? null);
+      const label13 = grade13 === 'great' ? 'Great' : grade13 === 'average' ? 'Average' : 'Poor';
+      push(13 as DcmaCheckId, 'CPLI',
+        `CPL: ${r13.criticalPathLengthDays} • PTF: ${r13.projectTotalFloatDays} • ${label13}`,
+        r13.cpli ?? null,
+        this.cfg.evaluateCheck13Pass(r13.cpli ?? null),
+        r13);
+    }
+
+    const r14 = this.r14();
+    if (r14) {
+      const grade14 = this.cfg.evaluateCheck14Grade(r14.bei ?? null);
+      const label14 = grade14 === 'great' ? 'Great' : grade14 === 'average' ? 'Average' : 'Poor';
+      push(14 as DcmaCheckId, 'BEI',
+        `Planned/Actual: ${r14.plannedToComplete}/${r14.actuallyCompleted} • ${label14}`,
+        r14.bei ?? null,
+        this.cfg.evaluateCheck14Pass(r14.bei ?? null),
+        r14);
+    }
 
     this.rows.set(rows);
   }

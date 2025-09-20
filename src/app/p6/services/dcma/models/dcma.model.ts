@@ -47,6 +47,10 @@ export interface DcmaCheck5Result {
   softCount: number;                // активностей с любым soft-типом
   hardPercent: number;              // % Hard от totalWithConstraints
   threshold5PercentExceeded: boolean; // >5% — внимание
+  totalActivities: number;          // все eligible-активности после фильтров (WBS/LoE/Milestone/Completed и т.п.)
+  percentHardAllActivities: number; // % Hard от totalActivities (этим пользуемся для Pass/Grade)
+  noConstraintCount: number;        // сколько eligible-активностей не имеют распознанного ограничения (UNKNOWN/пусто)
+ 
   details?: {
     hardList: DcmaCheck5Item[];
     softList: DcmaCheck5Item[];
@@ -55,7 +59,19 @@ export interface DcmaCheck5Result {
       unknownType: number;          // нераспознанных типов (не попали в знаменатель)
       missingDateForHard: number;   // HARD_* без даты
       missingDateForSoft: number;   // SOFT_* без даты
-      excludedWbs: number;          // исключённые WBS summary
+      excludedWbs: number;          // исключённые WBS summary (как раньше)
+      // Новые DQ-счётчики по фильтрам (усилили отчётность):
+      excludedMilestone: number;    // исключено вех по фильтру
+      excludedLoE: number;          // исключено LoE/Hammock по фильтру
+      excludedCompleted: number;    // исключено завершённых по фильтру
+     };
+     // Снимок применённых фильтров (для прозрачности расчёта)
+    filters?: {
+      ignoreMilestoneActivities: boolean;
+      ignoreLoEActivities: boolean;
+      ignoreWbsSummaryActivities: boolean;
+      ignoreCompletedActivities: boolean;
+      detailsLimit: number;
     };
   };
 }
@@ -388,6 +404,7 @@ export interface DcmaCheck10Result {
       excludedWbs: number;             // исключённые WBS summary
       excludedMilestones: number;      // исключённые вехи
       excludedLoEOrHammock: number;    // исключённые LOE/Hammock (если применено)
+      excludedCompleted: number;      // исключённые завершённые (если применено)
       missingDuration: number;         // нет данных по длительности
       negativeDuration: number;        // отрицательная длительность
       usedAltDurationField: number;    // использовали альтернативные поля для длительности

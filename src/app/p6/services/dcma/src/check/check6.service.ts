@@ -1,23 +1,61 @@
-// src/app/p6/services/dcma/src/check/check6.service.ts
 import { Injectable, inject } from '@angular/core';
 import { P6DexieService } from '../../../../dexie.service';
 import { CALENDARRow } from '../../../../models';
 import { DcmaCheck6Item, DcmaCheck6Result, TaskRow } from '../../models/dcma.model';
 import { parseNum } from '../utils/num.util';
 
+/** Опции Check 6 (включая фильтры и KPI-пороги) */
+export type DcmaCheck6Options = {
+  /** Возвращать подробности по найденным задачам */
+  includeDetails: boolean;
+  /** Ограничение на размер списка деталей */
+  detailsLimit: number;
+  /** Фолбэк «часов в дне», если календарь не дал валидное значение */
+  fallbackHoursPerDay: number;
+  /** Порог «High Float» в ДНЯХ (по DCMA типично 44) */
+  dayThreshold: number;
+  /** KPI/Pass-пороги (Pass сравнивается с requiredMaxPct) */
+  thresholds: { requiredMaxPct: number; averageMaxPct: number; greatMaxPct: number };
+
+  /** Фильтры по активностям (исключения из знаменателя) */
+  ignoreMilestoneActivities: boolean;
+  ignoreLoEActivities: boolean;
+  ignoreWbsSummaryActivities: boolean;
+  ignoreCompletedActivities: boolean;
+};
+
 @Injectable({ providedIn: 'root' })
 export class DcmaCheck6Service {
   private readonly dexie = inject(P6DexieService);
 
-  /** DCMA Check 6 — High Float (> 44 дней) ≤ 5% */
+  /**
+   * DCMA Check 6 — High Float (> N дней) ≤ P%
+   * HPD (hours per day) всегда берём из календарей задачи (CALENDAR). Если календарь
+   * не содержит валидного значения, используем настраиваемый фолбэк fallbackHoursPerDay.
+   */
   async analyzeCheck6(
     projId: number,
     includeDetails: boolean = true,
-    hoursPerDay: number = 8,
+    options?: Partial<DcmaCheck6Options>,
   ): Promise<DcmaCheck6Result> {
+    // Сбор опций с безопасными дефолтами. Поддерживаем обратную совместимость с устаревшим `hoursPerDay`.
+    const fallbackHPD = (options as any)?.fallbackHoursPerDay ?? (options as any)?.hoursPerDay ?? 8;
+    const opts: DcmaCheck6Options = {
+      includeDetails,
+      detailsLimit: 500,
+      fallbackHoursPerDay: fallbackHPD,
+      dayThreshold: options?.dayThreshold ?? 44,
+      thresholds: options?.thresholds ?? { requiredMaxPct: 5.0, averageMaxPct: 5.0, greatMaxPct: 2.0 },
+
+      ignoreMilestoneActivities: options?.ignoreMilestoneActivities ?? false,
+      ignoreLoEActivities: options?.ignoreLoEActivities ?? false,
+      ignoreWbsSummaryActivities: options?.ignoreWbsSummaryActivities ?? false,
+      ignoreCompletedActivities: options?.ignoreCompletedActivities ?? false,
+    };
+
     const [taskRows, projRows, calRows] = await Promise.all([
       this.dexie.getRows('TASK') as Promise<TaskRow[]>,
-      this.dexie.getRows('PROJECT') as Promise<Array<{ proj_id: number }>>, 
+      this.dexie.getRows('PROJECT') as Promise<Array<{ proj_id: number }>>,
       this.dexie.getRows('CALENDAR') as Promise<CALENDARRow[]>,
     ]);
 
@@ -26,12 +64,30 @@ export class DcmaCheck6Service {
 
     const tasksInProject = (taskRows || []).filter(t => t.proj_id === projId);
 
+    // Классификаторы типов
     const isWbs = (t: TaskRow) => ((t.task_type ?? '').trim() === 'TT_WBS');
-    const eligible = tasksInProject.filter(t => !isWbs(t));
-    const excludedWbs = tasksInProject.length - eligible.length;
+    const isMilestone = (t: TaskRow) => {
+      const tp = (t.task_type ?? '').trim();
+      return tp === 'TT_Mile' || tp === 'TT_StartMile' || tp === 'TT_FinMile';
+    };
+    const isLoE = (t: TaskRow) => ((t.task_type ?? '').trim() === 'TT_LOE');
+    const isCompleted = (t: TaskRow) => (t.status_code ?? '').toLowerCase().includes('complete');
+
+    // Фильтрация eligible с учётом опций
+    let excludedWbs = 0;
+    const eligible: TaskRow[] = [];
+    for (const t of tasksInProject) {
+      // WBS Summary — не является активностью; из знаменателя исключаем всегда
+      if (isWbs(t)) { excludedWbs++; continue; }
+      if (opts.ignoreMilestoneActivities && isMilestone(t)) continue;
+      if (opts.ignoreLoEActivities && isLoE(t)) continue;
+      if (opts.ignoreCompletedActivities && isCompleted(t)) continue;
+      eligible.push(t);
+    }
 
     const calById = new Map<string | number, CALENDARRow>();
     for (const c of (calRows || [])) if (c && c.clndr_id != null) calById.set(c.clndr_id, c);
+
     const getHpd = (t: TaskRow): number => {
       const cal = t?.clndr_id != null ? calById.get(t.clndr_id) : undefined;
       const h =
@@ -40,7 +96,7 @@ export class DcmaCheck6Service {
         ((cal as any)?.week_hr_cnt != null ? (cal as any).week_hr_cnt / 5 : null) ??
         ((cal as any)?.month_hr_cnt != null ? (cal as any).month_hr_cnt / 21.667 : null) ??
         ((cal as any)?.year_hr_cnt != null ? (cal as any).year_hr_cnt / 260 : null);
-      return (typeof h === 'number' && h > 0) ? h : hoursPerDay;
+      return (typeof h === 'number' && h > 0) ? h : opts.fallbackHoursPerDay;
     };
 
     let dqUnknownUnits = 0;
@@ -62,26 +118,31 @@ export class DcmaCheck6Service {
       dqUnknownUnits++; return 0;
     };
 
+    // Выбор high float по настраиваемому порогу в днях (по календарю задачи)
     const hi = eligible.filter(t => {
       const hpd = getHpd(t);
       const tfHrs = tfHours(t, hpd);
-      return tfHrs > (44 * hpd);
+      return tfHrs > (opts.dayThreshold * hpd);
     });
 
-    const items: DcmaCheck6Item[] = includeDetails
-      ? hi.map(t => {
-          const hpd = getHpd(t);
-          const tfHrs = tfHours(t, hpd);
-          return {
-            task_id: t.task_id,
-            task_code: t.task_code,
-            task_name: t.task_name,
-            total_float_hr_cnt: tfHrs ?? 0,
-            total_float_days_8h: Math.round((tfHrs / hpd) * 100) / 100,
-            hours_per_day_used: hpd,
-          };
-        })
-      : [];
+    // Детали (с обрезкой до detailsLimit)
+    let items: DcmaCheck6Item[] = [];
+    if (opts.includeDetails) {
+      const mapped = hi.map(t => {
+        const hpd = getHpd(t);
+        const tfHrs = tfHours(t, hpd);
+        return {
+          task_id: t.task_id,
+          task_code: t.task_code,
+          task_name: t.task_name,
+          total_float_hr_cnt: tfHrs ?? 0,
+          total_float_days_8h: Math.round((tfHrs / hpd) * 100) / 100, // дни по календарю задачи
+          hours_per_day_used: hpd,
+        } as DcmaCheck6Item;
+      });
+      const lim = Math.max(0, opts.detailsLimit | 0);
+      items = lim > 0 ? mapped.slice(0, lim) : mapped;
+    }
 
     const totalEligible = eligible.length;
     const highFloatCount = hi.length;
@@ -92,8 +153,9 @@ export class DcmaCheck6Service {
       totalEligible,
       highFloatCount,
       highFloatPercent,
-      threshold5PercentExceeded: highFloatPercent > 5,
-      details: includeDetails ? { 
+      // Pass-флаг по настраиваемому requiredMaxPct (для обратной совместимости имя поля не меняем)
+      threshold5PercentExceeded: highFloatPercent > opts.thresholds.requiredMaxPct,
+      details: opts.includeDetails ? {
         items,
         dq: { unknownUnits: dqUnknownUnits, missingTf: dqMissingTf, excludedWbs },
       } : undefined,

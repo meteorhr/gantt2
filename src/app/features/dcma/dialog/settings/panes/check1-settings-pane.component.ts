@@ -6,8 +6,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslocoModule } from '@jsverse/transloco';
 
-import { DcmaSettingsService } from '../../../services/dcma-settings.service';
-import type { DcmaCheck1AdvancedPatch } from '../../../services/dcma-settings.service';
+import { DcmaSettingsService } from '../../../services/adv/dcma-settings.service';
+import type { DcmaCheck1AdvancedPatch } from '../../../services/adv/dcma-settings.service';
 
 @Component({
   standalone: true,

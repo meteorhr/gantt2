@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { DcmaCheck1Advanced } from './types/adv1-settings.types';
 
 /** Идентификаторы чеков DCMA 1..14 */
 export type DcmaCheckId =
@@ -19,30 +20,12 @@ export interface DcmaCheckCommonSettings {
   showInTable: boolean;
 }
 
-/** Advanced-настройки чек-1 (Logic) */
-export interface DcmaCheck1Advanced {
-  showOnMain: boolean;
-
-  // Фильтры по типам работ
-  includeTaskResDep: boolean;
-  includeMilestones: boolean;
-  includeLoE: boolean;
-  includeWbsSummary: boolean;
-  includeCompleted: boolean;
-  includeObsolete: boolean; // зарезервировано под будущее
-
-  // Пороговые значения качества (меньше = лучше для % Missing Any)
-  thresholds: {
-    greatPct: number;   // «Отлично» — <= этого значения
-    averagePct: number; // «Средне» — <= этого значения, >great => «средне»
-  };
-}
 
 export type DcmaCheck1AdvancedPatch =
   Partial<Omit<DcmaCheck1Advanced, 'thresholds'>> & {
     thresholds?: Partial<DcmaCheck1Advanced['thresholds']>;
   };
-
+  
 export interface PersistedSettingsV1 {
   version: 1;
   common: Record<DcmaCheckId, DcmaCheckCommonSettings>;

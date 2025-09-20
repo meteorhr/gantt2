@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { P6DexieService } from '../../../../dexie.service';
-import type { TaskRow } from '../../models/dcma.model';
-import { normalizeConstraintType, type ConstraintNorm } from '../utils/constraint.util';
+import { DcmaCheck5Item, DcmaCheck5Result, TaskRow } from '../../models/dcma.model';
+import { ConstraintNorm, isHardConstraint, normalizeConstraintType } from '../utils/constraint.util';
 
 export type DcmaCheck5Options = {
   includeDetails: boolean;
@@ -12,71 +12,41 @@ export type DcmaCheck5Options = {
   ignoreCompletedActivities: boolean;
 };
 
-type HardItem = {
-  task_id: number;
-  task_code?: string;
-  task_name?: string;
-  cstr_type?: string;
-  cstr_date?: string | Date | null;
-  normType?: string;
-};
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
-function isMilestone(t: TaskRow): boolean {
-  const tp = (t.task_type ?? '').trim();
-  return tp === 'TT_Mile' || tp === 'TT_StartMile' || tp === 'TT_FinMile';
-}
-
-function isLoE(t: TaskRow): boolean {
-  return (t.task_type ?? '').trim() === 'TT_LOE';
-}
-
-function isWbs(t: TaskRow): boolean {
-  return (t.task_type ?? '').trim() === 'TT_WBS';
-}
-
-function isCompleted(t: TaskRow): boolean {
-  const s = (t.status_code ?? '').toLowerCase();
-  return s.includes('complete'); // covers "Completed", "TK_Complete"
-}
-
-function isHardForCheck5(norm: ConstraintNorm): boolean {
-  // DCMA Check 5 считает жёсткими: MSO/MFO/SO/FO
-  return norm === 'HARD_MS' || norm === 'HARD_MF' || norm === 'SOFT_START_ON' || norm === 'SOFT_FINISH_ON';
-}
-
 @Injectable({ providedIn: 'root' })
 export class DcmaCheck5Service {
   private readonly dexie = inject(P6DexieService);
 
+  private round2(n: number): number { return Math.round(n * 100) / 100; }
+
+  private isMilestone(t: TaskRow): boolean {
+    const tp = (t.task_type ?? '').trim();
+    return tp === 'TT_Mile' || tp === 'TT_StartMile' || tp === 'TT_FinMile';
+  }
+  private isLoE(t: TaskRow): boolean { return (t.task_type ?? '').trim() === 'TT_LOE'; }
+  private isWbs(t: TaskRow): boolean { return (t.task_type ?? '').trim() === 'TT_WBS'; }
+  private isCompleted(t: TaskRow): boolean {
+    const s = (t.status_code ?? '').toLowerCase();
+    return s.includes('complete'); // «Completed», «TK_Complete», и т.п.
+  }
+
+  /** DCMA трактовка “hard”: MSO/MFO + SO/FO */
+  private isHardBySpec(norm: ConstraintNorm): boolean {
+    return isHardConstraint(norm)
+      || norm === 'SOFT_START_ON'    // SO → hard по требованиям
+      || norm === 'SOFT_FINISH_ON';  // FO → hard по требованиям
+  }
+
   /**
-   * DCMA Check 5 — Hard Constraints ≤ RequiredMaxPct
-   * percentHard считается от всех активностей (после применения фильтров).
-   * Под "hard" понимаем: MSO/MFO/SO/FO (Start/Finish On также считаем жёсткими).
-   *
-   * Совместимость: возвращаем и новые поля (percentHard, totalActivities, countHard),
-   * и устаревшие (hardPercent, totalWithConstraints, hardCount) с пометкой @deprecated.
+   * Check 5 — Hard Constraints.
+   * Считаем одновременно:
+   * 1) legacy: hardPercent от totalWithConstraints (hard+soft распознанные ограничения);
+   * 2) DCMA:  percentHardAllActivities от totalActivities (все eligible-активности после фильтров).
    */
   async analyzeCheck5(
     projId: number,
     includeDetails: boolean = true,
     options?: Partial<DcmaCheck5Options>
-  ): Promise<{
-    proj_id: number;
-    // новые поля
-    totalActivities: number;
-    countHard: number;
-    percentHard: number;
-    details?: { items: HardItem[]; hardList?: HardItem[] };
-    // совместимость
-    /** @deprecated */ totalWithConstraints: number;
-    /** @deprecated */ hardCount: number;
-    /** @deprecated */ hardPercent: number;
-    /** @deprecated */ threshold5PercentExceeded: boolean;
-  }> {
+  ): Promise<DcmaCheck5Result> {
     const [taskRows, projRows] = await Promise.all([
       this.dexie.getRows('TASK') as Promise<TaskRow[]>,
       this.dexie.getRows('PROJECT') as Promise<Array<{ proj_id: number }>>,
@@ -88,7 +58,7 @@ export class DcmaCheck5Service {
     const all = (taskRows || []).filter(t => t.proj_id === projId);
 
     const opts: DcmaCheck5Options = {
-      includeDetails: includeDetails,
+      includeDetails,
       detailsLimit: 500,
       ignoreMilestoneActivities: false,
       ignoreLoEActivities: false,
@@ -97,56 +67,122 @@ export class DcmaCheck5Service {
       ...(options ?? {}),
     };
 
-    // Фильтрация активностей
-    const eligible = all.filter(t => {
-      if (opts.ignoreWbsSummaryActivities && isWbs(t)) return false;
-      if (opts.ignoreMilestoneActivities && isMilestone(t)) return false;
-      if (opts.ignoreLoEActivities && isLoE(t)) return false;
-      if (opts.ignoreCompletedActivities && isCompleted(t)) return false;
-      return true;
-    });
+    // === Фильтрация с учётом счётчиков исключений ===
+    let excludedWbs = 0, excludedMilestone = 0, excludedLoE = 0, excludedCompleted = 0;
+    const eligible: TaskRow[] = [];
+    for (const t of all) {
+      if (opts.ignoreWbsSummaryActivities && this.isWbs(t)) { excludedWbs++; continue; }
+      if (opts.ignoreMilestoneActivities && this.isMilestone(t)) { excludedMilestone++; continue; }
+      if (opts.ignoreLoEActivities && this.isLoE(t)) { excludedLoE++; continue; }
+      if (opts.ignoreCompletedActivities && this.isCompleted(t)) { excludedCompleted++; continue; }
+      eligible.push(t);
+    }
 
     const totalActivities = eligible.length;
 
-    const hardItems: HardItem[] = [];
+    // === Классификация ограничений ===
+    const byType: Record<ConstraintNorm, number> = {
+      HARD_MS: 0, HARD_MF: 0,
+      SOFT_ALAP: 0, SOFT_ASAP: 0,
+      SOFT_START_ON: 0, SOFT_START_ON_OR_BEFORE: 0, SOFT_START_ON_OR_AFTER: 0,
+      SOFT_FINISH_ON: 0, SOFT_FINISH_ON_OR_BEFORE: 0, SOFT_FINISH_ON_OR_AFTER: 0,
+      UNKNOWN: 0,
+    };
+
+    const itemsHard: DcmaCheck5Item[] = [];
+    const itemsSoft: DcmaCheck5Item[] = [];
+
+    let unknownType = 0;
+    let missingDateForHard = 0;
+    let missingDateForSoft = 0;
+    let noConstraintCount = 0;
+
     for (const t of eligible) {
       const norm = normalizeConstraintType((t as any).cstr_type);
-      if (isHardForCheck5(norm)) {
-        hardItems.push({
-          task_id: t.task_id,
-          task_code: t.task_code,
-          task_name: t.task_name,
-          cstr_type: (t as any).cstr_type,
-          cstr_date: (t as any).cstr_date,
-          normType: norm,
-        });
+      byType[norm] = (byType[norm] ?? 0) + 1;
+
+      const hasType = !!(t as any).cstr_type;
+      const hasDate = !!(t as any).cstr_date;
+
+      if (!hasType || norm === 'UNKNOWN') {
+        unknownType++;
+        if (!hasType) noConstraintCount++;
+        continue; // не попадает в legacy-знаменатель
+      }
+
+      const isHard = this.isHardBySpec(norm);
+
+      const base: DcmaCheck5Item = {
+        task_id: t.task_id,
+        task_code: t.task_code,
+        task_name: t.task_name,
+        cstr_type: (t as any).cstr_type,
+        cstr_date: (t as any).cstr_date,
+        isHard,
+        normType: norm,
+        hasDate,
+      };
+
+      if (isHard) {
+        if (!hasDate) missingDateForHard++;
+        itemsHard.push(base);
+      } else {
+        if (!hasDate) missingDateForSoft++;
+        itemsSoft.push(base);
       }
     }
 
-    const countHard = hardItems.length;
-    const percentHard = totalActivities > 0 ? round2((countHard / totalActivities) * 100) : 0;
+    // === Оба знаменателя ===
+    const totalWithConstraints = itemsHard.length + itemsSoft.length; // legacy
+    const hardCount = itemsHard.length;
+    const softCount = itemsSoft.length;
 
-    // Совместимость со старой моделью (основанной на "с активными ограничениями"):
-    // Пусть totalWithConstraints = countHard + soft (не считаем soft теперь) → для обратной связи проставим значение = countHard.
-    // В UI используйте новые поля.
-    const legacyTotalWithConstraints = countHard;
-    const legacyHardPercent = percentHard;
+    const hardPercent = totalWithConstraints > 0
+      ? this.round2((hardCount / totalWithConstraints) * 100)
+      : 0;
 
-    const details = opts.includeDetails
-      ? { items: hardItems.slice(0, Math.max(0, opts.detailsLimit | 0)), hardList: hardItems.slice(0, Math.max(0, opts.detailsLimit | 0)) }
-      : undefined;
+    const percentHardAllActivities = totalActivities > 0
+      ? this.round2((hardCount / totalActivities) * 100)
+      : 0;
 
-    return {
+    const result: DcmaCheck5Result = {
       proj_id: projId,
+
+      // legacy (как было)
+      totalWithConstraints,
+      hardCount,
+      softCount,
+      hardPercent,
+      threshold5PercentExceeded: hardPercent > 5,
+
+      // усиление модели — DCMA-метрики от всех eligible-активностей
       totalActivities,
-      countHard,
-      percentHard,
-      details,
-      // устаревшие поля — для совместимости
-      totalWithConstraints: legacyTotalWithConstraints,
-      hardCount: countHard,
-      hardPercent: legacyHardPercent,
-      threshold5PercentExceeded: legacyHardPercent > 5,
+      percentHardAllActivities,
+      noConstraintCount,
+
+      details: opts.includeDetails ? {
+        hardList: itemsHard.slice(0, Math.max(0, opts.detailsLimit | 0)),
+        softList: itemsSoft.slice(0, Math.max(0, opts.detailsLimit | 0)),
+        byType,
+        dq: {
+          unknownType,
+          missingDateForHard,
+          missingDateForSoft,
+          excludedWbs,
+          excludedMilestone,
+          excludedLoE,
+          excludedCompleted,
+        },
+        filters: {
+          ignoreMilestoneActivities: opts.ignoreMilestoneActivities,
+          ignoreLoEActivities: opts.ignoreLoEActivities,
+          ignoreWbsSummaryActivities: opts.ignoreWbsSummaryActivities,
+          ignoreCompletedActivities: opts.ignoreCompletedActivities,
+          detailsLimit: opts.detailsLimit,
+        }
+      } : undefined,
     };
+
+    return result;
   }
 }

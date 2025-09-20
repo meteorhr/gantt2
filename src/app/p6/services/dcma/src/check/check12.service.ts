@@ -5,6 +5,21 @@ import { CALENDARRow } from '../../../../models';
 import { DcmaCheck12Result, TaskPredRow, TaskRow } from '../../models/dcma.model';
 import { isCriticalTaskRow } from '../../../../../state/p6-float.util';
 
+/**
+ * Дополнительные опции анализа для Check 12.
+ * (Все поля опциональны для совместимости с существующими вызовами.)
+ * Часы в дне берём из календарей задач/проекта; отдельная опция hoursPerDay не используется.
+ */
+export type DcmaCheck12Options = {
+  floatThresholdHours?: number;
+  simulatedDelayDays?: number;
+  /** Фильтры уровня активностей */
+  ignoreMilestoneActivities?: boolean;
+  ignoreLoEActivities?: boolean;
+  ignoreWbsSummaryActivities?: boolean;
+  ignoreCompletedActivities?: boolean;
+};
+
 @Injectable({ providedIn: 'root' })
 export class DcmaCheck12Service {
   private readonly dexie = inject(P6DexieService);
@@ -15,9 +30,8 @@ export class DcmaCheck12Service {
   async analyzeCheck12(
     projId: number,
     includeDetails: boolean = true,
-    options?: { hoursPerDay?: number; floatThresholdHours?: number; simulatedDelayDays?: number },
+    options?: DcmaCheck12Options,
   ): Promise<DcmaCheck12Result> {
-    const hoursPerDayFallback = options?.hoursPerDay ?? 8;
     const floatThresholdHoursOpt = options?.floatThresholdHours;
     const simulatedDelayDays = options?.simulatedDelayDays ?? 600;
 
@@ -28,36 +42,81 @@ export class DcmaCheck12Service {
       this.dexie.getRows('CALENDAR') as Promise<CALENDARRow[]>,
     ]);
 
-    const hasProject = projRows.some(p => p.proj_id === projId);
-    if (!hasProject) throw new Error(`Проект с proj_id=${projId} не найден в PROJECT.`);
-
-    const tasksInProject = (taskRows || []).filter(t => t.proj_id === projId);
-
-    // Исключаем служебные типы из анализа КП
-    const EXCLUDE_TYPES = new Set(['TT_WBS','TT_LOE','TT_HAMMOCK','TT_SUMMARY','TT_TMPL','TT_Tmpl']);
-    const isExcludedType = (t: TaskRow) => EXCLUDE_TYPES.has(((t.task_type ?? '').trim().toUpperCase()));
-    const baseTasks = tasksInProject.filter(t => !isExcludedType(t) && (t.status_code ?? '').toString().toUpperCase() !== 'TK_INACTIVE');
-
-    const taskIdSet = new Set<number>(baseTasks.map(t => t.task_id));
-
-    // Индекс календарей и HPD для задач
-    const calById = new Map<string | number, CALENDARRow>();
-    for (const c of (calRows || [])) if (c && c.clndr_id != null) calById.set(c.clndr_id, c);
-    const getHpd = (t: TaskRow | undefined): number => {
-      if (!t) return hoursPerDayFallback;
-      const cal = t?.clndr_id != null ? calById.get(t.clndr_id) : undefined;
+    // Вспомогательные функции HPD из календарей
+    const hpdFromCalendar = (cal: CALENDARRow | undefined | null): number | null => {
+      if (!cal) return null;
       const h =
         (cal as any)?.hours_per_day_eff ??
         (cal as any)?.day_hr_cnt ??
         ((cal as any)?.week_hr_cnt != null ? (cal as any).week_hr_cnt / 5 : null) ??
         ((cal as any)?.month_hr_cnt != null ? (cal as any).month_hr_cnt / 21.667 : null) ??
         ((cal as any)?.year_hr_cnt != null ? (cal as any).year_hr_cnt / 260 : null);
-      return (typeof h === 'number' && h > 0) ? h : hoursPerDayFallback;
+      return (typeof h === 'number' && h > 0) ? h : null;
+    };
+    // Проектный fallback HPD: медиана по всем валидным календарям, иначе 8
+    const allHpds = (calRows || [])
+      .map(c => hpdFromCalendar(c))
+      .filter((v): v is number => typeof v === 'number' && v > 0)
+      .sort((a,b) => a - b);
+    const projectFallbackHpd = allHpds.length ? allHpds[Math.floor(allHpds.length/2)] : 8;
+
+    const hasProject = projRows.some(p => p.proj_id === projId);
+    if (!hasProject) throw new Error(`Проект с proj_id=${projId} не найден в PROJECT.`);
+
+    const tasksInProject = (taskRows || []).filter(t => t.proj_id === projId);
+
+    // ===== Нормализация фильтров =====
+    const normType = (t: TaskRow): string => (t.task_type ?? '').trim().toUpperCase();
+    const isWbs = (t: TaskRow) => normType(t) === 'TT_WBS';
+    const isMilestone = (t: TaskRow) => {
+      const ty = normType(t);
+      return ty === 'TT_MILE' || ty === 'TT_STARTMILE' || ty === 'TT_FINMILE';
+    };
+    const isLoEOrHammock = (t: TaskRow) => {
+      const ty = normType(t);
+      return ty === 'TT_LOE' || ty === 'TT_HAMMOCK' || ty === 'TT_SUMMARY';
+    };
+    const isTemplate = (t: TaskRow) => {
+      const ty = normType(t);
+      return ty === 'TT_TMPL' || ty === 'TT_TMPL'.toUpperCase() || ty === 'TT_TMPLATE' || ty === 'TT_TMPLT' || ty === 'TT_TMPL?';
+    };
+    const isInactive = (t: TaskRow) => String(t.status_code ?? '').toUpperCase() === 'TK_INACTIVE';
+    const isCompleted = (t: TaskRow) => {
+      const s = String(t.status_code ?? '').trim().toUpperCase();
+      return s === 'COMPLETED' || s === 'TK_COMPLETE' || s === 'FINISHED';
+    };
+
+    // ===== Базовая выборка: исключаем только шаблоны и неактивные всегда =====
+    let baseTasks = tasksInProject.filter(t => !isInactive(t) && !isTemplate(t));
+
+    // ===== Пользовательские фильтры =====
+    if (options?.ignoreWbsSummaryActivities) {
+      baseTasks = baseTasks.filter(t => !isWbs(t));
+    }
+    if (options?.ignoreMilestoneActivities) {
+      baseTasks = baseTasks.filter(t => !isMilestone(t));
+    }
+    if (options?.ignoreLoEActivities) {
+      baseTasks = baseTasks.filter(t => !isLoEOrHammock(t));
+    }
+    if (options?.ignoreCompletedActivities) {
+      baseTasks = baseTasks.filter(t => !isCompleted(t));
+    }
+
+    const taskIdSet = new Set<number>(baseTasks.map(t => t.task_id));
+
+    // Индекс календарей и HPD для задач
+    const calById = new Map<string | number, CALENDARRow>();
+    for (const c of (calRows || [])) if (c && c.clndr_id != null) calById.set(c.clndr_id, c);
+    const getHpd = (t: TaskRow): number => {
+      const cal = t?.clndr_id != null ? calById.get(t.clndr_id) : undefined;
+      const h = hpdFromCalendar(cal);
+      return (typeof h === 'number' && h > 0) ? h : projectFallbackHpd;
     };
 
     // Порог по HPD (если не задан)
     const projectHpds = baseTasks.map(t => getHpd(t)).filter(h => typeof h === 'number' && h > 0).sort((a,b)=>a-b);
-    const medianHpd = projectHpds.length ? projectHpds[Math.floor(projectHpds.length/2)] : hoursPerDayFallback;
+    const medianHpd = projectHpds.length ? projectHpds[Math.floor(projectHpds.length/2)] : projectFallbackHpd;
     const floatThresholdHours = floatThresholdHoursOpt ?? Math.max(1, Math.round(0.5 * medianHpd));
 
     // Критические задачи через util с допуском
