@@ -5,7 +5,9 @@ import {
   DcmaCheckCommonSettings, SETTINGS_STORAGE_KEY,
   DEFAULT_PERSISTED_V1, PersistedSettingsV1, normalizePersisted, DCMA_CHECK_LABELS
 } from './dcma-checks.config';
-import type { DcmaCheck2Options, DcmaCheck3Options, DcmaCheck4Options } from '../../../p6/services/dcma';
+import type { DcmaCheck2Options, DcmaCheck3Options, DcmaCheck4Options, DcmaCheck5Options } from '../../../p6/services/dcma';
+
+
 
 export { DCMA_IDS, DCMA_CHECK_LABELS };
 export type { DcmaCheckId, DcmaCheck1Advanced, DcmaCheck1AdvancedPatch };
@@ -67,6 +69,17 @@ export type DcmaCheck4Advanced = {
   thresholds: { requiredPct: number; averagePct: number; greatPct: number };
 };
 
+// ======== Advanced Check 5 ========
+export type DcmaCheck5Advanced = {
+    includeDetails: boolean;
+    detailsLimit: number;
+    ignoreMilestoneActivities: boolean;
+    ignoreLoEActivities: boolean;
+    ignoreWbsSummaryActivities: boolean;
+    ignoreCompletedActivities: boolean;
+    thresholds: { requiredMaxPct: number; averageMaxPct: number; greatMaxPct: number };
+};
+
 @Injectable({ providedIn: 'root' })
 export class DcmaSettingsService {
   /** Вся сохранённая структура (общие + adv1) под единым ключом */
@@ -100,6 +113,11 @@ export class DcmaSettingsService {
       localStorage.setItem(this.adv2Key, JSON.stringify(def));
       this.adv2Signal.set(def);
     }
+    if (!localStorage.getItem(this.adv5Key)) {
+      const def5 = this.defaultAdv5();
+      localStorage.setItem(this.adv5Key, JSON.stringify(def5));
+      this.adv5Signal.set(def5);
+    }
   }
 
   // ========= Общие флаги ==========
@@ -124,6 +142,11 @@ export class DcmaSettingsService {
     this.adv2Signal.set(def2);
     if (typeof window !== 'undefined') {
       localStorage.setItem(this.adv2Key, JSON.stringify(def2));
+    }
+    const def5 = this.defaultAdv5();
+    this.adv5Signal.set(def5);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.adv5Key, JSON.stringify(def5));
     }
 
     this.saveToLocalStorage();
@@ -497,5 +520,73 @@ private defaultAdv4(): DcmaCheck4Advanced {
     thresholds: { requiredPct: 90, averagePct: 90, greatPct: 95 },
   };
 }
+
+
+  // ========= Advanced Check 5 =========
+  private readonly adv5Key = 'dcma.adv.5';
+  private adv5Signal = signal<DcmaCheck5Advanced>(this.loadAdv5());
+
+  adv5(): DcmaCheck5Advanced { return this.adv5Signal(); }
+
+  patchAdv5(patch: Partial<DcmaCheck5Advanced>): void {
+    const cur = this.adv5Signal();
+    const next: DcmaCheck5Advanced = {
+      ...cur,
+      ...patch,
+      thresholds: patch.thresholds
+        ? { ...cur.thresholds, ...patch.thresholds }
+        : cur.thresholds,
+    };
+    this.adv5Signal.set(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.adv5Key, JSON.stringify(next));
+    }
+  }
+
+  buildCheck5Options(): DcmaCheck5Options {
+    const a = this.adv5();
+    return {
+      includeDetails: a.includeDetails,
+      detailsLimit: a.detailsLimit,
+      ignoreMilestoneActivities: a.ignoreMilestoneActivities,
+      ignoreLoEActivities: a.ignoreLoEActivities,
+      ignoreWbsSummaryActivities: a.ignoreWbsSummaryActivities,
+      ignoreCompletedActivities: a.ignoreCompletedActivities,
+    };
+  }
+
+  evaluateCheck5Grade(percentHard: number): 'great'|'average'|'poor' {
+    const { greatMaxPct, averageMaxPct } = this.adv5().thresholds;
+    if (percentHard <= greatMaxPct) return 'great';
+    if (percentHard <= averageMaxPct) return 'average';
+    return 'poor';
+  }
+
+  evaluateCheck5Pass(percentHard: number): boolean {
+    return percentHard <= this.adv5().thresholds.requiredMaxPct;
+  }
+
+  private loadAdv5(): DcmaCheck5Advanced {
+    if (typeof window === 'undefined') return this.defaultAdv5();
+    const raw = localStorage.getItem(this.adv5Key);
+    if (raw) {
+      try { return { ...this.defaultAdv5(), ...JSON.parse(raw) }; } catch {}
+    }
+    const def = this.defaultAdv5();
+    localStorage.setItem(this.adv5Key, JSON.stringify(def));
+    return def;
+  }
+
+  private defaultAdv5(): DcmaCheck5Advanced {
+    return {
+      includeDetails: true,
+      detailsLimit: 500,
+      ignoreMilestoneActivities: false,
+      ignoreLoEActivities: false,
+      ignoreWbsSummaryActivities: false,
+      ignoreCompletedActivities: false,
+      thresholds: { requiredMaxPct: 5.0, averageMaxPct: 5.0, greatMaxPct: 1.0 },
+    };
+  }
 
 }
