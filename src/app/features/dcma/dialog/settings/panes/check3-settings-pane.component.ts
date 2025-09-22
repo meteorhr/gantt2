@@ -4,7 +4,6 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatRadioModule } from '@angular/material/radio';
 import { TranslocoModule } from '@jsverse/transloco';
 
 import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/adv/dcma-settings.service';
@@ -15,7 +14,7 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/adv/d
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, MatDividerModule, MatSlideToggleModule,
-    MatFormFieldModule, MatInputModule, MatRadioModule, TranslocoModule
+    MatFormFieldModule, MatInputModule, TranslocoModule
   ],
   styleUrls: ['./settings-pane.component.scss'],
   template: `
@@ -41,49 +40,6 @@ import { DcmaSettingsService, DcmaCheck3Advanced } from '../../../services/adv/d
         </mat-form-field>
       </div>
     }
-
-    <h4 class="section-title">{{ 'dcma.common.title.calendar' | transloco }}</h4>
-
-    <div class="row-line">
-      <div class="row-text">
-        <div class="row-title">{{ 'dcma.common.calendar.source' | transloco }}</div>
-        <div class="muted">{{ 'dcma.common.calendar.note' | transloco }}</div>
-      </div>
-
-    </div>
-    <div class="row-block">
-        <mat-radio-group
-          [value]="adv().calendarSource"
-          (change)="patch({ calendarSource: $any($event.value) })"
-          class="radio-vert">
-          <mat-radio-button value="successor">{{ 'dcma.common.calendar.successor' | transloco }}</mat-radio-button>
-          <mat-radio-button value="predecessor">{{ 'dcma.common.calendar.predecessor' | transloco }}</mat-radio-button>
-          <mat-radio-button value="fixed">{{ 'dcma.common.calendar.fixed' | transloco }}</mat-radio-button>
-        </mat-radio-group>
-      </div>
-
-
-    @if (adv().calendarSource === 'fixed') {
-      <div class="row-line">
-        <div class="row-text"><div class="row-title">{{ 'dcma.common.calendar.fixedHpd' | transloco }}</div></div>
-        <mat-form-field class="pct-field" appearance="outline">
-          <input matInput type="number" min="1" step="1"
-                 [value]="adv().fixedHoursPerDay"
-                 (input)="patchNum('fixedHoursPerDay', $any($event.target).value)">
-          <span matTextSuffix>h</span>
-        </mat-form-field>
-      </div>
-    }
-
-    <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.common.calendar.defaultHpd' | transloco }}</div></div>
-      <mat-form-field class="pct-field" appearance="outline">
-        <input matInput type="number" min="1" step="1"
-               [value]="adv().hoursPerDay"
-               (input)="patchNum('hoursPerDay', $any($event.target).value)">
-        <span matTextSuffix>h</span>
-      </mat-form-field>
-    </div>
 
     <h4 class="section-title">{{ 'dcma.common.title.filters' | transloco }}</h4>
 

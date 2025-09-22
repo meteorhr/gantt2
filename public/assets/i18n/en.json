@@ -390,12 +390,26 @@
         "great": "Great Performance",
         "average": "Average Performance",
         "greatLeq": "Great ≤ %",
-        "averageLeq": "Average ≤ %"
+        "averageLeq": "Average ≤ %",
+        "required": "Required",
+        "requiredMaxPct": "Required ≤ %",
+        "averageMaxPct": "Average ≤ %",
+        "greatMaxPct": "Great ≤ %",
+        "requiredMin": "Required ≥ %",
+        "averageMin": "Average ≥ %",
+        "greatMin": "Great ≥ %"
       },
       "tolerance": {
         "percent": "Allowed percent",
         "count": "Allowed count",
-        "hours": "Allowed total hours"
+        "hours": "Allowed total hours",
+        "mode": "Tolerance mode",
+        "forecastDays": "Forecast tolerance, days",
+        "actualDays": "Actuals tolerance, days"
+      },
+      "mode": {
+        "auto": "Auto",
+        "fixed": "Fixed"
       },
       "notes": {
         "dcmaZero": "Per DCMA-14, any leads are non-compliant (target = 0%). Thresholds below are for custom KPIs only and do not change the DCMA rule unless you disable the Strict rule.",
@@ -423,6 +437,84 @@
     "check4": {
       "dedup": { "byType": "By type (FS/SS/FF/SF)", "byTypeAndLag": "By type + lag" },
       "note": { "kpiOnly": "Custom KPI thresholds are for grading only. No hard requirement is enforced." }
+    },
+    "check5": {
+      "note": {
+        "required": "Pass requires hard constraints \u2264 %{value}%. (DCMA required)",
+        "kpiOnly": "Thresholds below are used for grading only (management KPI)."
+      }
+    },
+    "check6": {
+      "dayThreshold": "High Float threshold (days)"
+    },
+    "check7": {
+      "mode": {
+        "strictZero": "Strict DCMA rule (no negative float allowed)",
+        "note": "If disabled, you can configure tolerances below."
+      },
+      "tolerance": {
+        "hours": "Allowed total hours of negative float"
+      }
+    },
+    "check9": {
+      "note": "Invalid Dates: 9a counts activities where forecast (ES/EF/LS/LF) is earlier than the Data Date; 9b counts activities where actuals (AS/AF) are later than the Data Date. Use the tolerances below to offset comparisons by the specified number of days."
+    },
+    "check10": {
+      "title": {
+        "rule": "Rule"
+      },
+      "note": "All activities with effective duration ≥ %{days} days must have assigned resource(s). Effective duration is computed using the activity calendar's hours per day.",
+      "durationThresholdDays": "Duration threshold, days"
+    },
+    "check12": {
+      "simulatedDelayDays": "Simulated delay (days)",
+      "simulatedNote": "The test increases each critical activity’s duration by this amount and checks that the project finish slips accordingly."
+    },
+    "check13": {
+      "title": {
+        "dataDate": "Data Date",
+        "forecastSource": "Forecast / planned dates",
+         "baselineOrder": "Baseline finish order"
+      },
+      "baseline": {
+        "order": "Preferred baseline finish fields order"
+      },
+      "clampNegative": "Clamp negative values to 0",
+      "dataDate": {
+        "override": "Override Data Date",
+        "note": "If set, calculations use this date instead of the project’s Data Date.",
+        "order": "Data Date precedence"
+      },
+      "forecastSource": {
+        "label": "Use planned/forecast dates from",
+        "note": "Choose which planned or forecast date set to use for CPLI (e.g., Early, Late)."
+      },
+      "note": {
+        "required": "Pass requires CPLI within ±%{pct} of 1.00 (i.e., %{low}–%{high}).",
+        "kpiOnly": "Thresholds below are used for grading only (management KPI)."
+      }
+    },
+    "check14": {
+      "title": {
+        "dataDate": "Data Date",
+        "baselineOrder": "Baseline order"
+      },
+      "dataDate": {
+        "override": "Override Data Date",
+        "note": "If set, BEI is computed as of this date instead of the project’s Data Date.",
+        "order": "Data Date precedence"
+      },
+      "baseline": {
+        "order": "Baseline priority order"
+      },
+      "actuals": {
+        "requireAF": "Require Actual Finish to count as completed",
+        "note": "When enabled, activities without Actual Finish are not considered completed for BEI."
+      },
+            "note": {
+        "required": "Pass requires BEI ≥ %{value} (DCMA required).",
+        "kpiOnly": "Thresholds below are used for grading only (management KPI)."
+      }
     },
     "checks": {
       "names": {
@@ -564,9 +656,7 @@
       }
     },
 
-  "summary": {
-    "title": "DCMA 14 — Summary"
-  },
+  "summary": "Summary",
   "table": {
     "check": "#",
     "metric": "Check",

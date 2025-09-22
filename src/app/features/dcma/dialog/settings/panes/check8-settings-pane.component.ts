@@ -55,18 +55,6 @@ import type { DcmaCheck8Advanced } from '../../../services/adv/types/adv8-settin
       </div>
     </div>
 
-    <!-- Fallback HPD (основной HPD берётся из календарей) -->
-    <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.common.calendar.defaultHpd' | transloco }}</div></div>
-      <mat-form-field class="pct-field" appearance="outline">
-        <input
-          matInput type="number" min="1" step="1" inputmode="numeric" pattern="\\d*"
-          [value]="adv().hoursPerDay"
-          (input)="patchInt('hoursPerDay', $any($event.target).value)">
-        <span matTextSuffix>h</span>
-      </mat-form-field>
-    </div>
-
     <!-- Threshold days (> X days Remaining Duration считается "High Duration") -->
     <div class="row-line">
       <div class="row-text"><div class="row-title">{{ 'dcma.check8.thresholdDays' | transloco }}</div></div>

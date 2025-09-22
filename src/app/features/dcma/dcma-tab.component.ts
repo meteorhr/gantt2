@@ -1,10 +1,13 @@
-import { Component, inject, signal, computed } from '@angular/core'; 
+import { Component, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { TranslocoModule } from '@jsverse/transloco';
+
+import { MatTabsModule } from '@angular/material/tabs';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 
 import { AppStateService } from '../../state/app-state.service';
 import {
@@ -40,70 +43,17 @@ interface DcmaRow {
 @Component({
   standalone: true,
   selector: 'app-dcma-checks',
-  imports: [CommonModule, MatTableModule, MatIconModule, MatButtonModule, MatDialogModule, TranslocoModule],
+  imports: [
+    CommonModule, 
+    MatTableModule, 
+    MatIconModule, 
+    MatButtonModule, 
+    MatDialogModule, 
+    TranslocoModule,
+    MatTabsModule,
+  ScrollingModule],
   styleUrls: ['./dcma-tab.component.scss'],
-  template: `
-    <div class="dash-viewport">
-      <div class="dcma-header">
-        <h3>{{ 'dcma.summary.title' | transloco }}</h3>
-        <span class="fx"></span>
-        <button mat-button (click)="openSettings()" aria-label="Настройки DCMA">
-          <mat-icon>settings</mat-icon>
-          <span>{{ 'common.settings' | transloco }}</span>
-        </button>
-      </div>
-
-      @if (loading()) { <p>{{ 'common.loading' | transloco }}</p> } @else {
-        <table mat-table [dataSource]="filteredRows()" class="mat-elevation-z1 fullw">
-          <ng-container matColumnDef="check">
-            <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.check' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">{{ r.check }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="metric">
-            <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.metric' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">
-              <button mat-button aria-label="Info" (click)="openInfo(r)">
-                {{ r.metric }}
-                <mat-icon>info</mat-icon>
-              </button>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.description' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">{{ r.description }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="percent">
-            <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.percent' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">{{ (r.percent === null || r.percent === undefined) ? '—' : (r.percent | number:'1.0-2') }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="passed">
-            <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.passed' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">
-              <mat-icon [ngClass]="r.passed ? 'ok' : 'bad'">
-                {{ r.passed ? 'check_circle' : 'cancel' }}
-              </mat-icon>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="details">
-            <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.details' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">
-              <button mat-button (click)="openDetails(r)">
-                <mat-icon>list</mat-icon> {{ 'dcma.table.btnDetails' | transloco }}
-              </button>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-        </table>
-      }
-    </div>
-  `,
+  templateUrl: './dcma-tab.component.html',
 })
 export class DcmaChecksComponent {
   private svc1 = inject(DcmaCheck1Service);
@@ -125,7 +75,9 @@ export class DcmaChecksComponent {
   private cfg = inject(DcmaSettingsService);
   private dialog = inject(MatDialog);
 
-  displayedColumns = ['check', 'metric', 'description', 'percent', 'passed', 'details'];
+ displayedColumns = ['check', 'metric', 'percent', 'passed'];
+ selectedRow = signal<DcmaRow | null>(null);
+@ViewChild('rightPane') rightPane?: ElementRef<HTMLElement>;
   rows = signal<DcmaRow[]>([]);
   projId = signal<number>(this.wm.selectedProjectId()!);
   loading = signal<boolean>(false);
@@ -229,6 +181,21 @@ export class DcmaChecksComponent {
       else this.buildRows();      // могли поменять только видимость
     });
   }
+
+  selectRow(row: DcmaRow) {
+  this.selectedRow.set(row);
+  // Прокрутить правую панель наверх после смены строки
+  queueMicrotask(() => {
+    const el = this.rightPane?.nativeElement;
+    if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+trackRow = (_: number, r: DcmaRow) => r.check;
+
+formatPercent(p: number | null | undefined): string {
+  return (p === null || p === undefined) ? '—' : `${(p as number).toFixed(2)}`;
+}
 
   private buildRows() {
     type RowT = { check: DcmaCheckId; metric: string; description: string; percent: number | null; passed: boolean; result: any };

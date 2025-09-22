@@ -1,5 +1,4 @@
-<h2 mat-dialog-title class="dlg-title">
-  <mat-icon>tune</mat-icon>
+<h2 mat-dialog-title>
   <span>{{ 'dcma.settings.title' | transloco }}</span>
 </h2>
 
@@ -23,7 +22,7 @@
     </nav>
 
     @if (currentId(); as cid) {
-      <section class="right-pane" [attr.id]="'pane-' + cid" role="tabpanel" tabindex="0">
+      <section #rightPane class="right-pane" [attr.id]="'pane-' + cid" role="tabpanel" tabindex="0">
         <!-- заголовок вкладки можно вернуть при необходимости -->
         <h4 class="section-title">{{ 'dcma.common.title.visibility' | transloco }}</h4>
         <div class="row-line">

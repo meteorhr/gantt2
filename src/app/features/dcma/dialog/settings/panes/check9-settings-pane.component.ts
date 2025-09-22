@@ -60,7 +60,7 @@ import type { DcmaCheck9Advanced } from '../../../services/adv/types/adv9-settin
 
     <div class="row-line">
       <div class="row-text">
-        <div class="row-title">{{ 'dcma.check9.tolerance.forecastDays' | transloco }}</div>
+        <div class="row-title">{{ 'dcma.common.tolerance.forecastDays' | transloco }}</div>
       </div>
       <mat-form-field class="pct-field" appearance="outline">
         <input
@@ -73,7 +73,7 @@ import type { DcmaCheck9Advanced } from '../../../services/adv/types/adv9-settin
 
     <div class="row-line">
       <div class="row-text">
-        <div class="row-title">{{ 'dcma.check9.tolerance.actualDays' | transloco }}</div>
+        <div class="row-title">{{ 'dcma.common.tolerance.actualDays' | transloco }}</div>
       </div>
       <mat-form-field class="pct-field" appearance="outline">
         <input
@@ -124,7 +124,7 @@ import type { DcmaCheck9Advanced } from '../../../services/adv/types/adv9-settin
 
     <div class="row-line">
       <div class="row-text">
-        <div class="row-title">{{ 'dcma.check9.thresholds.required' | transloco }}</div>
+        <div class="row-title">{{ 'dcma.common.thresholds.required' | transloco }}</div>
       </div>
       <mat-form-field class="pct-field" appearance="outline">
         <input
@@ -136,7 +136,7 @@ import type { DcmaCheck9Advanced } from '../../../services/adv/types/adv9-settin
 
     <div class="row-line">
       <div class="row-text">
-        <div class="row-title">{{ 'dcma.check9.thresholds.average' | transloco }}</div>
+        <div class="row-title">{{ 'dcma.common.thresholds.average' | transloco }}</div>
       </div>
       <mat-form-field class="pct-field" appearance="outline">
         <input
@@ -148,7 +148,7 @@ import type { DcmaCheck9Advanced } from '../../../services/adv/types/adv9-settin
 
     <div class="row-line">
       <div class="row-text">
-        <div class="row-title">{{ 'dcma.check9.thresholds.great' | transloco }}</div>
+        <div class="row-title">{{ 'dcma.common.thresholds.great' | transloco }}</div>
       </div>
       <mat-form-field class="pct-field" appearance="outline">
         <input

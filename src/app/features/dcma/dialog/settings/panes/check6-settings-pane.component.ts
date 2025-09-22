@@ -49,22 +49,6 @@ import type { DcmaCheck6Advanced } from '../../../services/adv/types/adv6-settin
       </div>
     }
 
-    <!-- HPD fallback (берём из календаря; это лишь фолбэк) -->
-    <div class="row-line">
-      <div class="row-text">
-        <div class="row-title">{{ 'dcma.common.calendar.defaultHpd' | transloco }}</div>
-        <div class="muted">{{ 'dcma.common.calendar.note' | transloco }}</div>
-      </div>
-      <mat-form-field class="pct-field" appearance="outline">
-        <input
-          matInput type="number" min="1" step="1" inputmode="numeric" pattern="\\d*"
-          [value]="adv().hoursPerDay"
-          (input)="patchInt('hoursPerDay', $any($event.target).value)"
-          [attr.aria-label]="'dcma.common.calendar.defaultHpd' | transloco">
-        <span matTextSuffix>h</span>
-      </mat-form-field>
-    </div>
-
     <!-- DAY THRESHOLD -->
     <div class="row-line">
       <div class="row-text"><div class="row-title">{{ 'dcma.check6.dayThreshold' | transloco: { default: 'High Float threshold (days)' } }}</div></div>

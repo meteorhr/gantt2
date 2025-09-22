@@ -96,15 +96,6 @@ export type DcmaCheck2Advanced = {
       </div>
     }
 
-    <div class="row-line">
-      <div class="row-text"><div class="row-title">{{ 'dcma.common.calendar.defaultHpd' | transloco }}</div></div>
-      <mat-form-field class="pct-field" appearance="outline">
-        <input matInput type="number" min="1" step="1"
-               [value]="adv().hoursPerDay"
-               (input)="patchNum('hoursPerDay', $any($event.target).value)">
-        <span matTextSuffix>h</span>
-      </mat-form-field>
-    </div>
 
     <h4 class="section-title">{{ 'dcma.common.title.filters' | transloco }}</h4>
 
@@ -182,7 +173,7 @@ export type DcmaCheck2Advanced = {
 
     <h4 class="section-title">{{ 'dcma.common.title.thresholds' | transloco }}</h4>
     <p class="muted" style="margin: -4px 0 6px">
-      {{ 'dcma.common.note.dcmaZero' | transloco }}
+      {{ 'dcma.check2.note.dcmaZero' | transloco }}
     </p>
 
     <div class="row-line">

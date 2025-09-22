@@ -67,9 +67,10 @@ import type { DcmaCheck14Advanced } from '../../../services/adv/types/adv14-sett
           {{ 'dcma.check14.dataDate.order' | transloco : { default: 'PROJECT Data Date field order (comma-separated)' } }}
         </div>
       </div>
-      <mat-form-field appearance="outline" style="width:100%">
+      <mat-form-field appearance="outline" style="width:60%">
         <input
           matInput
+
           [value]="adv().dataDateFieldOrder.join(', ')"
           (input)="onList('dataDateFieldOrder', $any($event.target).value)"
           [attr.aria-label]="'dcma.check14.dataDate.order' | transloco"
@@ -86,7 +87,7 @@ import type { DcmaCheck14Advanced } from '../../../services/adv/types/adv14-sett
           {{ 'dcma.check14.baseline.order' | transloco : { default: 'Task Baseline Finish fields (comma-separated)' } }}
         </div>
       </div>
-      <mat-form-field appearance="outline" style="width:100%">
+      <mat-form-field appearance="outline" style="width:60%">
         <input
           matInput
           [value]="adv().baselineFinishFieldsOrder.join(', ')"

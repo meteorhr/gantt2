@@ -1,0 +1,617 @@
+
+  <div class="dash-viewport dcma-split">
+    <!-- ЛЕВАЯ ПАНЕЛЬ: таблица (30%) -->
+    <div class="left-pane">
+      <div class="dcma-header">
+        <h3>{{ 'dcma.summary.title' | transloco }}</h3>
+        <span class="fx"></span>
+        <button mat-button (click)="openSettings()" aria-label="Настройки DCMA">
+          <mat-icon>settings</mat-icon>
+          <span>{{ 'common.settings' | transloco }}</span>
+        </button>
+      </div>
+
+      @if (loading()) { <p>{{ 'common.loading' | transloco }}</p> } @else {
+        <div class="table-scroll">
+          <table
+            mat-table
+            [dataSource]="filteredRows()"
+            class="fullw"
+            [trackBy]="trackRow">
+
+            <!-- #: номер чек-листа -->
+            <ng-container matColumnDef="check">
+              <th mat-header-cell *matHeaderCellDef>#</th>
+              <td mat-cell *matCellDef="let r">{{ r.check }}</td>
+            </ng-container>
+
+            <!-- Название + info -->
+            <ng-container matColumnDef="metric">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.metric' | transloco }}</th>
+              <td mat-cell *matCellDef="let r">
+                
+                  {{ r.metric }}
+              </td>
+            </ng-container>
+
+            <!-- Результат, % -->
+            <ng-container matColumnDef="percent">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.percent' | transloco }}</th>
+              <td mat-cell *matCellDef="let r">{{ formatPercent(r.percent) }}</td>
+            </ng-container>
+
+            <!-- Pass/Fail -->
+            <ng-container matColumnDef="passed">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.passed' | transloco }}</th>
+              <td mat-cell *matCellDef="let r">
+                <mat-icon [ngClass]="r.passed ? 'ok' : 'bad'">
+                  {{ r.passed ? 'check_circle' : 'cancel' }}
+                </mat-icon>
+              </td>
+            </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns"
+          (click)="selectRow(row)"
+          [class.is-selected]="selectedRow()?.check === row.check">
+        </tr>
+          </table>
+        </div>
+
+      }    
+    </div>
+    <!-- ПРАВАЯ ПАНЕЛЬ: детали (70%)) -->
+    <div class="right-pane" #rightPane>
+      @if (!selectedRow()) {
+        <div class="placeholder">
+          <mat-icon>info</mat-icon>
+          <div>{{ 'dcma.info.selectRow' | transloco : { default: 'Select a DCMA check on the left to view details' } }}</div>
+        </div>
+      } @else {
+        <div class="details-shell">
+          <div class="details-header">
+            <div class="title">
+              <span class="check-num">#{{ selectedRow()!.check }}</span>
+              <span class="check-name">{{ selectedRow()!.metric }}</span>
+            </div>
+            <div class="meta">
+              <span class="percent" *ngIf="selectedRow()!.percent !== null && selectedRow()!.percent !== undefined">
+                {{ selectedRow()!.percent | number:'1.0-2' }}%
+              </span>
+              <mat-icon [ngClass]="selectedRow()!.passed ? 'ok' : 'bad'" class="status-icon">
+                {{ selectedRow()!.passed ? 'check_circle' : 'cancel' }}
+              </mat-icon>
+              <button mat-icon-button (click)="openInfo(selectedRow()!)" aria-label="Info">
+                <mat-icon>info</mat-icon>
+              </button>
+            </div>
+          </div>
+          <div class="details-body">
+            
+
+            @switch (selectedRow()!.check) {
+              @case (1) {
+
+                @let c1 = selectedRow()?.result?.details;
+                  <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start">
+                    <mat-tab label="{{ 'dcma.summary' | transloco }}">
+                      <p>{{ selectedRow()!.description }}</p>
+                      <p><strong>{{ 'dcma.c1.missingAny' | transloco }}</strong> {{ selectedRow()!.result?.percentMissingAny }}%</p>
+                      <p><strong>{{ 'dcma.c1.missingTriplet' | transloco }}</strong> {{ selectedRow()!.result?.missingPredecessor }}/{{ selectedRow()!.result?.missingSuccessor }}/{{ selectedRow()!.result?.missingBoth }}</p>
+
+                    </mat-tab>
+                    @if ((c1?.missingPredList?.length ?? 0) > 0) {
+                      <mat-tab label="{{ 'dcma.c1.missingPred' | transloco }} ({{ c1!.missingPredList.length }})">
+                        <table mat-table [dataSource]="c1!.missingPredList" class="mat-elevation-z1 sticky-header">
+                          <ng-container matColumnDef="task_code">
+                            <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                            <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                          </ng-container>
+                          <ng-container matColumnDef="task_name">
+                            <th mat-header-cell *matHeaderCellDef>Name</th>
+                            <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                          </ng-container>
+                          <tr mat-header-row *matHeaderRowDef="['task_code','task_name']"></tr>
+                          <tr mat-row *matRowDef="let i; columns: ['task_code','task_name']"></tr>
+                        </table>
+                      </mat-tab>
+                    }
+                    @if ((c1?.missingSuccList?.length ?? 0) > 0) {
+                      <mat-tab label="{{ 'dcma.c1.missingSucc' | transloco }} ({{ c1!.missingSuccList.length }})">
+                        <table mat-table [dataSource]="c1!.missingSuccList" class="mat-elevation-z1 sticky-header">
+                          <ng-container matColumnDef="task_code">
+                            <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                            <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                          </ng-container>
+                          <ng-container matColumnDef="task_name">
+                            <th mat-header-cell *matHeaderCellDef>Name</th>
+                            <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                          </ng-container>
+                          <tr mat-header-row *matHeaderRowDef="['task_code','task_name']"></tr>
+                          <tr mat-row *matRowDef="let i; columns: ['task_code','task_name']"></tr>
+                        </table>
+                      </mat-tab>
+                    }
+                  </mat-tab-group>
+                
+              }
+
+              @case (2) {
+                <p><strong>{{ 'dcma.c2.leads' | transloco }}</strong> {{ selectedRow()!.result?.leadCount }} / {{ selectedRow()!.result?.totalRelationships }} ({{ selectedRow()!.result?.leadPercent }}%)</p>
+                @if (selectedRow()!.result?.details?.leads?.length) {
+                  <table mat-table [dataSource]="selectedRow()!.result.details.leads" class="mat-elevation-z1 sticky-header">
+                    <ng-container matColumnDef="pred">
+                      <th mat-header-cell *matHeaderCellDef>Pred</th>
+                      <td mat-cell *matCellDef="let l">{{ l.predecessor_code || l.predecessor_task_id }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="succ">
+                      <th mat-header-cell *matHeaderCellDef>Succ</th>
+                      <td mat-cell *matCellDef="let l">{{ l.successor_code || l.successor_task_id }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="type">
+                      <th mat-header-cell *matHeaderCellDef>Type</th>
+                      <td mat-cell *matCellDef="let l">{{ l.link_type }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="lag">
+                      <th mat-header-cell *matHeaderCellDef>Lag (d)</th>
+                      <td mat-cell *matCellDef="let l">{{ l.lag_days_8h }}</td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['pred','succ','type','lag']"></tr>
+                    <tr mat-row *matRowDef="let l; columns: ['pred','succ','type','lag']"></tr>
+                  </table>
+                }
+              }
+
+              @case (3) {
+                <p><strong>{{ 'dcma.c3.lags' | transloco }}</strong> {{ selectedRow()!.result?.lagCount }} / {{ selectedRow()!.result?.totalRelationships }} ({{ selectedRow()!.result?.lagPercent }}%)</p>
+                @if (selectedRow()!.result?.details?.lags?.length) {
+                  <table mat-table [dataSource]="selectedRow()!.result.details.lags" class="mat-elevation-z1 sticky-header">
+                    <ng-container matColumnDef="pred">
+                      <th mat-header-cell *matHeaderCellDef>Pred</th>
+                      <td mat-cell *matCellDef="let l">{{ l.predecessor_code || l.predecessor_task_id }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="succ">
+                      <th mat-header-cell *matHeaderCellDef>Succ</th>
+                      <td mat-cell *matCellDef="let l">{{ l.successor_code || l.successor_task_id }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="type">
+                      <th mat-header-cell *matHeaderCellDef>Type</th>
+                      <td mat-cell *matCellDef="let l">{{ l.link_type }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="lag">
+                      <th mat-header-cell *matHeaderCellDef>Lag (d)</th>
+                      <td mat-cell *matCellDef="let l">{{ l.lag_days_8h }}</td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['pred','succ','type','lag']"></tr>
+                    <tr mat-row *matRowDef="let l; columns: ['pred','succ','type','lag']"></tr>
+                  </table>
+                }
+              }
+
+              @case (4) {
+                <p><strong>{{ 'dcma.c4.fsPercent' | transloco }}</strong> {{ selectedRow()!.result?.percentFS }}%</p>
+                @if (selectedRow()!.result?.details?.nonFsList?.length) {
+                  <table mat-table [dataSource]="selectedRow()!.result.details.nonFsList" class="mat-elevation-z1 sticky-header">
+                    <ng-container matColumnDef="pred">
+                      <th mat-header-cell *matHeaderCellDef>Pred</th>
+                      <td mat-cell *matCellDef="let x">{{ x.predecessor_code || x.predecessor_task_id }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="succ">
+                      <th mat-header-cell *matHeaderCellDef>Succ</th>
+                      <td mat-cell *matCellDef="let x">{{ x.successor_code || x.successor_task_id }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="type">
+                      <th mat-header-cell *matHeaderCellDef>Type</th>
+                      <td mat-cell *matCellDef="let x">{{ x.link_type }}</td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['pred','succ','type']"></tr>
+                    <tr mat-row *matRowDef="let x; columns: ['pred','succ','type']"></tr>
+                  </table>
+                }
+              }
+
+              @case (5) {
+                <p><strong>{{ 'dcma.c5.hard' | transloco }}</strong> {{ selectedRow()!.result?.hardCount }} / {{ selectedRow()!.result?.totalWithConstraints }} ({{ selectedRow()!.result?.hardPercent }}%)</p>
+                @if (selectedRow()!.result?.details?.hardList?.length) {
+                  <table mat-table [dataSource]="selectedRow()!.result.details.hardList" class="mat-elevation-z1 sticky-header">
+                    <ng-container matColumnDef="code">
+                      <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                      <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="name">
+                      <th mat-header-cell *matHeaderCellDef>Name</th>
+                      <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="type">
+                      <th mat-header-cell *matHeaderCellDef>Type</th>
+                      <td mat-cell *matCellDef="let i">{{ i.cstr_type }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="date">
+                      <th mat-header-cell *matHeaderCellDef>Date</th>
+                      <td mat-cell *matCellDef="let i">{{ i.cstr_date ? (i.cstr_date | date:'mediumDate') : '—' }}</td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['code','name','type','date']"></tr>
+                    <tr mat-row *matRowDef="let i; columns: ['code','name','type','date']"></tr>
+                  </table>
+                }
+              }
+
+              @case (6) {
+                <p><strong>{{ 'dcma.c6.highFloat' | transloco }}</strong> {{ selectedRow()!.result?.highFloatCount }} / {{ selectedRow()!.result?.totalEligible }} ({{ selectedRow()!.result?.highFloatPercent }}%)</p>
+                <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+                  @if (selectedRow()!.result?.details?.items?.length) {
+                    <mat-tab label="{{ 'dcma.c6.highFloat' | transloco }}">
+                      <table mat-table [dataSource]="selectedRow()!.result.details.items" class="mat-elevation-z1 sticky-header">
+                        <ng-container matColumnDef="code">
+                          <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                          <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="name">
+                          <th mat-header-cell *matHeaderCellDef>Name</th>
+                          <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="tfh">
+                          <th mat-header-cell *matHeaderCellDef>TF (h)</th>
+                          <td mat-cell *matCellDef="let i">{{ i.total_float_hr_cnt }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="tfd">
+                          <th mat-header-cell *matHeaderCellDef>TF (d)</th>
+                          <td mat-cell *matCellDef="let i">{{ i.total_float_days_8h }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="hpd">
+                          <th mat-header-cell *matHeaderCellDef>hpd</th>
+                          <td mat-cell *matCellDef="let i">{{ i.hours_per_day_used || '—' }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['code','name','tfh','tfd','hpd']"></tr>
+                        <tr mat-row *matRowDef="let i; columns: ['code','name','tfh','tfd','hpd']"></tr>
+                      </table>
+                    </mat-tab>
+                  }
+                  @if (selectedRow()!.result?.details?.dq) {
+                    <mat-tab label="{{ 'common.dq' | transloco }}">
+                      <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                        <ng-container matColumnDef="metric">
+                          <th mat-header-cell *matHeaderCellDef>Metric</th>
+                          <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="value">
+                          <th mat-header-cell *matHeaderCellDef>Value</th>
+                          <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                        <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                      </table>
+                    </mat-tab>
+                  }
+                </mat-tab-group>
+              }
+
+              @case (7) {
+                <p><strong>{{ 'dcma.c7.negativeFloat' | transloco }}</strong> {{ selectedRow()!.result?.negativeFloatCount }}</p>
+                <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+                  @if (selectedRow()!.result?.details?.items?.length) {
+                    <mat-tab label="{{ 'dcma.c7.negativeFloat' | transloco }}">
+                      <table mat-table [dataSource]="selectedRow()!.result.details.items" class="mat-elevation-z1 sticky-header">
+                        <ng-container matColumnDef="code">
+                          <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                          <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="name">
+                          <th mat-header-cell *matHeaderCellDef>Name</th>
+                          <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="tfh">
+                          <th mat-header-cell *matHeaderCellDef>TF (h)</th>
+                          <td mat-cell *matCellDef="let i">{{ i.total_float_hr_cnt }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="hpd">
+                          <th mat-header-cell *matHeaderCellDef>hpd</th>
+                          <td mat-cell *matCellDef="let i">{{ i.hours_per_day_used || '—' }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['code','name','tfh','hpd']"></tr>
+                        <tr mat-row *matRowDef="let i; columns: ['code','name','tfh','hpd']"></tr>
+                      </table>
+                    </mat-tab>
+                  }
+                  @if (selectedRow()!.result?.details?.dq) {
+                    <mat-tab label="{{ 'common.dq' | transloco }}">
+                      <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                        <ng-container matColumnDef="metric">
+                          <th mat-header-cell *matHeaderCellDef>Metric</th>
+                          <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="value">
+                          <th mat-header-cell *matHeaderCellDef>Value</th>
+                          <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                        <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                      </table>
+                    </mat-tab>
+                  }
+                </mat-tab-group>
+              }
+
+              @case (8) {
+                <p><strong>{{ 'dcma.c8.highDuration' | transloco }}</strong> {{ selectedRow()!.result?.highDurationCount }} / {{ selectedRow()!.result?.totalEligible }} ({{ selectedRow()!.result?.highDurationPercent }}%)</p>
+                <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+                  @if (selectedRow()!.result?.details?.items?.length) {
+                    <mat-tab label="{{ 'dcma.c8.highDuration' | transloco }}">
+                      <table mat-table [dataSource]="selectedRow()!.result.details.items" class="mat-elevation-z1 sticky-header">
+                        <ng-container matColumnDef="code">
+                          <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                          <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="name">
+                          <th mat-header-cell *matHeaderCellDef>Name</th>
+                          <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="remh">
+                          <th mat-header-cell *matHeaderCellDef>Remain (h)</th>
+                          <td mat-cell *matCellDef="let i">{{ i.remain_dur_hr_cnt }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="remd">
+                          <th mat-header-cell *matHeaderCellDef>Remain (d)</th>
+                          <td mat-cell *matCellDef="let i">{{ i.remain_dur_days_8h }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="hpd">
+                          <th mat-header-cell *matHeaderCellDef>hpd</th>
+                          <td mat-cell *matCellDef="let i">{{ i.hours_per_day_used || '—' }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['code','name','remh','remd','hpd']"></tr>
+                        <tr mat-row *matRowDef="let i; columns: ['code','name','remh','remd','hpd']"></tr>
+                      </table>
+                    </mat-tab>
+                  }
+                  @if (selectedRow()!.result?.details?.dq) {
+                    <mat-tab label="{{ 'common.dq' | transloco }}">
+                      <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                        <ng-container matColumnDef="metric">
+                          <th mat-header-cell *matHeaderCellDef>Metric</th>
+                          <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="value">
+                          <th mat-header-cell *matHeaderCellDef>Value</th>
+                          <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                        <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                      </table>
+                    </mat-tab>
+                  }
+                </mat-tab-group>
+              }
+
+              @case (9) {
+                <p><strong>{{ 'dcma.c9.invalidForecast' | transloco }}</strong> {{ selectedRow()!.result?.invalidForecastCount }} • <strong>{{ 'dcma.c9.invalidActual' | transloco }}</strong> {{ selectedRow()!.result?.invalidActualCount }}</p>
+                @if (selectedRow()!.result?.details?.forecast?.length || selectedRow()!.result?.details?.actual?.length) {
+                  <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+                    @if (selectedRow()!.result?.details?.forecast?.length) {
+                      <mat-tab label="{{ 'dcma.c9.forecastList' | transloco }} ({{ selectedRow()!.result.details.forecast.length }})">
+                        <cdk-virtual-scroll-viewport class="table-viewport" itemSize="48">
+                          <table mat-table [dataSource]="selectedRow()!.result.details.forecast" class="mat-elevation-z1 sticky-header">
+                            <ng-container matColumnDef="code">
+                              <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                              <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="es">
+                              <th mat-header-cell *matHeaderCellDef>ES</th>
+                              <td mat-cell *matCellDef="let i">{{ i.early_start_date ? (i.early_start_date | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="ef">
+                              <th mat-header-cell *matHeaderCellDef>EF</th>
+                              <td mat-cell *matCellDef="let i">{{ i.early_end_date ? (i.early_end_date | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="ls">
+                              <th mat-header-cell *matHeaderCellDef>LS</th>
+                              <td mat-cell *matCellDef="let i">{{ i.late_start_date ? (i.late_start_date | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="lf">
+                              <th mat-header-cell *matHeaderCellDef>LF</th>
+                              <td mat-cell *matCellDef="let i">{{ i.late_end_date ? (i.late_end_date | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <tr mat-header-row *matHeaderRowDef="['code','es','ef','ls','lf']"></tr>
+                            <tr mat-row *matRowDef="let i; columns: ['code','es','ef','ls','lf']"></tr>
+                          </table>
+                        </cdk-virtual-scroll-viewport>
+                      </mat-tab>
+                    }
+                    @if (selectedRow()!.result?.details?.actual?.length) {
+                      <mat-tab label="{{ 'dcma.c9.actualList' | transloco }} ({{ selectedRow()!.result.details.actual.length }})">
+                        <cdk-virtual-scroll-viewport class="table-viewport" itemSize="48">
+                          <table mat-table [dataSource]="selectedRow()!.result.details.actual" class="mat-elevation-z1 sticky-header">
+                            <ng-container matColumnDef="code">
+                              <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                              <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="as">
+                              <th mat-header-cell *matHeaderCellDef>AS</th>
+                              <td mat-cell *matCellDef="let i">{{ i.act_start_date ? (i.act_start_date | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="af">
+                              <th mat-header-cell *matHeaderCellDef>AF</th>
+                              <td mat-cell *matCellDef="let i">{{ i.act_end_date ? (i.act_end_date | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <tr mat-header-row *matHeaderRowDef="['code','as','af']"></tr>
+                            <tr mat-row *matRowDef="let i; columns: ['code','as','af']"></tr>
+                          </table>
+                        </cdk-virtual-scroll-viewport>
+                      </mat-tab>
+                    }
+                  </mat-tab-group>
+                }
+              }
+
+              @case (10) {
+                <p><strong>{{ 'dcma.c10.withoutResources' | transloco }}</strong> {{ selectedRow()!.result?.withoutResourceCount }} / {{ selectedRow()!.result?.totalEligible }} ({{ selectedRow()!.result?.percentWithoutResource }}%)</p>
+                <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+                  @if (selectedRow()!.result?.details?.items?.length) {
+                    <mat-tab label="{{ 'dcma.c10.withoutResources' | transloco }}">
+                      <table mat-table [dataSource]="selectedRow()!.result.details.items" class="mat-elevation-z1 sticky-header">
+                        <ng-container matColumnDef="code">
+                          <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                          <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="name">
+                          <th mat-header-cell *matHeaderCellDef>Name</th>
+                          <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="effh">
+                          <th mat-header-cell *matHeaderCellDef>Eff (h)</th>
+                          <td mat-cell *matCellDef="let i">{{ i.eff_dur_hr_cnt }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="effd">
+                          <th mat-header-cell *matHeaderCellDef>Eff (d)</th>
+                          <td mat-cell *matCellDef="let i">{{ i.eff_dur_days }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="hpd">
+                          <th mat-header-cell *matHeaderCellDef>hpd</th>
+                          <td mat-cell *matCellDef="let i">{{ i.hours_per_day_used || '—' }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['code','name','effh','effd','hpd']"></tr>
+                        <tr mat-row *matRowDef="let i; columns: ['code','name','effh','effd','hpd']"></tr>
+                      </table>
+                    </mat-tab>
+                  }
+                  @if (selectedRow()!.result?.details?.dq) {
+                    <mat-tab label="{{ 'common.dq' | transloco }}">
+                      <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                        <ng-container matColumnDef="metric">
+                          <th mat-header-cell *matHeaderCellDef>Metric</th>
+                          <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="value">
+                          <th mat-header-cell *matHeaderCellDef>Value</th>
+                          <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                        <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                      </table>
+                    </mat-tab>
+                  }
+                </mat-tab-group>
+              }
+
+              @case (11) {
+                <p><strong>{{ 'dcma.c11.missed' | transloco }}</strong> {{ selectedRow()!.result?.missedCount }} / {{ selectedRow()!.result?.totalCompleted }} ({{ selectedRow()!.result?.missedPercent }}%)</p>
+                @if (selectedRow()!.result?.details?.items?.length) {
+                  <table mat-table [dataSource]="selectedRow()!.result.details.items" class="mat-elevation-z1 sticky-header">
+                    <ng-container matColumnDef="code">
+                      <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                      <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="name">
+                      <th mat-header-cell *matHeaderCellDef>Name</th>
+                      <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="af">
+                      <th mat-header-cell *matHeaderCellDef>AF</th>
+                      <td mat-cell *matCellDef="let i">{{ i.act_finish ? (i.act_finish | date:'mediumDate') : '—' }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="bl">
+                      <th mat-header-cell *matHeaderCellDef>BL</th>
+                      <td mat-cell *matCellDef="let i">{{ i.baseline_finish ? (i.baseline_finish | date:'mediumDate') : '—' }}</td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['code','name','af','bl']"></tr>
+                    <tr mat-row *matRowDef="let i; columns: ['code','name','af','bl']"></tr>
+                  </table>
+                }
+              }
+
+              @case (12) {
+                <p><strong>{{ 'dcma.c12.criticalTasks' | transloco }}</strong> {{ selectedRow()!.result?.criticalCount }} •
+                  <strong>{{ 'dcma.c12.singleChain' | transloco }}</strong> {{ selectedRow()!.result?.isSingleChain ? 'Да' : 'Нет' }} •
+                  <strong>{{ 'dcma.c12.endsAtPf' | transloco }}</strong> {{ selectedRow()!.result?.reachedProjectFinish ? 'Да' : 'Нет' }}</p>
+                <p><strong>{{ 'dcma.c12.startNodes' | transloco }}</strong> {{ selectedRow()!.result?.startNodesOnCP }} •
+                  <strong>{{ 'dcma.c12.endNodes' | transloco }}</strong> {{ selectedRow()!.result?.endNodesOnCP }}</p>
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+                    <mat-tab label="{{ 'common.dq' | transloco }}">
+                      <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                        <ng-container matColumnDef="metric">
+                          <th mat-header-cell *matHeaderCellDef>Metric</th>
+                          <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="value">
+                          <th mat-header-cell *matHeaderCellDef>Value</th>
+                          <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                        <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                      </table>
+                    </mat-tab>
+                  </mat-tab-group>
+                }
+              }
+
+              @case (13) {
+                <p><strong>{{ 'dcma.c13.cpl' | transloco }}</strong> {{ selectedRow()!.result?.criticalPathLengthDays }} дн •
+                  <strong>{{ 'dcma.c13.ptf' | transloco }}</strong> {{ selectedRow()!.result?.projectTotalFloatDays }} дн •
+                  <strong>{{ 'dcma.c13.cpli' | transloco }}</strong> {{ selectedRow()!.result?.cpli }}</p>
+              }
+
+              @case (14) {
+                <p><strong>{{ 'dcma.c14.bei' | transloco }}</strong> {{ selectedRow()!.result?.bei }} •
+                  <strong>{{ 'dcma.c14.ge095' | transloco }}</strong> {{ selectedRow()!.result?.beiWithin95pct ? 'Да' : 'Нет' }}</p>
+                @if (selectedRow()!.result?.details?.plannedButNotCompleted?.length || selectedRow()!.result?.details?.completedAheadOfPlan?.length) {
+                  <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+                    @if (selectedRow()!.result?.details?.plannedButNotCompleted?.length) {
+                      <mat-tab label="{{ 'dcma.c14.plannedNotCompleted' | transloco }} ({{ selectedRow()!.result.details.plannedButNotCompleted.length }})">
+                        <cdk-virtual-scroll-viewport class="table-viewport" itemSize="48">
+                          <table mat-table [dataSource]="selectedRow()!.result.details.plannedButNotCompleted" class="mat-elevation-z1 sticky-header">
+                            <ng-container matColumnDef="code">
+                              <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                              <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="name">
+                              <th mat-header-cell *matHeaderCellDef>Name</th>
+                              <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="bl">
+                              <th mat-header-cell *matHeaderCellDef>BL</th>
+                              <td mat-cell *matCellDef="let i">{{ i.baseline_finish ? (i.baseline_finish | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <tr mat-header-row *matHeaderRowDef="['code','name','bl']"></tr>
+                            <tr mat-row *matRowDef="let i; columns: ['code','name','bl']"></tr>
+                          </table>
+                        </cdk-virtual-scroll-viewport>
+                      </mat-tab>
+                    }
+                    @if (selectedRow()!.result?.details?.completedAheadOfPlan?.length) {
+                      <mat-tab label="{{ 'dcma.c14.completedAhead' | transloco }} ({{ selectedRow()!.result.details.completedAheadOfPlan.length }})">
+                        <cdk-virtual-scroll-viewport class="table-viewport" itemSize="48">
+                          <table mat-table [dataSource]="selectedRow()!.result.details.completedAheadOfPlan" class="mat-elevation-z1 sticky-header">
+                            <ng-container matColumnDef="code">
+                              <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                              <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="name">
+                              <th mat-header-cell *matHeaderCellDef>Name</th>
+                              <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="af">
+                              <th mat-header-cell *matHeaderCellDef>AF</th>
+                              <td mat-cell *matCellDef="let i">{{ i.act_finish ? (i.act_finish | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <ng-container matColumnDef="bl">
+                              <th mat-header-cell *matHeaderCellDef>BL</th>
+                              <td mat-cell *matCellDef="let i">{{ i.baseline_finish ? (i.baseline_finish | date:'mediumDate') : '—' }}</td>
+                            </ng-container>
+                            <tr mat-header-row *matHeaderRowDef="['code','name','af','bl']"></tr>
+                            <tr mat-row *matRowDef="let i; columns: ['code','name','af','bl']"></tr>
+                          </table>
+                        </cdk-virtual-scroll-viewport>
+                      </mat-tab>
+                    }
+                  </mat-tab-group>
+                }
+              }
+            }
+          </div>
+        </div>
+
+      }
+    </div>
+  </div>

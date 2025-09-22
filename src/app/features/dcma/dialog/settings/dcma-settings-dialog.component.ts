@@ -1,4 +1,4 @@
-import { Component, Inject, computed, signal, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Inject, computed, signal, inject, ChangeDetectionStrategy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -73,6 +73,7 @@ export class DcmaSettingsDialogComponent {
 
   private readonly svc = inject(DcmaSettingsService);
   private readonly dialogRef = inject(MatDialogRef<DcmaSettingsDialogComponent>);
+  @ViewChild('rightPane') rightPane?: ElementRef<HTMLElement>;
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: { startCheckId?: number } | null) {
     const inRange = (this.ids as readonly number[]).includes((data?.startCheckId as number) ?? 1);
@@ -80,10 +81,30 @@ export class DcmaSettingsDialogComponent {
     this.selected.set(start);
   }
 
+  /** Прокрутить правую колонку (панель настроек) к началу */
+  private scrollRightPaneTop(): void {
+    const el = this.rightPane?.nativeElement;
+    if (!el) return;
+    el.scrollTo({ top: 0, behavior: 'auto' });
+    // для доступности вернём фокус без дополнительной прокрутки
+    try { (el as HTMLElement).focus({ preventScroll: true } as any); } catch {}
+  }
+
+  /** Запланировать прокрутку после обновления шаблона */
+  private scheduleScrollTop(): void {
+    if (typeof window === 'undefined') return;
+    const cb = () => this.scrollRightPaneTop();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(cb);
+    else setTimeout(cb, 0);
+  }
+
   selected = signal<DcmaCheckId>(1);
   currentId = computed(() => this.selected());
 
-  select(id: DcmaCheckId): void { this.selected.set(id); }
+  select(id: DcmaCheckId): void {
+    this.selected.set(id);
+    this.scheduleScrollTop();
+  }
 
   curEnabled = computed(() => this.svc.settings()[this.selected()].enabled);
   curShown   = computed(() => this.svc.settings()[this.selected()].showInTable);
