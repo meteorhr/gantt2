@@ -7,7 +7,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 
@@ -143,6 +143,55 @@ export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
   r12 = signal<DcmaCheck12Result | null>(null);
   r13 = signal<DcmaCheck13Result | null>(null);
   r14 = signal<DcmaCheck14Result | null>(null);
+
+  private i18n = inject(TranslocoService);
+  
+  greatPerfText(row: { check: number }): string {
+  switch (row.check) {
+    // lower is better → ≤ %
+    case 1:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv1().thresholds.greatPct });
+    case 2:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv2().thresholds.greatPct });
+    case 3:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv3().thresholds.greatPct });
+    case 5:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv5().thresholds.greatMaxPct });
+    case 6:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv6().thresholds.greatMaxPct });
+    case 7:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv7().mode.thresholds.greatMaxPct });
+    case 8:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv8().thresholds.greatMaxPct });
+    case 10: return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv10().thresholds.greatMaxPct });
+    case 11: return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv11().thresholds.greatMaxPct });
+
+    // higher is better → ≥ %
+    case 4:  return this.i18n.translate('dcma.greatPerf.percentGE', { value: this.cfg.adv4().thresholds.greatPct });
+
+    // BEI (без %)
+    case 14: return this.i18n.translate('dcma.greatPerf.beiGE',     { value: this.cfg.adv14().thresholds.greatMinBei });
+
+    // нет числового «great»-порога
+    case 9:
+    case 12:
+    case 13:
+    default: return this.i18n.translate('dcma.greatPerf.na');
+  }
+}
+
+/** Какие чеки показываем как PASS/FAIL вместо процентов */
+shouldShowPassLabel(row: DcmaRow): boolean {
+  switch (row.check as number) {
+    // нет численного порога → PASS/FAIL
+    case 9:
+    case 12:
+    case 13:
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** Локализованный ярлык PASS/FAIL */
+passLabel(row: DcmaRow): string {
+  return row.passed
+    ? this.i18n.translate('common.pass')
+    : this.i18n.translate('common.fail');
+}
 
   constructor() {
     this.cfg.ensureInitialized();

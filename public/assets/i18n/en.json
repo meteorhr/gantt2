@@ -7,7 +7,9 @@
     "list": "List",
     "dq": "Data quality (DQ)",
     "close": "Close",
-     "cancel": "Cancel"
+     "cancel": "Cancel",
+      "pass": "PASS",
+    "fail": "FAIL"
   },
   "scheduleHealth": "Schedule Health",
   "changeControl": "Change Control",
@@ -333,6 +335,49 @@
     }
   },
   "dcma": {
+
+    "checkTitle": {
+      "1": "Logic",
+      "2": "Leads",
+      "3": "Lags",
+      "4": "Relationship Types",
+      "5": "Hard Constraints",
+      "6": "High Float",
+      "7": "Negative Float",
+      "8": "High Duration",
+      "9": "Invalid Dates",
+      "10": "Resources",
+      "11": "Missed Tasks",
+      "12": "Critical Path Test",
+      "13": "CPLI",
+      "14": "BEI"
+    },
+
+    "checkDesc": {
+      "1": "Activities without predecessor and/or successor (missing logic).",
+      "2": "Percentage of relationships that are leads.",
+      "3": "Percentage of relationships that use lags.",
+      "4": "Share of FS relationships among all links.",
+      "5": "Percentage of hard constraints among activities with constraints.",
+      "6": "Percentage of activities with total float greater than working days.",
+      "7": "Count of activities with negative total float.",
+      "8": "Activities with remaining duration over threshold (e.g. 44d).",
+      "9": "Forecast/actual dates that violate schedule logic.",
+      "10": "Activities without assigned resources.",
+      "11": "Completed activities finished later than baseline.",
+      "12": "Critical path continuity and reach of project finish.",
+      "13": "Critical Path Length Index (CPLI) summary.",
+      "14": "Baseline Execution Index (BEI) summary."
+    },
+
+    "greatPerf": {
+      "title": "Great Performance",
+      "percentLE": "Great Performance \u2264 {{value}}%",
+      "percentGE": "Great Performance \u2265 {{value}}%",
+      "beiGE":     "Great Performance BEI \u2265 {{value}}",
+      "na":        "Great Performance — not applicable"
+    },
+  
     "settings": {
       "title": "DCMA Settings",
       "splitAria": "DCMA settings split panes",

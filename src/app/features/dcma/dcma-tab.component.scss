@@ -192,14 +192,14 @@
   position: relative;
   margin: 22px auto;
   padding: 16px 20px;
-  max-width: 720px;
+  max-width: 420px;
   border: 2px solid transparent;     /* геометрия — stroke рисуется поверх */
   border-radius: 20px;
-  text-align: center;
+  text-align: left;
   background: color-mix(in oklab, var(--c) 6%, transparent);
 }
 
-.c1-summary__line { margin: 6px 0; font-variant-numeric: tabular-nums; }
+.c1-summary__line { margin: 6px 0; font-variant-numeric: tabular-numbers; }
 
 /* SVG поверх, строго по коробке блока */
 .c1-summary__border {
@@ -228,3 +228,64 @@
 @keyframes c1-border-draw {
   to { stroke-dashoffset: 0; }
 }
+
+
+/* === Summary (card) typography === */
+.c1-summary{
+  /* типоразмеры и приглушённый цвет текста */
+  --big: clamp(36px, 7vw, 72px);
+  --muted: color-mix(in oklab, currentColor 45%, transparent);
+}
+
+/* заголовок внутри карточки (если нужен) */
+.c1-summary__title{
+  margin: 0 0 10px;
+  font-weight: 700;
+  font-size: clamp(18px, 2.4vw, 26px);
+}
+
+/* КРУПНЫЙ ПРОЦЕНТ — цвет берём из ZoneColor (var(--c)) */
+.c1-summary__percent{
+  margin: 2px 0 12px;
+  line-height: .95;
+  font-weight: 800;
+  font-size: var(--big);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .5px;
+  color: var(--c);            /* <- ключевая строка */
+}
+
+/* описание под процентом (серая подпись как в примере) */
+.c1-summary__desc{
+  margin: 6px auto 14px;
+  max-width: 60ch;
+  line-height: 1.45;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* небольшие подписи/строки ниже */
+.c1-summary__line{
+  margin: 6px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.c1-summary__great   { font-size: 16px; opacity: .9; margin: 0 0 12px; }
+
+/* PASS/FAIL метка в колонке Value/Percent */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border: 1px solid currentColor;
+  opacity: .95;
+}
+.status-chip.ok  { color: var(--dcma-ok);  background: color-mix(in oklab, var(--dcma-ok) 12%,  transparent); }
+.status-chip.bad { color: var(--dcma-bad); background: color-mix(in oklab, var(--dcma-bad) 12%, transparent); }
