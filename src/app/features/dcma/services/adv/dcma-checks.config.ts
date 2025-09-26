@@ -1,4 +1,3 @@
-import { Injectable } from '@angular/core';
 import { DcmaCheck1Advanced } from './types/adv1-settings.types';
 
 /** Идентификаторы чеков DCMA 1..14 */
@@ -108,4 +107,69 @@ function clampPct(n: number): number {
   const x = Number(n);
   if (!Number.isFinite(x)) return 0;
   return Math.max(0, Math.min(100, Math.round(x)));
+}
+
+
+/** --------------------- ЦВЕТОВЫЕ ЗОНЫ / ГРЕЙДЫ ---------------------- */
+
+export type Grade = 'great' | 'average' | 'poor';
+
+/** Палитра совпадает с threshold-bar: зелёный / жёлтый / красный */
+export const ZONE_COLORS = {
+  great:   '#4CAF50',
+  average: '#FFC107',
+  poor:    '#EF5350',
+} as const;
+
+/** Универсальная оценка зоны: когда "меньше — лучше" (проценты ошибок и т.п.) */
+export function evaluateGradeLowerIsBetter(
+  value: number | null | undefined,
+  greatPct: number,
+  averagePct: number
+): Grade {
+  if (value === null || value === undefined || !Number.isFinite(value)) return 'poor';
+  const v = Number(value);
+  const g = clampPct(greatPct);
+  const a = clampPct(averagePct);
+  if (v <= g) return 'great';
+  if (v <= a) return 'average';
+  return 'poor';
+}
+
+/** Универсальная оценка зоны: когда "больше — лучше" (индексы BEI/CPLI и т.п.) */
+export function evaluateGradeHigherIsBetter(
+  value: number | null | undefined,
+  greatPct: number,
+  averagePct: number
+): Grade {
+  if (value === null || value === undefined || !Number.isFinite(value)) return 'poor';
+  const v = Number(value);
+  const g = clampPct(greatPct);
+  const a = clampPct(averagePct);
+  if (v >= g) return 'great';
+  if (v >= a) return 'average';
+  return 'poor';
+}
+
+/** Универсальный фасад: вернёт grade и цвет, с направлением метрики. */
+export function getZoneByPercent(
+  value: number | null | undefined,
+  greatPct: number,
+  averagePct: number,
+  lowerIsBetter: boolean = true
+): { grade: Grade; color: string } {
+  const grade = lowerIsBetter
+    ? evaluateGradeLowerIsBetter(value, greatPct, averagePct)
+    : evaluateGradeHigherIsBetter(value, greatPct, averagePct);
+  return { grade, color: ZONE_COLORS[grade] };
+}
+
+/** Удобный фасад для Check 1: берёт пороги из adv1.thresholds (меньше — лучше) */
+export function getCheck1Zone(
+  value: number | null | undefined,
+  persisted: PersistedSettingsV1
+): { grade: Grade; color: string } {
+  const g = persisted.adv1.thresholds.greatPct;
+  const a = persisted.adv1.thresholds.averagePct;
+  return getZoneByPercent(value, g, a, true);
 }
