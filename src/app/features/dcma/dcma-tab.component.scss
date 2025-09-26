@@ -9,6 +9,10 @@
   --dcma-bad: #c62828;
   --dcma-details-max: 100%;
   display: block; color-scheme: light dark; box-sizing: border-box;
+
+  /* колонки слева */
+  --col-num-ch: 5;
+  --col-pct-ch: 7;
 }
 
 .dash-viewport { height: calc(100vh - 150px); overflow: hidden; -webkit-overflow-scrolling: touch; }
@@ -22,22 +26,44 @@
 .left-pane table.mat-mdc-table, .fullw { width: 100%; }
 .left-pane table.mat-mdc-table { table-layout: fixed; }
 
+/* Мат-таблица в левой панели */
 :host ::ng-deep .mat-mdc-table .mat-mdc-header-row {
   position: sticky; top: 0; z-index: 1; background: var(--dcma-surface);
   box-shadow: 0 1px 0 0 var(--mat-sys-outline-variant, rgba(0,0,0,.08));
+  height: 44px; /* высота шапки */
+}
+:host ::ng-deep .mat-mdc-table .mat-mdc-row { height: 44px; }
+
+:host ::ng-deep .mat-mdc-table .mat-mdc-header-cell,
+:host ::ng-deep .mat-mdc-table .mat-mdc-cell {
+  padding: 0 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; vertical-align: middle;
+  text-align: left; /* ← текст шапки и ячеек слева */
+  position: relative; /* для псевдоэлемента-акцента */
+}
+:host ::ng-deep .mat-mdc-table .mat-mdc-header-cell {
+  font-weight: 600;
 }
 
-:host ::ng-deep .mat-mdc-table .mat-mdc-row,
-:host ::ng-deep .mat-mdc-table .mat-mdc-header-row { height: 44px; }
-:host ::ng-deep .mat-mdc-table .mat-mdc-cell,
-:host ::ng-deep .mat-mdc-table .mat-mdc-header-cell {
-  padding: 0 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; vertical-align: middle;
+/* hover / selected улучшены */
+:host ::ng-deep .mat-mdc-table .mat-mdc-row td {
+  transition: background-color .15s ease;
 }
-@media (hover: hover) and (pointer: fine) {
-  :host ::ng-deep .mat-mdc-table .mat-mdc-row:hover td { background: color-mix(in oklab, var(--dcma-primary) 7%, transparent); }
+@media (hover:hover) and (pointer:fine) {
+  :host ::ng-deep .mat-mdc-table .mat-mdc-row:hover td {
+    background: color-mix(in oklab, var(--dcma-primary) 7%, transparent);
+  }
+  :host ::ng-deep .mat-mdc-table .mat-mdc-row:hover td:first-child::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: color-mix(in oklab, var(--dcma-primary) 50%, transparent);
+    border-radius: 0 2px 2px 0;
+  }
 }
-:host ::ng-deep .mat-mdc-table tr.is-selected td { background: color-mix(in oklab, var(--dcma-primary) 12%, transparent); }
-:host ::ng-deep .mat-mdc-table .mat-mdc-row:focus-visible td { outline: 2px solid color-mix(in oklab, var(--dcma-primary) 60%, transparent); outline-offset: -2px; }
+:host ::ng-deep .mat-mdc-table tr.is-selected td {
+  background: color-mix(in oklab, var(--dcma-primary) 12%, transparent);
+}
+:host ::ng-deep .mat-mdc-table .mat-mdc-row:focus-visible td {
+  outline: 2px solid color-mix(in oklab, var(--dcma-primary) 60%, transparent); outline-offset: -2px;
+}
 
 .right-pane {
   height: 100%; min-width: 0; min-height: 0; overflow: auto; overflow-x: hidden;
@@ -56,7 +82,7 @@
 .details-body .mat-mdc-tab-group, .details-body .mat-mdc-tab-body-wrapper { width: 100%; }
 :host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content { overflow: auto; max-height: calc(100vh - 250px); }
 .details-body table.mat-mdc-table { width: 100%; table-layout: fixed; }
-.details-body .mat-mdc-cell, .details-body .mat-mdc-header-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.details-body .mat-mdc-cell, .details-body .mat-mdc-header-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 
 :host ::ng-deep mat-icon.ok, :host ::ng-deep .mat-icon.ok { color: var(--dcma-ok); }
 :host ::ng-deep mat-icon.bad, :host ::ng-deep .mat-icon.bad { color: var(--dcma-bad); }
@@ -80,7 +106,7 @@
 .kpi .mat-icon { flex: 0 0 auto; }
 .kpi .value { opacity: .8; font-variant-numeric: tabular-nums; }
 
-/* Сегментная шкала для всех */
+/* Сегментная шкала */
 .grade-cell {
   --q: 0%;
   --thumb: #2e7d32;
@@ -90,202 +116,113 @@
   border: 1px solid color-mix(in oklab, currentColor 10%, transparent);
   box-sizing: border-box; overflow: hidden; contain: paint; will-change: width;
 }
-
-/* отключаем прежнюю градиентную «заливку» */
 .grade-cell::before { display: none; }
-
-/* маркер */
 .grade-cell::after {
-  content: '';
-  position: absolute; top: 50%;
-  left: clamp(6px, var(--q), calc(100% - 6px));
-  transform: translate(-50%, -50%);
-  width: 12px; height: 12px; border-radius: 50%;
-  background: var(--thumb);
-  box-shadow: 0 0 0 2px var(--dcma-surface),
-              0 0 0 3px color-mix(in oklab, var(--thumb) 50%, transparent);
+  content: ''; position: absolute; top: 50%;
+  left: clamp(6px, var(--q), calc(100% - 6px)); transform: translate(-50%, -50%);
+  width: 12px; height: 12px; border-radius: 50%; background: var(--thumb);
+  box-shadow: 0 0 0 2px var(--dcma-surface), 0 0 0 3px color-mix(in oklab, var(--thumb) 50%, transparent);
 }
 .grade-cell.na::after { display: none; }
 
 /* уважение prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
-.value-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
+/* значения в ячейке процента */
+.value-cell { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; width: 100%; }
+.value-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; }
+.value-text { min-width: calc(var(--col-pct-ch) * 1ch); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.value-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-}
-
-.value-text {
-  font-variant-numeric: tabular-nums;
-}
-
-/* === Узкие фиксированные ширины краевых колонок ===
-   Подправляются двумя переменными:
-   --col-num-ch  : число символов для # (2..3)
-   --col-pct-ch  : число символов для процента (максимум, обычно 7 для 100.00%)
-*/
-:host {
-  --col-num-ch: 5;   /* для #1..#999 → 3ch; если точно до 99 — поставь 2 */
-  --col-pct-ch: 7;   /* "100.00%" = 7 символов; если без сотых — 4..5 */
-}
-
-/* # колонка — самая узкая, выравниваем по правому краю */
+/* Узкие ширины */
 :host ::ng-deep th.mat-mdc-header-cell.mat-column-check,
 :host ::ng-deep td.mat-mdc-cell.mat-column-check {
   width: calc(var(--col-num-ch) * 1ch);
   min-width: calc(var(--col-num-ch) * 1ch);
   max-width: calc(var(--col-num-ch) * 1ch);
-  padding-inline: 8px;              /* меньше боковых отступов */
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  padding-inline: 8px; text-align: right; font-variant-numeric: tabular-nums;
 }
-
-/* % / Value — ширина = кружок(10) + зазор(8) + текст(—col-pct-ch ch) + паддинги(24) */
 :host ::ng-deep th.mat-mdc-header-cell.mat-column-percent,
 :host ::ng-deep td.mat-mdc-cell.mat-column-percent {
-  width: calc(34px + var(--col-pct-ch) * 1ch);   /* 10 + 8 + 24 = 42, но 2px border → фактически ~34px в M3 */
+  width: calc(34px + var(--col-pct-ch) * 1ch);
   min-width: calc(34px + var(--col-pct-ch) * 1ch);
   max-width: calc(34px + var(--col-pct-ch) * 1ch);
   padding-inline: 8px;
 }
-
-/* Контент value: выравниваем вправо и фиксируем ширину числа,
-   чтобы строки не "подпрыгивали" при разных значениях */
-.value-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-end;
-  width: 100%;
-}
-
-.value-dot {
-  flex: 0 0 auto;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.value-text {
-  min-width: calc(var(--col-pct-ch) * 1ch);
-  text-align: right;
-  font-variant-numeric: tabular-nums; /* одинаковая ширина цифр */
-  white-space: nowrap;
-}
-
-/* Колонка названия расширяется и забирает остаток ширины */
 :host ::ng-deep th.mat-mdc-header-cell.mat-column-metric,
-:host ::ng-deep td.mat-mdc-cell.mat-column-metric {
-  width: auto;
-}
+:host ::ng-deep td.mat-mdc-cell.mat-column-metric { width: auto; }
 
+/* === Summary (card) === */
 .c1-summary {
   --c: var(--dcma-primary);
-  position: relative;
-  margin: 22px auto;
-  padding: 16px 20px;
-  max-width: 420px;
-  border: 2px solid transparent;     /* геометрия — stroke рисуется поверх */
-  border-radius: 20px;
-  text-align: left;
+  position: relative; margin: 22px auto; padding: 16px 20px; max-width: 420px;
+  border: 2px solid transparent; border-radius: 20px; text-align: left;
   background: color-mix(in oklab, var(--c) 6%, transparent);
 }
-
-.c1-summary__line { margin: 6px 0; font-variant-numeric: tabular-numbers; }
-
-/* SVG поверх, строго по коробке блока */
-.c1-summary__border {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
+.c1-summary__line { margin: 6px 0; font-variant-numeric: tabular-nums; }
+.c1-summary__border { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .c1-summary__border path {
-  fill: none;
-  stroke: var(--c);
-  stroke-width: 2px;                      /* = border */
-  vector-effect: non-scaling-stroke;      /* толщина не «плавает» */
-  stroke-linejoin: round;
-  stroke-linecap: butt;
-  stroke-dasharray: 1;                     /* pathLength=1 → вся длина */
-  stroke-dashoffset: 1;                    /* скрыто */
+  fill: none; stroke: var(--c); stroke-width: 2px; vector-effect: non-scaling-stroke;
+  stroke-linejoin: round; stroke-linecap: butt; stroke-dasharray: 1; stroke-dashoffset: 1;
 }
+.c1-summary.animate-border .c1-summary__border path { animation: c1-border-draw 900ms ease-out forwards;
+  filter: drop-shadow(0 0 2px color-mix(in oklab, var(--c) 50%, transparent)); }
+@keyframes c1-border-draw { to { stroke-dashoffset: 0; } }
 
-.c1-summary.animate-border .c1-summary__border path {
-  animation: c1-border-draw 900ms ease-out forwards;
-  filter: drop-shadow(0 0 2px color-mix(in oklab, var(--c) 50%, transparent));
+.c1-summary{ --big: clamp(36px, 7vw, 72px); --muted: color-mix(in oklab, currentColor 45%, transparent); }
+.c1-summary__title{ margin: 0 0 10px; font-weight: 700; font-size: clamp(18px, 2.4vw, 26px); }
+.c1-summary__percent,
+.c1-summary__pass{
+  margin: 2px 0 12px; line-height: .95; font-weight: 800; font-size: var(--big);
+  font-variant-numeric: tabular-nums; letter-spacing: .5px; color: var(--c);
 }
+.c1-summary__desc{ margin: 6px auto 14px; max-width: 60ch; line-height: 1.45; font-size: 14px; color: var(--muted); }
+.c1-summary__great{ font-size: 16px; opacity: .9; margin: 0 0 12px; }
 
-@keyframes c1-border-draw {
-  to { stroke-dashoffset: 0; }
-}
-
-
-/* === Summary (card) typography === */
-.c1-summary{
-  /* типоразмеры и приглушённый цвет текста */
-  --big: clamp(36px, 7vw, 72px);
-  --muted: color-mix(in oklab, currentColor 45%, transparent);
-}
-
-/* заголовок внутри карточки (если нужен) */
-.c1-summary__title{
-  margin: 0 0 10px;
-  font-weight: 700;
-  font-size: clamp(18px, 2.4vw, 26px);
-}
-
-/* КРУПНЫЙ ПРОЦЕНТ — цвет берём из ZoneColor (var(--c)) */
-.c1-summary__percent{
-  margin: 2px 0 12px;
-  line-height: .95;
-  font-weight: 800;
-  font-size: var(--big);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: .5px;
-  color: var(--c);            /* <- ключевая строка */
-}
-
-/* описание под процентом (серая подпись как в примере) */
-.c1-summary__desc{
-  margin: 6px auto 14px;
-  max-width: 60ch;
-  line-height: 1.45;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-/* небольшие подписи/строки ниже */
-.c1-summary__line{
-  margin: 6px 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.c1-summary__great   { font-size: 16px; opacity: .9; margin: 0 0 12px; }
-
-/* PASS/FAIL метка в колонке Value/Percent */
+/* PASS/FAIL в левой таблице */
 .status-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 54px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  border: 1px solid currentColor;
-  opacity: .95;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 54px; padding: 2px 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  border: 1px solid currentColor; opacity: .95;
 }
 .status-chip.ok  { color: var(--dcma-ok);  background: color-mix(in oklab, var(--dcma-ok) 12%,  transparent); }
 .status-chip.bad { color: var(--dcma-bad); background: color-mix(in oklab, var(--dcma-bad) 12%, transparent); }
+
+/* === «Нормальная» виртуальная таблица (правый блок) === */
+.vtable { width: 100%; display: grid; grid-template-rows: auto 1fr; }
+.vtable__head, .vtable__body { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.vtable__head thead th, .vtable__body tbody td {
+  padding: 8px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;
+}
+.vtable__head thead th {
+  height: 44px; /* высота шапки */
+  line-height: 44px;
+  border-bottom: 1px solid color-mix(in oklab, currentColor 10%, transparent);
+  background: var(--dcma-surface);
+  position: sticky; top: 0; z-index: 1;
+  font-weight: 600;
+}
+.vtable__body tbody tr {
+  height: 44px; /* ← синхронизировано с [itemSize] */
+  border-bottom: 1px solid color-mix(in oklab, currentColor 8%, transparent);
+}
+.vtable__body tbody td {
+  position: relative; transition: background-color .15s ease;
+}
+@media (hover:hover) and (pointer:fine) {
+  .vtable__body tbody tr:hover td {
+    background: color-mix(in oklab, var(--dcma-primary) 7%, transparent);
+  }
+  .vtable__body tbody tr:hover td:first-child::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: color-mix(in oklab, var(--dcma-primary) 50%, transparent);
+    border-radius: 0 2px 2px 0;
+  }
+}
+
+/* высота области прокрутки справа */
+.v-viewport {
+  height: calc(100vh - 320px);
+  min-height: 240px;
+  overflow: auto;
+}

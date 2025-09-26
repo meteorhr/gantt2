@@ -335,7 +335,7 @@
     }
   },
   "dcma": {
-
+    "title": "Schedule Health (DCMA 14)",
     "checkTitle": {
       "1": "Logic",
       "2": "Leads",
@@ -405,6 +405,7 @@
         "detailsLimit": "Details limit"
       },
       "details": {
+        "title": "Details",
         "include": "Include details in results",
         "limit": "Details limit",
         "limitRows": "Limit details (rows)"
@@ -580,6 +581,7 @@
       }
     },
     "info": {
+      "selectRow": "Select a row to see details of the check.",
       "check": {
         "goal": "Goal",
         "check": "Check rule",
@@ -712,6 +714,7 @@
     "btnDetails": "Details"
   },
   "details": {
+    "title": "Details",
     "strictLogic": "Strict logic mode enabled"
   },
   "c1": {

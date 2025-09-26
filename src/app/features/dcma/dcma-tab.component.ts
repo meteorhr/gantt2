@@ -1,6 +1,8 @@
 import {
   Component, inject, signal, computed,
-  ViewChild, ElementRef, AfterViewInit, OnDestroy
+  ViewChild, ElementRef, AfterViewInit, OnDestroy,
+  ViewChildren,
+  QueryList
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
@@ -8,8 +10,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { MatTabsModule } from '@angular/material/tabs';
-import { ScrollingModule } from '@angular/cdk/scrolling';
+import { MatTabChangeEvent, MatTabsModule } from '@angular/material/tabs';
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 
 import { AppStateService } from '../../state/app-state.service';
 import {
@@ -32,6 +34,7 @@ import { DcmaCheck1Result } from '../../p6/services/dcma/models/check1.model';
 
 import { DcmaSettingsService, DcmaCheckId } from './services/adv/dcma-settings.service';
 import { getZoneByPercent, Grade, ZONE_COLORS } from './services/adv/dcma-checks.config';
+import { CdkTableModule } from '@angular/cdk/table';
 
 interface DcmaRow {
   check: DcmaCheckId;
@@ -56,6 +59,7 @@ interface DcmaRow {
     TranslocoModule,
     MatTabsModule,
     ScrollingModule,
+    CdkTableModule
   ],
   styleUrls: ['./dcma-tab.component.scss'],
   templateUrl: './dcma-tab.component.html',
@@ -80,6 +84,9 @@ export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
   private wm = inject(AppStateService);
   private cfg = inject(DcmaSettingsService);
   private dialog = inject(MatDialog);
+
+  @ViewChildren(CdkVirtualScrollViewport)
+  private viewports!: QueryList<CdkVirtualScrollViewport>;
 
   // --- UI state
   animFlip = signal<boolean>(false);
@@ -116,7 +123,31 @@ export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
   // фактические размеры summary для построения svg-пути (padding-box!)
   sumW = signal(0);
   sumH = signal(0);
+  readonly ITEM_SIZE = 44;
+  trackTask = (_: number, i: any) =>
+    i?.task_id ?? i?.task_code ?? i?.id ?? i;
+  trackLink = (_: number, l: any) =>
+    l?.id ?? `${l?.predecessor_task_id || l?.predecessor_code}->${l?.successor_task_id || l?.successor_code}:${l?.link_type}:${l?.lag_days_8h}`;
+  trackNonFs = (_: number, x: any) =>
+    x?.id ?? `${x?.predecessor_task_id || x?.predecessor_code}->${x?.successor_task_id || x?.successor_code}:${x?.link_type}`;
+  trackHard = (_: number, i: any) =>
+    i?.id
+    ?? `${i?.task_id || i?.task_code || ''}|${i?.cstr_type || ''}|${i?.cstr_date || ''}`;
+  trackC7 = (_: number, i: any) =>
+    i?.task_id ?? i?.task_code ?? i?.id ?? `${i?.task_name}|${i?.total_float_hr_cnt}|${i?.hours_per_day_used}`;
+  trackC8 = (_: number, i: any) =>
+    i?.task_id ?? i?.task_code ?? i?.id ??
+      `${i?.task_name}|${i?.remain_dur_hr_cnt}|${i?.remain_dur_days_8h}|${i?.hours_per_day_used}`;
+  trackC9Forecast = (_: number, i: any) =>
+    i?.task_id ?? i?.task_code ?? `${i?.early_start_date}|${i?.early_end_date}|${i?.late_start_date}|${i?.late_end_date}`;
+  trackC9Actual = (_: number, i: any) =>
+    i?.task_id ?? i?.task_code ?? `${i?.act_start_date}|${i?.act_end_date}`;
+  trackDetailsItems = (_: number, i: any) =>
+    i?.task_id ?? i?.task_code ?? `${i?.task_name}|${i?.act_finish}|${i?.baseline_finish}`;
 
+
+trackC14Planned = (_: number, i: any) => i?.task_id ?? i?.task_code ?? i?.task_name ?? _;
+trackC14Ahead   = (_: number, i: any) => i?.task_id ?? i?.task_code ?? i?.task_name ?? _;
   // параметры должны совпадать с CSS
   private readonly strokePx = 2;   // stroke-width
   private readonly radiusPx = 12;  // border-radius
@@ -365,15 +396,36 @@ passLabel(row: DcmaRow): string {
     queueMicrotask(() => {
       const el = this.rightPane?.nativeElement;
       if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+       this.resetVirtualScrollSoon();   
     });
   }
 
   // lifecycle
   ngAfterViewInit(): void {
     // ViewChild-сеттер сам сработает, когда появится #c1Summary
+        // когда набор вьюпортов меняется (переключили вкладку/кейсы) — «пнуть» их
+    this.viewports.changes.subscribe(() => this.resetVirtualScrollSoon());
+    // и сразу после первого рендера тоже
+    this.resetVirtualScrollSoon();
   }
   ngOnDestroy(): void {
     this.summaryRO?.disconnect();
+  }
+  /** дернуть пересчёт, скролл в начало — с задержкой, чтобы контент вкладки уже был виден */
+  private resetVirtualScrollSoon(): void {
+    requestAnimationFrame(() => {
+      this.viewports?.forEach(vp => {
+        try {
+          vp.checkViewportSize();    // пересчитать размеры контейнера
+          vp.scrollToIndex(0, 'auto'); // в начало (можно 'smooth' если хотите анимацию)
+        } catch {}
+      });
+    });
+  }
+
+  /** вызывать при смене вкладки mat-tab */
+  onTabChange(_e: MatTabChangeEvent) {
+    this.resetVirtualScrollSoon();
   }
 
   // --- измерения и путь рамки
