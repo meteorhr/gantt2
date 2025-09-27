@@ -9,7 +9,11 @@
     "close": "Close",
      "cancel": "Cancel",
       "pass": "PASS",
-    "fail": "FAIL"
+    "fail": "FAIL",
+        "daysShort": "d",
+    "yes": "Yes",
+    "no": "No",
+    "info": "Info"
   },
   "scheduleHealth": "Schedule Health",
   "changeControl": "Change Control",
@@ -352,7 +356,71 @@
       "13": "CPLI",
       "14": "BEI"
     },
+    "col": {
+      "codeId": "Code/ID",
+      "name": "Name",
+      "pred": "Pred",
+      "succ": "Succ",
+      "type": "Type",
+      "lagDays": "Lag (d)",
+      "date": "Date",
+      "tfHours": "TF (h)",
+      "tfDays": "TF (d)",
+      "hpd": "hpd",
+      "remainHours": "Remain (h)",
+      "remainDays": "Remain (d)",
+      "metric": "Metric",
+      "value": "Value",
+      "es": "ES",
+      "ef": "EF",
+      "ls": "LS",
+      "lf": "LF",
+      "as": "AS",
+      "af": "AF",
+      "bl": "BL"
+    },
+    
+    "dq": {
+      "duplicateLinks": "Duplicate links (removed)",
+      "selfLoops": "Self-loops (ignored)",
+      "externalLinks": "External links (ignored)",
+      "orphanLinks": "Orphan links",
+      "unknownType": "Unknown type",
+      "components": "Connected components",
 
+      "missingDateForHard": "Hard constraint without date",
+      "missingDateForSoft": "Soft constraint without date",
+      "excludedWbs": "Excluded WBS summaries",
+      "excludedMilestone": "Excluded milestones (filter)",
+      "excludedLoE": "Excluded LoE/Hammock (filter)",
+      "excludedCompleted": "Excluded completed (filter)",
+
+      "unknownUnits": "Unrecognized units",
+      "missingTf": "Missing Total Float",
+
+      "excludedLoEOrHammock": "Excluded LoE/Hammock (denominator)",
+      "missingRemainDur": "Missing Remaining Duration",
+      "negativeRemainDur": "Negative Remaining Duration",
+      "usedAltRemainField": "Used alternative Remaining field",
+
+      "tasksCheckedForecast": "Tasks checked (forecast dates)",
+      "tasksCheckedActual": "Tasks checked (actual dates)",
+      "missingForecastFields": "Missing ES/EF/LS/LF",
+      "missingActualFields": "Missing AS/AF",
+      "parseErrors": "Date parse errors",
+
+      "excludedMilestones": "Excluded milestones (denominator)",
+      "missingDuration": "Missing duration",
+      "negativeDuration": "Negative duration",
+      "usedAltDurationField": "Used alternative duration field",
+      "calendarFallbackCount": "Fallback hours/day (no calendar)",
+
+      "missingBaselineFinish": "Missing BL Finish",
+      "missingActualFinish": "Missing Actual Finish",
+      "baselineFieldUsage": "Baseline field usage"
+    },
+
+    "settingsAria": "DCMA settings",
     "checkDesc": {
       "1": "Activities without predecessor and/or successor (missing logic).",
       "2": "Percentage of relationships that are leads.",

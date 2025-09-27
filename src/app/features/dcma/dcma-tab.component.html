@@ -4,7 +4,7 @@
     <div class="dcma-header">
       <h3>{{ 'dcma.title' | transloco }}</h3>
       <span class="fx"></span>
-      <button mat-button (click)="openSettings()" aria-label="Настройки DCMA">
+            <button mat-button (click)="openSettings()" aria-label="{{ 'dcma.settingsAria' | transloco }}">
         <mat-icon>settings</mat-icon>
         <span>{{ 'common.settings' | transloco }}</span>
       </button>
@@ -15,7 +15,7 @@
       <div class="table-scroll"
         [style.--zone-poor]="zone.poor"
         [style.--zone-avg]="zone.average"
-            [style.--zone-great]="zone.great">
+        [style.--zone-great]="zone.great">
       
         <table mat-table [dataSource]="filteredRows()" class="fullw" [trackBy]="trackRow">
       
@@ -38,20 +38,19 @@
               @if(!shouldShowPassLabel(r)){
                 <span class="value-cell">
                   <span class="value-dot" [style.backgroundColor]="getZoneColorFor(r)"></span>
-          <span class="value-text">
-            @if (r.check === 14) {
-              {{ r.percent | number:'1.0-2' }}
-            } @else {
-              {{ formatPercent(r.percent) }}%
-            }
-          </span>
+                  <span class="value-text">
+                    @if (r.check === 14) {
+                      {{ r.percent | number:'1.0-2' }}
+                    } @else {
+                      {{ formatPercent(r.percent) }}%
+                    }
+                  </span>
                 </span>
               } @else {
                 <span class="status-chip" [class.ok]="r.passed" [class.bad]="!r.passed">
                   {{ passLabel(r) }}
                 </span>
-            }
-
+              }
             </td>
           </ng-container>
       
@@ -63,7 +62,6 @@
       
         </table>
       </div>
- 
     }
   </div>
 
@@ -75,7 +73,7 @@
         <div>{{ 'dcma.info.selectRow' | transloco : { default: 'Select a DCMA check on the left to view details' } }}</div>
       </div>
     } @else {
-<div class="details-shell">
+      <div class="details-shell">
         <div class="details-header">
           <div class="title">
             <span class="check-num">#{{ selectedRow()!.check }}</span>
@@ -88,7 +86,7 @@
             <mat-icon [ngClass]="selectedRow()!.passed ? 'ok' : 'bad'" class="status-icon">
               {{ selectedRow()!.passed ? 'check_circle' : 'cancel' }}
             </mat-icon>
-            <button mat-icon-button (click)="openInfo(selectedRow()!)" aria-label="Info">
+            <button mat-icon-button (click)="openInfo(selectedRow()!)" aria-label="{{ 'common.info' | transloco }}">
               <mat-icon>info</mat-icon>
             </button>
           </div>
@@ -98,7 +96,7 @@
           @switch (selectedRow()!.check) {
             @case (1) {
               @let c1 = selectedRow()?.result?.details;
-              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -145,8 +143,8 @@
                         </colgroup>
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>Name</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -183,8 +181,8 @@
                         </colgroup>
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>Name</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -209,11 +207,28 @@
                     </div>
                   </mat-tab>
                 }
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
 
             @case (2) {
-              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -244,10 +259,10 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Pred</th>
-                            <th>Succ</th>
-                            <th>Type</th>
-                            <th>Lag (d)</th>
+                            <th>{{ 'dcma.col.pred' | transloco }}</th>
+                            <th>{{ 'dcma.col.succ' | transloco }}</th>
+                            <th>{{ 'dcma.col.type' | transloco }}</th>
+                            <th>{{ 'dcma.col.lagDays' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -271,11 +286,28 @@
                     </div>
                   </mat-tab>
                 }
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
 
             @case (3) {
-              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -306,10 +338,10 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Pred</th>
-                            <th>Succ</th>
-                            <th>Type</th>
-                            <th>Lag (d)</th>
+                            <th>{{ 'dcma.col.pred' | transloco }}</th>
+                            <th>{{ 'dcma.col.succ' | transloco }}</th>
+                            <th>{{ 'dcma.col.type' | transloco }}</th>
+                            <th>{{ 'dcma.col.lagDays' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -334,11 +366,28 @@
                     </div>
                   </mat-tab>
                 }
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
 
             @case (4) {
-              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -364,9 +413,9 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Pred</th>
-                            <th>Succ</th>
-                            <th>Type</th>
+                            <th>{{ 'dcma.col.pred' | transloco }}</th>
+                            <th>{{ 'dcma.col.succ' | transloco }}</th>
+                            <th>{{ 'dcma.col.type' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -390,11 +439,28 @@
                     </div>
                   </mat-tab>
                 }
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
 
             @case (5) {
-              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -425,10 +491,10 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th>Date</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
+                            <th>{{ 'dcma.col.type' | transloco }}</th>
+                            <th>{{ 'dcma.col.date' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -453,11 +519,28 @@
                     </div>
                   </mat-tab>
                 }
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
 
             @case (6) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -485,23 +568,23 @@
                   <mat-tab label="{{ 'dcma.c6.highFloat' | transloco }}">
                     <table mat-table [dataSource]="selectedRow()!.result.details.items" class="mat-elevation-z1 sticky-header">
                       <ng-container matColumnDef="code">
-                        <th mat-header-cell *matHeaderCellDef>Code/ID</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.codeId' | transloco }}</th>
                         <td mat-cell *matCellDef="let i">{{ i.task_code || i.task_id }}</td>
                       </ng-container>
                       <ng-container matColumnDef="name">
-                        <th mat-header-cell *matHeaderCellDef>Name</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.name' | transloco }}</th>
                         <td mat-cell *matCellDef="let i">{{ i.task_name }}</td>
                       </ng-container>
                       <ng-container matColumnDef="tfh">
-                        <th mat-header-cell *matHeaderCellDef>TF (h)</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.tfHours' | transloco }}</th>
                         <td mat-cell *matCellDef="let i">{{ i.total_float_hr_cnt }}</td>
                       </ng-container>
                       <ng-container matColumnDef="tfd">
-                        <th mat-header-cell *matHeaderCellDef>TF (d)</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.tfDays' | transloco }}</th>
                         <td mat-cell *matCellDef="let i">{{ i.total_float_days_8h }}</td>
                       </ng-container>
                       <ng-container matColumnDef="hpd">
-                        <th mat-header-cell *matHeaderCellDef>hpd</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.hpd' | transloco }}</th>
                         <td mat-cell *matCellDef="let i">{{ i.hours_per_day_used || '—' }}</td>
                       </ng-container>
                       <tr mat-header-row *matHeaderRowDef="['code','name','tfh','tfd','hpd']"></tr>
@@ -514,11 +597,11 @@
                   <mat-tab label="{{ 'common.dq' | transloco }}">
                     <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
                       <ng-container matColumnDef="metric">
-                        <th mat-header-cell *matHeaderCellDef>Metric</th>
-                        <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
                       </ng-container>
                       <ng-container matColumnDef="value">
-                        <th mat-header-cell *matHeaderCellDef>Value</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
                         <td mat-cell *matCellDef="let k">{{ k.value }}</td>
                       </ng-container>
                       <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
@@ -530,7 +613,7 @@
             }
 
             @case (7) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -561,10 +644,10 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>{{ 'common.name' | transloco : { default: 'Name' } }}</th>
-                            <th>TF (h)</th>
-                            <th>hpd</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
+                            <th>{{ 'dcma.col.tfHours' | transloco }}</th>
+                            <th>{{ 'dcma.col.hpd' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -594,11 +677,11 @@
                   <mat-tab label="{{ 'common.dq' | transloco }}">
                     <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
                       <ng-container matColumnDef="metric">
-                        <th mat-header-cell *matHeaderCellDef>Metric</th>
-                        <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
                       </ng-container>
                       <ng-container matColumnDef="value">
-                        <th mat-header-cell *matHeaderCellDef>Value</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
                         <td mat-cell *matCellDef="let k">{{ k.value }}</td>
                       </ng-container>
                       <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
@@ -610,7 +693,7 @@
             }
 
             @case (8) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -641,11 +724,11 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>{{ 'common.name' | transloco : { default: 'Name' } }}</th>
-                            <th>Remain (h)</th>
-                            <th>Remain (d)</th>
-                            <th>hpd</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
+                            <th>{{ 'dcma.col.remainHours' | transloco }}</th>
+                            <th>{{ 'dcma.col.remainDays' | transloco }}</th>
+                            <th>{{ 'dcma.col.hpd' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -676,11 +759,11 @@
                   <mat-tab label="{{ 'common.dq' | transloco }}">
                     <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
                       <ng-container matColumnDef="metric">
-                        <th mat-header-cell *matHeaderCellDef>Metric</th>
-                        <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
                       </ng-container>
                       <ng-container matColumnDef="value">
-                        <th mat-header-cell *matHeaderCellDef>Value</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
                         <td mat-cell *matCellDef="let k">{{ k.value }}</td>
                       </ng-container>
                       <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
@@ -692,7 +775,7 @@
             }
 
             @case (9) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -732,11 +815,11 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>ES</th>
-                            <th>EF</th>
-                            <th>LS</th>
-                            <th>LF</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.es' | transloco }}</th>
+                            <th>{{ 'dcma.col.ef' | transloco }}</th>
+                            <th>{{ 'dcma.col.ls' | transloco }}</th>
+                            <th>{{ 'dcma.col.lf' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -770,9 +853,9 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>AS</th>
-                            <th>AF</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.as' | transloco }}</th>
+                            <th>{{ 'dcma.col.af' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -796,11 +879,28 @@
                     </div>
                   </mat-tab>
                 }
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
 
             @case (10) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -836,8 +936,8 @@
                         </colgroup>
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>Name</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -870,11 +970,11 @@
                       <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)"
                             class="mat-elevation-z1 sticky-header dq-table">
                         <ng-container matColumnDef="metric">
-                          <th mat-header-cell *matHeaderCellDef>Metric</th>
-                          <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                          <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                          <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
                         </ng-container>
                         <ng-container matColumnDef="value">
-                          <th mat-header-cell *matHeaderCellDef>Value</th>
+                          <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
                           <td mat-cell *matCellDef="let k">{{ k.value }}</td>
                         </ng-container>
                         <tr mat-header-row *matHeaderRowDef="['metric','value']; sticky: true"></tr>
@@ -886,7 +986,7 @@
             }
 
             @case (11) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -917,10 +1017,10 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>Name</th>
-                            <th>AF</th>
-                            <th>BL</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
+                            <th>{{ 'dcma.col.af' | transloco }}</th>
+                            <th>{{ 'dcma.col.bl' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -945,11 +1045,28 @@
                     </div>
                   </mat-tab>
                 }
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
 
             @case (12) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)"> 
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)"> 
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -976,11 +1093,11 @@
                     </p>
                     <p class="c1-summary__line">
                       <strong>{{ 'dcma.c12.singleChain' | transloco }}</strong>
-                      {{ selectedRow()!.result?.isSingleChain ? 'Да' : 'Нет' }}
+                      {{ selectedRow()!.result?.isSingleChain ? ('common.yes' | transloco) : ('common.no' | transloco) }}
                     </p>
                     <p class="c1-summary__line">
                       <strong>{{ 'dcma.c12.endsAtPf' | transloco }}</strong>
-                      {{ selectedRow()!.result?.reachedProjectFinish ? 'Да' : 'Нет' }}
+                      {{ selectedRow()!.result?.reachedProjectFinish ? ('common.yes' | transloco) : ('common.no' | transloco) }}
                     </p>
                     <p class="c1-summary__line">
                       <strong>{{ 'dcma.c12.startNodes' | transloco }}</strong>
@@ -997,11 +1114,11 @@
                   <mat-tab label="{{ 'common.dq' | transloco }}">
                     <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
                       <ng-container matColumnDef="metric">
-                        <th mat-header-cell *matHeaderCellDef>Metric</th>
-                        <td mat-cell *matCellDef="let k">{{ k.key }}</td>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
                       </ng-container>
                       <ng-container matColumnDef="value">
-                        <th mat-header-cell *matHeaderCellDef>Value</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
                         <td mat-cell *matCellDef="let k">{{ k.value }}</td>
                       </ng-container>
                       <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
@@ -1013,7 +1130,7 @@
             }
 
             @case (13) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -1035,16 +1152,33 @@
                     <p class="c1-summary__great">{{ greatPerfText(selectedRow()!) }}</p>
                     <p class="c1-summary__desc">{{ ('dcma.checkDesc.' + selectedRow()!.check) | transloco }}</p>
 
-                    <p class="c1-summary__line"><strong>{{ 'dcma.c13.cpl' | transloco }}</strong> {{ selectedRow()!.result?.criticalPathLengthDays }} дн</p>
-                    <p class="c1-summary__line"><strong>{{ 'dcma.c13.ptf' | transloco }}</strong> {{ selectedRow()!.result?.projectTotalFloatDays }} дн</p>
+                    <p class="c1-summary__line"><strong>{{ 'dcma.c13.cpl' | transloco }}</strong> {{ selectedRow()!.result?.criticalPathLengthDays }} {{ 'common.daysShort' | transloco }}</p>
+                    <p class="c1-summary__line"><strong>{{ 'dcma.c13.ptf' | transloco }}</strong> {{ selectedRow()!.result?.projectTotalFloatDays }} {{ 'common.daysShort' | transloco }}</p>
                     <p class="c1-summary__line"><strong>{{ 'dcma.c13.cpli' | transloco }}</strong> {{  selectedRow()!.result?.cpli }}</p>
                   </div>
                 </mat-tab>
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
 
             @case (14) {
-              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start"  (selectedTabChange)="onTabChange($event)">
+              <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
                 <mat-tab label="{{ 'dcma.summary' | transloco }}">
                   <div #c1Summary class="c1-summary"
                        [class.animate-border]="animFlip()"
@@ -1066,8 +1200,8 @@
                     <p class="c1-summary__great">{{ greatPerfText(selectedRow()!) }}</p>
                     <p class="c1-summary__desc">{{ ('dcma.checkDesc.' + selectedRow()!.check) | transloco }}</p>
 
-                    <p class="c1-summary__line"><strong>{{ 'dcma.c13.cpl' | transloco }}</strong> {{ selectedRow()!.result?.criticalPathLengthDays }} дн</p>
-                    <p class="c1-summary__line"><strong>{{ 'dcma.c13.ptf' | transloco }}</strong> {{ selectedRow()!.result?.projectTotalFloatDays }} дн</p>
+                    <p class="c1-summary__line"><strong>{{ 'dcma.c13.cpl' | transloco }}</strong> {{ selectedRow()!.result?.criticalPathLengthDays }} {{ 'common.daysShort' | transloco }}</p>
+                    <p class="c1-summary__line"><strong>{{ 'dcma.c13.ptf' | transloco }}</strong> {{ selectedRow()!.result?.projectTotalFloatDays }} {{ 'common.daysShort' | transloco }}</p>
                     <p class="c1-summary__line"><strong>{{ 'dcma.c13.cpli' | transloco }}</strong> {{ selectedRow()!.result?.cpli }}</p>
                   </div>
                 </mat-tab>
@@ -1079,9 +1213,9 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>Name</th>
-                            <th>BL</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
+                            <th>{{ 'dcma.col.bl' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -1113,10 +1247,10 @@
                       <table class="vtable__head">
                         <thead>
                           <tr>
-                            <th>Code/ID</th>
-                            <th>Name</th>
-                            <th>AF</th>
-                            <th>BL</th>
+                            <th>{{ 'dcma.col.codeId' | transloco }}</th>
+                            <th>{{ 'dcma.col.name' | transloco }}</th>
+                            <th>{{ 'dcma.col.af' | transloco }}</th>
+                            <th>{{ 'dcma.col.bl' | transloco }}</th>
                           </tr>
                         </thead>
                       </table>
@@ -1141,6 +1275,23 @@
                     </div>
                   </mat-tab>
                 }
+
+                @if (selectedRow()!.result?.details?.dq) {
+                  <mat-tab label="{{ 'common.dq' | transloco }}">
+                    <table mat-table [dataSource]="(selectedRow()!.result.details.dq | keyvalue)" class="mat-elevation-z1 sticky-header dq-table">
+                      <ng-container matColumnDef="metric">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.metric' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ ('dcma.dq.' + k.key) | transloco }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="value">
+                        <th mat-header-cell *matHeaderCellDef>{{ 'dcma.col.value' | transloco }}</th>
+                        <td mat-cell *matCellDef="let k">{{ k.value }}</td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['metric','value']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['metric','value']"></tr>
+                    </table>
+                  </mat-tab>
+                }
               </mat-tab-group>
             }
           }
@@ -1149,5 +1300,3 @@
     }
   </div>
 </div>
-
-    
