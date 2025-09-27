@@ -9,7 +9,7 @@ import { AppStateService } from '../../state/app-state.service';
   standalone: true,
   imports: [TranslocoModule, MatCardModule, GanttCanvasComponent],
   template: `
-    <div style="padding: 8px; height: calc(100vh - 200px);">
+    <div style="padding: 8px; height: calc(100vh - 50px);">
       @if (!wm.isReady()) {
         <div class="mat-body" style="padding:8px;opacity:.7">
           {{ 'loading' | transloco }}
@@ -18,7 +18,7 @@ import { AppStateService } from '../../state/app-state.service';
         
           <gantt-canvas
             #gantt
-            style="height: calc(100vh - 210px);"
+            style="height: calc(100vh - 100px);"
             [data]="wm.activityData()"
             [refLines]="wm.refLines()"
             [columns]="wm.columns()">

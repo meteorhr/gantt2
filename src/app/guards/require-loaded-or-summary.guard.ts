@@ -12,7 +12,7 @@ export const requireLoadedOrSummaryGuard: CanActivateChildFn = (_route, state): 
   const router = inject(Router);
 
   const url = state.url || '/';
-  const isSummary = url === '/' || url === '' || url.startsWith('/summary');
+  const isSummary = url === '/app/summary' || url.startsWith('/app/summary?');
 
   if (isSummary) return true;     // summary доступен всегда
   if (app.isReady()) return true; // данные есть — пускаем

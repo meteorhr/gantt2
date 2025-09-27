@@ -1,0 +1,62 @@
+.sidenav-panel {
+  min-width: 200px;
+  font-size: 0.95em;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.drawer-container {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.container {
+  position: absolute;
+  top: 70px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+
+mat-action-list {
+  margin: 0 10px;
+  button[mat-list-item] {
+    border-radius: 999px;
+    margin: 4px 0;
+    padding: 8px 16px;
+    transition: background-color .15s ease-in-out;
+
+    &.active-link {
+      background-color: #dae2f9;
+      color: #007FFF;
+      font-weight: 600;
+
+      &:hover {
+        background-color: #F0FFFF;
+      }
+    }
+  }
+}
+
+/* in styles.scss or styles.css */
+.sticky-toolbar {
+  position: sticky; /* or `fixed` */
+  top: 0;
+  left: 0;  /* only needed for fixed */
+  right: 0; /* only needed for fixed */
+  z-index: 1000; /* ensure it sits above other elements */
+}
+
+.route-loading-indicator {
+  margin: 4px 0 8px;
+}
+
+/* опционально: .desktop / .mobile стили под ваш дизайн */

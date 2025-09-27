@@ -15,7 +15,15 @@
   --col-pct-ch: 7;
 }
 
-.dash-viewport { height: calc(100vh - 150px); overflow: hidden; -webkit-overflow-scrolling: touch; }
+.dash-viewport { 
+  height: calc(100vh - 150px); 
+  margin: 10px;
+  padding: 10px; 
+  background-color: #fff; 
+   border-radius: 14px;
+    border: 1px solid #e0e0e0; 
+  overflow: hidden; 
+  -webkit-overflow-scrolling: touch; }
 .dcma-split { display: grid; grid-template-columns: 30% 1fr; gap: var(--dcma-gap); height: 100%; min-height: 0; }
 @media (max-width: 960px)  { .dcma-split { grid-template-columns: 1fr; } }
 @media (min-width: 1600px) { .dcma-split { grid-template-columns: 25% 1fr; } }

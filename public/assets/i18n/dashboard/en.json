@@ -1,0 +1,110 @@
+ {
+    "show_table": "Show table",
+    "show_chart": "Show chart",
+    "unitsByResources": "Units by resources",
+    "costByResources": "Cost by resources",
+    "period": "Period",
+    "metric": {
+      "cost": "Metric (Cost)",
+      "units": "Metric (Units)"
+    },
+    "measures": {
+      "Budgeted": "Budgeted",
+      "Actual": "Actual",
+      "Remaining": "Remaining",
+      "AtCompletionUnits": "At Completion"
+    },
+    "float": {
+      "title": "Activity Total Float (days)",
+      "bucket": "Activity Float",
+      "count": "Count",
+      "rows": {
+        "critical": "Critical (TF < 1)",
+        "nearCritical": "Near Critical (TF < 21)",
+        "normal": "Normal Float",
+        "high": "High Float (TF > 49)",
+        "longestPath": "Longest Path",
+        "unknown": "Unknown TF",
+        "total": "Total"
+      }
+    },
+    "spi": {
+      "title": "SPI (EV / PV)",
+      "as_of": "As of {{date}}",
+      "table": {
+        "metric": "Metric",
+        "amount": "Amount"
+      },
+      "rows": {
+        "ev": "EV",
+        "pv": "PV",
+        "spi": "SPI"
+      },
+      "method_label": "Method: {{method}}"
+    },
+    "cpi": {
+      "title": "CPI (EV / AC)",
+      "as_of": "As of {{date}}",
+      "table": {
+        "metric": "Metric",
+        "amount": "Amount"
+      },
+      "rows": {
+        "ev": "EV",
+        "ac": "AC",
+        "cpi": "CPI"
+      },
+      "method_label": "Method: {{method}}"
+    },
+    "open_table": "Open detailed report",
+    "project_dates": "Project dates",
+    "start_date": "Start Date",
+    "data_date": "Data Date",
+    "end_date": "End Date",
+    "must_finish": "Must Finish",
+    "key": "Key",
+    "date": "Date",
+    "cost_loading": "Cost loading",
+    "cost_value": "Cost (value)",
+    "actual_to_date": "Actual to date",
+    "remaining_cost": "Remaining cost",
+    "budgeted_cost": "Budgeted cost",
+    "this_period_cost": "This period cost",
+    "cost": "Cost",
+    "amount": "Amount",
+    "progress": "Progress",
+    "schedule": "Schedule",
+    "physical": "Physical",
+    "total": "Total",
+    "resource_loading": "Resource loading (qty)",
+    "actual_to_date_qty": "Actual to date (qty)",
+    "remaining_qty": "Remaining qty",
+    "budgeted_qty": "Budgeted qty",
+    "this_period_qty": "This period qty",
+    "qty": "Qty",
+    "units": "Units",
+    "calculating": "Calculating metrics…",
+    "title": "Dashboard",
+    "project": "Project",
+    "planned_dates": "Planned dates",
+    "from_project_note": "from PROJECT",
+    "last_recalc": "Last recalculation",
+    "last_recalc_note": "",
+    "total_tasks": "Total Activities",
+    "distinct_resources": "Distinct resources",
+    "statuses": "Statuses",
+    "groups_suffix": "groups",
+    "table_by_status": "Activity by Status",
+    "status": "Status",
+    "table_by_task_type": "Activity by Type",
+    "task": "Task",
+    "table_by_priority": "Activity by Priority",
+    "priority": "Priority",
+    "table_by_duration_type": "Activity by Duration Type",
+    "duration": "Duration",
+    "table_by_resource": "Activity by Resource",
+    "resource": "Resource",
+    "value": "Value",
+    "count": "Count",
+    "empty": "No data for dashboard."
+  }

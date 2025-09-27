@@ -1,65 +1,85 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
-import { MatTableModule } from '@angular/material/table';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
 import { AppStateService } from '../../state/app-state.service';
-import { CommonModule } from '@angular/common';
+import { SidenavService } from '../../service/sidenav.service';
 
 @Component({
   selector: 'sv-tabs-shell',
   standalone: true,
   imports: [
+    CommonModule,
     RouterLink, RouterLinkActive, RouterOutlet,
-    MatTabsModule, MatIconModule, MatButtonModule, MatCardModule, MatProgressBarModule,
-    MatFormFieldModule, MatSelectModule, MatListModule, MatTableModule, CommonModule,
+    MatSidenavModule, MatToolbarModule, MatListModule, MatButtonModule, MatIconModule,
     TranslocoModule,
   ],
-
+  styleUrls: ['./sidenav.component.scss'],
   template: `
-    
     @if (wm.isReady()) {
-        <div style="padding: 16px 16px 0px 16px; height">
-            <h3 >{{ (wm.project$ | async)!.name }}</h3>
-
-            <nav mat-tab-nav-bar style="margin-bottom: 10px" [tabPanel]="tabPanel" mat-stretch-tabs="false" mat-align-tabs="start">
+      <mat-sidenav-container class="tabs-sidenav-container" hasBackdrop="true">
+        <mat-sidenav
+          #sidenav
+          class="sidenav-panel"
+          mode="over"
+          [autoFocus]="false"
+          (keydown.escape)="sidenav.close()"
+        >
+          <mat-action-list style="margin-bottom: 10px;">
             @for (tab of (wm.tabs$ | async); track tab.link) {
-                <a mat-tab-link
-                    [routerLink]="getLink(tab.link)"
-                    [active]="rla.isActive"
-                    [disabled]="tab.disabled"
-                    routerLinkActive
-                    #rla="routerLinkActive">
-                    {{ tab.i18n | transloco }}
-                </a>
+              <button
+                mat-list-item
+                [routerLink]="getLink(tab.link)"
+                routerLinkActive="active-link"
+                [disabled]="tab.disabled"
+                (click)="sidenav.close()"
+                [attr.aria-label]="(tab.i18n | transloco)">
+                {{ tab.i18n | transloco }}
+              </button>
             }
-            </nav>
+          </mat-action-list>
+        </mat-sidenav>
 
-            <mat-tab-nav-panel #tabPanel>
-                <router-outlet></router-outlet>
-            </mat-tab-nav-panel>
-        </div>
-   } @else {
-    <router-outlet></router-outlet>
-   }
+        <mat-sidenav-content>
+          <mat-toolbar class="sticky-toolbar">
+            <button mat-icon-button (click)="sidenav.toggle()" aria-label="Toggle navigation">
+              <mat-icon>menu</mat-icon>
+            </button>
+            <span class="toolbar-title">{{ (wm.project$ | async)!.name }}</span>
+            <span class="spacer"></span>
+          </mat-toolbar>
+
+          <div class="content-wrapper">
+            <router-outlet></router-outlet>
+          </div>
+        </mat-sidenav-content>
+      </mat-sidenav-container>
+    } @else {
+      <router-outlet></router-outlet>
+    }
   `,
 })
 export class TabsShellComponent implements OnInit {
   readonly wm = inject(AppStateService);
-  
+  private readonly sidenavService = inject(SidenavService);
+
+  @ViewChild('sidenav')
+  set sidenav(instance: MatSidenav | undefined) {
+    if (instance) {
+      this.sidenavService.setSidenav(instance);
+    }
+  }
 
   ngOnInit(): void {
     this.wm.initI18n();
   }
 
   getLink(link: string) {
-    return ['/', link];
+    return ['/app', link];
   }
 }

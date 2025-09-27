@@ -1,0 +1,28 @@
+{
+    "running": "Running comparison…",
+    "actions": {
+      "retry": "Retry"
+    },
+    "headerLabel": "Project name",
+    "base": "Base",
+    "candidate": "Candidate",
+    "vs": "vs",
+    "candidate_missing": {
+      "title": "Candidate not found",
+      "desc1": "Candidate file is not uploaded or candidate project is not selected.",
+      "desc2": "Upload a candidate file (.xer, .xml) to start the comparison.",
+      "action": "Add file for comparison",
+      "action_aria": "Add candidate XER/XML file",
+      "hint_select": "After upload, select the candidate project in the dropdown."
+    },
+    "common_error": {
+      "title": "Comparison error"
+    },
+    "errors": {
+      "no_base_selected": "Base project is not selected.",
+      "no_candidate_selected_or_loaded": "Candidate not found: upload a file and select candidate project.",
+      "base_snapshot_missing": "Base project snapshot not found.",
+      "candidate_snapshot_missing": "Candidate snapshot not found.",
+      "failed": "Failed to compare. Check selected projects and data."
+    }
+  }
