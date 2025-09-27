@@ -1,0 +1,21 @@
+/* Контейнер с кнопками */
+.upload-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;             /* ✅ основной способ — расстояние между кнопками */
+  margin: 8px 0;
+}
+
+/* Сами кнопки */
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;              /* отступ между иконкой и текстом */
+  min-width: 180px;      /* опционально */
+}
+
+/* Fallback, если по какой-то причине gap не сработал */
+.upload-btn + .upload-btn {
+  margin-left: 12px;
+}

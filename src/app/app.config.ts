@@ -20,6 +20,7 @@ import { ScreenTrackingService, UserTrackingService } from '@angular/fire/analyt
 import { providePerformance } from '@angular/fire/performance';
 import { getPerformance } from 'firebase/performance';
 
+
 const firebaseConfig = {
   apiKey: 'AIzaSyCZfzM-ligoFaTTUPKVFzHNilWoZtugBDA',
   authDomain: 'schedulevision-3161f.firebaseapp.com',

@@ -146,11 +146,11 @@ export class AppStateService {
   readonly tabsVm = computed(() => ([
 
     
-    { link: 'dashboard' as const,   i18n: 'dashboard.title',    disabled: !this.isReady() },
-    { link: 'dcma' as const,        i18n: 'scheduleHealth',     disabled: !this.isReady() },
-    { link: 'gantt' as const,       i18n: 'activities_gantt',   disabled: !this.isReady() },
-    { link: 'compare' as const,     i18n: 'changeControl',      disabled: !this.isReady() },
-    { link: 'summary' as const,     i18n: 'summary',            disabled: !this.isReady() },
+    { link: 'dashboard' as const,   i18n: 'nav.dashboard',    disabled: !this.isReady() },
+    { link: 'dcma' as const,        i18n: 'nav.health',       disabled: !this.isReady() },
+    { link: 'gantt' as const,       i18n: 'nav.schedule',     disabled: !this.isReady() },
+    { link: 'compare' as const,     i18n: 'nav.change',       disabled: !this.isReady() },
+    { link: 'summary' as const,     i18n: 'nav.summary',      disabled: !this.isReady() },
   ]));
   
   readonly tabs$ = toObservable(this.tabsVm);
@@ -306,6 +306,31 @@ export class AppStateService {
       this.dashLoading.set(false);
     }
 }
+
+  async restoreIfPossible(): Promise<boolean> {
+    try {
+      if (this.isReady()) return true;
+
+      const projects = await this.dexie.getRows('PROJECT');
+      const list = (projects as any[]).filter(p => p?.proj_id != null);
+      if (!list.length) return false;
+
+      this.projects.set(list);
+
+      const stored = this.selectedProjectId();
+      const pid = Number(Number.isFinite(stored as any) ? stored : list[0].proj_id);
+      if (!Number.isFinite(pid)) return false;
+
+      this.selectedProjectId.set(pid);
+      await this.rebuildForProject(pid);
+
+      this.isReady.set(true);
+      return true;
+    } catch (e) {
+      console.warn('[AppState] restoreIfPossible failed:', e);
+      return false;
+    }
+  }
 
 
   /* ---------------------- приватные методы ---------------------- */

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { requireLoadedOrSummaryGuard } from './guards/require-loaded-or-summary.guard';
+import { requireLoadedChildGuard, requireLoadedGuard } from './guards/require-loaded-or-summary.guard';
 
 export const APP_ROUTES: Routes = [
     {
@@ -12,7 +12,8 @@ export const APP_ROUTES: Routes = [
     loadComponent: () =>
       import('./features/tabs/tabs-shell.component').then(m => m.TabsShellComponent),
 
-    canActivateChild: [requireLoadedOrSummaryGuard],
+ canActivate: [requireLoadedGuard],
+    canActivateChild: [requireLoadedChildGuard],
     runGuardsAndResolvers: 'always',
 
     children: [
@@ -30,7 +31,7 @@ export const APP_ROUTES: Routes = [
       },
       {
         path: 'gantt',
-        title: 'Activities Gantt',
+        title: 'Schedule',
         loadChildren: () => import('./features/gantt/gantt-tab.routes')
           .then(m => m.GANTT_ROUTES),
       },
@@ -42,7 +43,7 @@ export const APP_ROUTES: Routes = [
       },      
       {
         path: 'dcma',
-        title: 'DCMA Checks',
+        title: 'Schedule Health',
         loadChildren: () => import('./features/dcma/dcma-tab.routes')
           .then(m => m.DCMA_ROUTES),
       },

@@ -1,5 +1,7 @@
 {
   "common": {
+    "founder": "Founder",
+    "rk": "Ruslan Khisamov",
     "start": "Start",
     "settings": "Settings",
     "end": "End",
@@ -13,7 +15,18 @@
         "daysShort": "d",
     "yes": "Yes",
     "no": "No",
-    "info": "Info"
+    "info": "Info",
+     "footer": {
+      "copyright": "© {{year}} ScheduleVision · All rights reserved"
+    }
+  },
+  "nav": {
+    "summary": "Summary",
+    "dashboard": "Dashboard",
+    "schedule": "Schedule",
+    "health": "Schedule Health",
+    "change": "Change Control",
+    "help": "Help"
   },
   "scheduleHealth": "Schedule Health",
   "changeControl": "Change Control",
@@ -23,8 +36,10 @@
     "subtitle": "A clear view of your project"
   },
   "intro": {
+    "i1": "Leaders need transparency, speed, and data-driven control.",
+    "i2": "ScheduleVision is a project controls platform that unifies scattered information and transforms it into predictable schedules and manageable costs. It enables early detection of bottlenecks, automated schedule checks, and practical recommendations for corrective actions. The result — fewer surprises, more fulfilled commitments.",
     "p1": "My name is Ruslan Khisamov, I am a project manager specializing in capital project management in the mining and metallurgical industry. Oracle Primavera P6 is the industry standard for planning, coordination, and control of complex projects.",
-    "p2": "To view an Oracle Primavera P6 XER file, special software, licenses, and additional configuration are required. This reduces data accessibility and complicates fast managerial decision-making.",
+    "p2": "To view an Oracle Primavera P6 file, special software, licenses, and additional configuration are required. This reduces data accessibility and complicates fast managerial decision-making.",
     "p3": "That is why I am creating ScheduleVision — a free and convenient web tool that allows you to open and analyze projects developed in Primavera P6 anywhere, without additional software. ScheduleVision makes working with schedules more transparent and analytics accessible to every project participant — whether manager, engineer, or contractor.",
     "p4": "My goal is to contribute to the industry by offering a tool that helps make decisions faster, manage resources more effectively, and improve transparency in project management."
   },
@@ -269,5 +284,49 @@
     }
   },
   "units": "Units",
+  
   "info": "ScheduleVision is fully compatible with Oracle® Primavera® P6®. It is an independently developed reader application created by Ruslan Khissamov. ScheduleVision is not a product of Oracle® and is neither endorsed, sponsored, nor affiliated with Oracle® Corporation. Oracle®, Primavera®, and P6® are registered trademarks of Oracle® Corporation and/or its affiliates."
+
+  ,"landing": {
+    "cta": {
+      "primary": "Upload & Analyze Schedule"
+    },
+    "health": {
+      "title": "Schedule Health",
+      "lead": "The Schedule Health module helps project managers quickly assess the quality and robustness of a schedule.",
+      "points": {
+        "overview": "Overall health score — a single screen shows a composite schedule-health index across the DCMA-14 metrics.",
+        "diagnostics": "Problem diagnostics — visual indicators highlight which WBS sections or specific activities fail quality checks, letting you focus on the critical items immediately.",
+        "transparency": "Transparency and flexibility — set custom thresholds for a “good” schedule and tune filters by work types and check configurations.",
+        "compare": "Comparison and monitoring — compare contractor schedules with your own plans to spot discrepancies and improve transparency.",
+        "decisions": "Decision support — export results and share them with stakeholders to align on quality and next corrective steps."
+      },
+      "summary": "In short, the Schedule Health module turns a complex schedule into a clear picture of its quality—from an overall score down to specific bottlenecks."
+    },
+    "p6calendar": {
+      "title": "Schedule Viewer",
+      "lead": "A simple tool for clear viewing of project, resource, and contractor calendars in P6.",
+      "points": {
+        "exceptions": "Visual display of working and non-working days, holidays, and shifts.",
+        "worktime": "Quick understanding of productive periods through visual representation."
+      },
+      "summary": "The P6 Calendar Viewer makes calendar data transparent and easy to analyze, helping you navigate schedules more effectively."
+    },
+    "dashboard": {
+      "title": "Project Dashboard",
+      "lead": "A single, interactive view that blends schedule, cost and resource signals so project teams can act faster.",
+      "points": {
+        "kpis": "Headline KPIs show Actual to date, Remaining, Budgeted and This period quantities at a glance.",
+        "trend": "Time-series chart of periodic units with a cumulative curve; filter by Period and by metric (Budgeted, Actual, Remaining).",
+        "dates": "Key project dates highlighted: Start Date, Data Date, End Date and Must Finish.",
+        "earnedValue": "SPI and CPI gauges with color-coded ranges and clear as-of dates for quick earned-value health checks.",
+        "progress": "Progress panel summarises schedule, physical and cost completion percentages.",
+        "composition": "Donut charts break down activities by Status, Type, Priority and Duration Type for fast composition insights.",
+        "legendFilters": "Readable legends and lightweight controls help focus on specific resources or time windows.",
+        "export": "Designed for reporting: clean layout and values that can be exported or shared with stakeholders."
+      },
+      "summary": "The dashboard turns raw Primavera data into an actionable story—from high-level KPIs to the exact trends and breakdowns you need to drive decisions."
+    }
+  }
+
 }
