@@ -1,4 +1,4 @@
-:host {
+:host { 
   --dcma-gap: 16px;
   --dcma-radius: 10px;
   --dcma-border: 1px solid var(--mat-sys-outline-variant, rgba(0,0,0,.12));
@@ -20,10 +20,11 @@
   margin: 10px;
   padding: 10px; 
   background-color: #fff; 
-   border-radius: 14px;
-    border: 1px solid #e0e0e0; 
+  border-radius: 14px;
+  border: 1px solid #e0e0e0; 
   overflow: hidden; 
-  -webkit-overflow-scrolling: touch; }
+  -webkit-overflow-scrolling: touch;
+}
 .dcma-split { display: grid; grid-template-columns: 30% 1fr; gap: var(--dcma-gap); height: 100%; min-height: 0; }
 @media (max-width: 960px)  { .dcma-split { grid-template-columns: 1fr; } }
 @media (min-width: 1600px) { .dcma-split { grid-template-columns: 25% 1fr; } }
@@ -48,14 +49,10 @@
   text-align: left; /* ← текст шапки и ячеек слева */
   position: relative; /* для псевдоэлемента-акцента */
 }
-:host ::ng-deep .mat-mdc-table .mat-mdc-header-cell {
-  font-weight: 600;
-}
+:host ::ng-deep .mat-mdc-table .mat-mdc-header-cell { font-weight: 600; }
 
 /* hover / selected улучшены */
-:host ::ng-deep .mat-mdc-table .mat-mdc-row td {
-  transition: background-color .15s ease;
-}
+:host ::ng-deep .mat-mdc-table .mat-mdc-row td { transition: background-color .15s ease; }
 @media (hover:hover) and (pointer:fine) {
   :host ::ng-deep .mat-mdc-table .mat-mdc-row:hover td {
     background: color-mix(in oklab, var(--dcma-primary) 7%, transparent);
@@ -86,8 +83,31 @@
   .meta { display:flex; align-items:center; gap:8px; } .percent { font-variant-numeric: tabular-nums; opacity: .85; }
   .status-icon.ok { color: var(--dcma-ok); } .status-icon.bad { color: var(--dcma-bad); }
 }
-.details-body { min-width: 0; min-height: 0; display: grid; gap: 12px; align-content: start; .desc { opacity: .85; word-break: break-word; } }
-.details-body .mat-mdc-tab-group, .details-body .mat-mdc-tab-body-wrapper { width: 100%; }
+
+/* Грид правой области с одной колонкой на 100% */
+.details-body {
+  min-width: 0; 
+  min-height: 0; 
+  display: grid; 
+  gap: 12px; 
+  align-content: start; 
+  grid-template-columns: minmax(0, 1fr); /* FIX: колонка не shrink-wrap'ится к содержимому */
+  .desc { opacity: .85; word-break: break-word; }
+}
+/* FIX: любой прямой потомок (в т.ч. mat-tab-group) может растягиваться, не участвуя в min-content sizing */
+.details-body > * { min-width: 0; }
+
+/* Точечное: mat-tab — ширина 100% */
+.details-body .mat-mdc-tab-group,
+.details-body .mat-mdc-tab-body-wrapper { width: 100%; }
+
+/* FIX: принудительно делаем группу блочной и не даём ей сжиматься до контента */
+:host ::ng-deep .mat-mdc-tab-group { display: block; width: 100%; min-width: 0; }
+:host ::ng-deep .mat-mdc-tab-header { width: 100%; } /* шапка табов на всю ширину */
+:host ::ng-deep .mat-mdc-tab-body-wrapper { width: 100%; min-width: 0; }
+:host ::ng-deep .mat-mdc-tab-body,
+:host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content { width: 100%; min-width: 0; } /* контент табов на всю ширину */
+
 :host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content { overflow: auto; max-height: calc(100vh - 250px); }
 .details-body table.mat-mdc-table { width: 100%; table-layout: fixed; }
 .details-body .mat-mdc-cell, .details-body .mat-mdc-header-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
@@ -214,13 +234,9 @@
   height: 44px; /* ← синхронизировано с [itemSize] */
   border-bottom: 1px solid color-mix(in oklab, currentColor 8%, transparent);
 }
-.vtable__body tbody td {
-  position: relative; transition: background-color .15s ease;
-}
+.vtable__body tbody td { position: relative; transition: background-color .15s ease; }
 @media (hover:hover) and (pointer:fine) {
-  .vtable__body tbody tr:hover td {
-    background: color-mix(in oklab, var(--dcma-primary) 7%, transparent);
-  }
+  .vtable__body tbody tr:hover td { background: color-mix(in oklab, var(--dcma-primary) 7%, transparent); }
   .vtable__body tbody tr:hover td:first-child::before {
     content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
     background: color-mix(in oklab, var(--dcma-primary) 50%, transparent);

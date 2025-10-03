@@ -1,17 +1,16 @@
 import {
   Component, inject, signal, computed,
-  ViewChild, ElementRef, AfterViewInit, OnDestroy,
-  ViewChildren,
-  QueryList
+  ViewChild, ElementRef, AfterViewInit, OnDestroy, ViewChildren, QueryList, Type, ViewEncapsulation
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgComponentOutlet } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { MatTabChangeEvent, MatTabsModule } from '@angular/material/tabs';
+import { MatTabsModule } from '@angular/material/tabs';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
+import { CdkTableModule } from '@angular/cdk/table';
 
 import { AppStateService } from '../../state/app-state.service';
 import {
@@ -26,32 +25,39 @@ import {
   DcmaCheck2Result, DcmaCheck3Result, DcmaCheck4Result, DcmaCheck5Result, DcmaCheck6Result,
   DcmaCheck7Result, DcmaCheck8Result, DcmaCheck9Result
 } from '../../p6/services/dcma/models/dcma.model';
-import { DcmaDetailsDialogComponent } from './dialog/details/dcma-dialog.component';
+
+import { DcmaCheck1Result } from '../../p6/services/dcma/models/check1.model';
 import { DcmaInfoDialogComponent } from './dialog/info/dcma-dialog-info.component';
 import { DcmaSettingsDialogComponent } from './dialog/settings/dcma-settings-dialog.component';
 
-import { DcmaCheck1Result } from '../../p6/services/dcma/models/check1.model';
-
 import { DcmaSettingsService, DcmaCheckId } from './services/adv/dcma-settings.service';
 import { getZoneByPercent, Grade, ZONE_COLORS } from './services/adv/dcma-checks.config';
-import { CdkTableModule } from '@angular/cdk/table';
 
-interface DcmaRow {
-  check: DcmaCheckId;
-  metric: string;
-  description: string;
-  percent?: number | null;
-  passed: boolean;
-  result: any;
-  grade?: Grade;
-  color?: string;
-}
+// НОВОЕ: общий интерфейс строки вынесен в отдельный файл
+import { DcmaRow } from './details/models/dcma-row.model';
+
+// НОВОЕ: импорт компонентов деталей
+import { DcmaCheck1DetailsComponent }  from './details/dcma-check1-details.component';
+import { DcmaCheck2DetailsComponent }  from './details/dcma-check2-details.component';
+import { DcmaCheck3DetailsComponent }  from './details/dcma-check3-details.component';
+import { DcmaCheck4DetailsComponent }  from './details/dcma-check4-details.component';
+import { DcmaCheck5DetailsComponent }  from './details/dcma-check5-details.component';
+import { DcmaCheck6DetailsComponent }  from './details/dcma-check6-details.component';
+import { DcmaCheck7DetailsComponent }  from './details/dcma-check7-details.component';
+import { DcmaCheck8DetailsComponent }  from './details/dcma-check8-details.component';
+import { DcmaCheck9DetailsComponent }  from './details/dcma-check9-details.component';
+import { DcmaCheck10DetailsComponent } from './details/dcma-check10-details.component';
+import { DcmaCheck11DetailsComponent } from './details/dcma-check11-details.component';
+import { DcmaCheck12DetailsComponent } from './details/dcma-check12-details.component';
+import { DcmaCheck13DetailsComponent } from './details/dcma-check13-details.component';
+import { DcmaCheck14DetailsComponent } from './details/dcma-check14-details.component';
 
 @Component({
   standalone: true,
   selector: 'app-dcma-checks',
   imports: [
     CommonModule,
+    NgComponentOutlet,
     MatTableModule,
     MatIconModule,
     MatButtonModule,
@@ -63,6 +69,7 @@ interface DcmaRow {
   ],
   styleUrls: ['./dcma-tab.component.scss'],
   templateUrl: './dcma-tab.component.html',
+  encapsulation: ViewEncapsulation.Emulated
 })
 export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
   // --- сервисы
@@ -84,6 +91,7 @@ export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
   private wm = inject(AppStateService);
   private cfg = inject(DcmaSettingsService);
   private dialog = inject(MatDialog);
+  private i18n = inject(TranslocoService);
 
   @ViewChildren(CdkVirtualScrollViewport)
   private viewports!: QueryList<CdkVirtualScrollViewport>;
@@ -97,60 +105,7 @@ export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
     great: ZONE_COLORS.great,
   };
 
-  // reactive ViewChild для блока summary (есть в каждой вкладке Summary)
-  private _c1El?: ElementRef<HTMLElement>;
-  private summaryRO?: ResizeObserver;
-
-  @ViewChild('c1Summary', { read: ElementRef })
-  set c1Summary(el: ElementRef<HTMLElement> | undefined) {
-    if (this._c1El?.nativeElement === el?.nativeElement) return;
-
-    // снять старого наблюдателя
-    this.summaryRO?.disconnect();
-    this._c1El = el;
-
-    if (el) {
-      // первичный замер и наблюдатель
-      this.measureSummary(el.nativeElement);
-      this.summaryRO = new ResizeObserver(() => this.measureSummary(el.nativeElement));
-      this.summaryRO.observe(el.nativeElement);
-
-      // перезапуск анимации после появления DOM
-      this.restartBorderAnimation();
-    }
-  }
-
-  // фактические размеры summary для построения svg-пути (padding-box!)
-  sumW = signal(0);
-  sumH = signal(0);
   readonly ITEM_SIZE = 44;
-  trackTask = (_: number, i: any) =>
-    i?.task_id ?? i?.task_code ?? i?.id ?? i;
-  trackLink = (_: number, l: any) =>
-    l?.id ?? `${l?.predecessor_task_id || l?.predecessor_code}->${l?.successor_task_id || l?.successor_code}:${l?.link_type}:${l?.lag_days_8h}`;
-  trackNonFs = (_: number, x: any) =>
-    x?.id ?? `${x?.predecessor_task_id || x?.predecessor_code}->${x?.successor_task_id || x?.successor_code}:${x?.link_type}`;
-  trackHard = (_: number, i: any) =>
-    i?.id
-    ?? `${i?.task_id || i?.task_code || ''}|${i?.cstr_type || ''}|${i?.cstr_date || ''}`;
-  trackC7 = (_: number, i: any) =>
-    i?.task_id ?? i?.task_code ?? i?.id ?? `${i?.task_name}|${i?.total_float_hr_cnt}|${i?.hours_per_day_used}`;
-  trackC8 = (_: number, i: any) =>
-    i?.task_id ?? i?.task_code ?? i?.id ??
-      `${i?.task_name}|${i?.remain_dur_hr_cnt}|${i?.remain_dur_days_8h}|${i?.hours_per_day_used}`;
-  trackC9Forecast = (_: number, i: any) =>
-    i?.task_id ?? i?.task_code ?? `${i?.early_start_date}|${i?.early_end_date}|${i?.late_start_date}|${i?.late_end_date}`;
-  trackC9Actual = (_: number, i: any) =>
-    i?.task_id ?? i?.task_code ?? `${i?.act_start_date}|${i?.act_end_date}`;
-  trackDetailsItems = (_: number, i: any) =>
-    i?.task_id ?? i?.task_code ?? `${i?.task_name}|${i?.act_finish}|${i?.baseline_finish}`;
-
-
-trackC14Planned = (_: number, i: any) => i?.task_id ?? i?.task_code ?? i?.task_name ?? _;
-trackC14Ahead   = (_: number, i: any) => i?.task_id ?? i?.task_code ?? i?.task_name ?? _;
-  // параметры должны совпадать с CSS
-  private readonly strokePx = 2;   // stroke-width
-  private readonly radiusPx = 12;  // border-radius
 
   displayedColumns = ['check', 'metric', 'percent'];
   selectedRow = signal<DcmaRow | null>(null);
@@ -175,58 +130,32 @@ trackC14Ahead   = (_: number, i: any) => i?.task_id ?? i?.task_code ?? i?.task_n
   r13 = signal<DcmaCheck13Result | null>(null);
   r14 = signal<DcmaCheck14Result | null>(null);
 
-  private i18n = inject(TranslocoService);
-  
-  greatPerfText(row: { check: number }): string {
-  switch (row.check) {
-    // lower is better → ≤ %
-    case 1:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv1().thresholds.greatPct });
-    case 2:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv2().thresholds.greatPct });
-    case 3:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv3().thresholds.greatPct });
-    case 5:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv5().thresholds.greatMaxPct });
-    case 6:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv6().thresholds.greatMaxPct });
-    case 7:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv7().mode.thresholds.greatMaxPct });
-    case 8:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv8().thresholds.greatMaxPct });
-    case 10: return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv10().thresholds.greatMaxPct });
-    case 11: return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv11().thresholds.greatMaxPct });
-
-    // higher is better → ≥ %
-    case 4:  return this.i18n.translate('dcma.greatPerf.percentGE', { value: this.cfg.adv4().thresholds.greatPct });
-
-    // BEI (без %)
-    case 14: return this.i18n.translate('dcma.greatPerf.beiGE',     { value: this.cfg.adv14().thresholds.greatMinBei });
-
-    // нет числового «great»-порога
-    case 9:
-    case 12:
-    case 13:
-    default: return this.i18n.translate('dcma.greatPerf.na');
-  }
-}
-
-/** Какие чеки показываем как PASS/FAIL вместо процентов */
-shouldShowPassLabel(row: DcmaRow): boolean {
-  switch (row.check as number) {
-    // нет численного порога → PASS/FAIL
-    case 9:
-    case 12:
-    case 13:
-      return true;
-    default:
-      return false;
-  }
-}
-
-/** Локализованный ярлык PASS/FAIL */
-passLabel(row: DcmaRow): string {
-  return row.passed
-    ? this.i18n.translate('common.pass')
-    : this.i18n.translate('common.fail');
-}
-
   constructor() {
     this.cfg.ensureInitialized();
     this.run();
+  }
+
+  // --- динамический выбор компонента по checkId
+  private readonly detailsMap: Record<number, Type<any>> = {
+    1:  DcmaCheck1DetailsComponent,
+    2:  DcmaCheck2DetailsComponent,
+    3:  DcmaCheck3DetailsComponent,
+    4:  DcmaCheck4DetailsComponent,
+    5:  DcmaCheck5DetailsComponent,
+    6:  DcmaCheck6DetailsComponent,
+    7:  DcmaCheck7DetailsComponent,
+    8:  DcmaCheck8DetailsComponent,
+    9:  DcmaCheck9DetailsComponent,
+    10: DcmaCheck10DetailsComponent,
+    11: DcmaCheck11DetailsComponent,
+    12: DcmaCheck12DetailsComponent,
+    13: DcmaCheck13DetailsComponent,
+    14: DcmaCheck14DetailsComponent,
+  };
+
+  detailsComponentFor(check: number | null | undefined): Type<any> | null {
+    if (!check) return null;
+    return this.detailsMap[check] ?? null;
   }
 
   // фильтрация строки по видимости в настройках
@@ -235,56 +164,48 @@ passLabel(row: DcmaRow): string {
     return this.rows().filter(r => (map[r.check]?.showInTable ?? true));
   });
 
-  // --- утилиты процентов и сегментов
-  private clampPct(n: number): number {
-    const x = Number(n);
-    return Number.isFinite(x) ? Math.max(0, Math.min(100, Math.round(x))) : 0;
-  }
-
-  private segBGLower(gp: number, ap: number): string {
-    const g = '#4CAF50', y = '#FFC107', r = '#EF5350';
-    const G = this.clampPct(gp);
-    const A = this.clampPct(ap);
-    const lo = Math.min(G, A), hi = Math.max(G, A);
-    return `linear-gradient(to right, ${g} 0 ${lo}%, ${y} ${lo}% ${hi}%, ${r} ${hi}% 100%)`;
-  }
-  private segBGHigher(gp: number, ap: number): string {
-    const g = '#4CAF50', y = '#FFC107', r = '#EF5350';
-    const G = this.clampPct(gp);
-    const A = this.clampPct(ap);
-    const lo = Math.min(G, A), hi = Math.max(G, A);
-    return `linear-gradient(to right, ${r} 0 ${lo}%, ${y} ${lo}% ${hi}%, ${g} ${hi}% 100%)`;
-  }
-  private segBGDefault(): string {
-    return this.segBGLower(33, 66);
-  }
-
-  segmentBgFor(row: DcmaRow): string {
-    switch (row.check as number) {
-      case 1:  { const t = this.cfg.adv1().thresholds;  return this.segBGLower(t.greatPct, t.averagePct); }
-      case 2:  { const t = this.cfg.adv2().thresholds;  return this.segBGLower(t.greatPct, t.averagePct); }
-      case 3:  { const t = this.cfg.adv3().thresholds;  return this.segBGLower(t.greatPct, t.averagePct); }
-      case 4:  { const t = this.cfg.adv4().thresholds;  return this.segBGHigher(t.greatPct, t.averagePct); }
-      case 5:  { const t = this.cfg.adv5().thresholds;  return this.segBGLower(t.greatMaxPct, t.averageMaxPct); }
-      case 6:  { const t = this.cfg.adv6().thresholds;  return this.segBGLower(t.greatMaxPct, t.averageMaxPct); }
-      case 7:  { const t = this.cfg.adv7().mode.thresholds; return this.segBGLower(t.greatMaxPct, t.averageMaxPct); }
-      case 8:  { const t = this.cfg.adv8().thresholds;  return this.segBGLower(t.greatMaxPct, t.averageMaxPct); }
-      case 9:  { return this.segBGDefault(); }
-      case 10: { const t = this.cfg.adv10().thresholds; return this.segBGLower(t.greatMaxPct, t.averageMaxPct); }
-      case 11: { const t = this.cfg.adv11().thresholds; return this.segBGLower(t.greatMaxPct, t.averageMaxPct); }
-      case 12: { return this.segBGDefault(); }
-      case 13: { return this.segBGDefault(); }
-      case 14: { const t = this.cfg.adv14().thresholds; return this.segBGHigher(t.greatMinBei * 100, t.averageMinBei * 100); }
-      default: return this.segBGDefault();
+  // утилиты зон/меток
+  greatPerfText(row: { check: number }): string {
+    switch (row.check) {
+      case 1:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv1().thresholds.greatPct });
+      case 2:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv2().thresholds.greatPct });
+      case 3:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv3().thresholds.greatPct });
+      case 5:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv5().thresholds.greatMaxPct });
+      case 6:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv6().thresholds.greatMaxPct });
+      case 7:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv7().mode.thresholds.greatMaxPct });
+      case 8:  return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv8().thresholds.greatMaxPct });
+      case 10: return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv10().thresholds.greatMaxPct });
+      case 11: return this.i18n.translate('dcma.greatPerf.percentLE', { value: this.cfg.adv11().thresholds.greatMaxPct });
+      case 4:  return this.i18n.translate('dcma.greatPerf.percentGE', { value: this.cfg.adv4().thresholds.greatPct });
+      case 14: return this.i18n.translate('dcma.greatPerf.beiGE',     { value: this.cfg.adv14().thresholds.greatMinBei });
+      case 9:
+      case 12:
+      case 13:
+      default: return this.i18n.translate('dcma.greatPerf.na');
     }
   }
 
-  getMarkerPos(row: DcmaRow): number {
-    const p = typeof row.percent === 'number' ? row.percent : null;
-    if (p == null) return 0;
-    return Math.max(0, Math.min(100, p));
+  shouldShowPassLabel(row: DcmaRow): boolean {
+    switch (row.check as number) {
+      case 9:
+      case 12:
+      case 13:
+        return true;
+      default:
+        return false;
+    }
   }
 
+  passLabel(row: DcmaRow): string {
+    return row.passed
+      ? this.i18n.translate('common.pass')
+      : this.i18n.translate('common.fail');
+  }
+
+  // таблица слева
+  trackRow = (_: number, r: DcmaRow) => r.check;
+
+  // проценты / зоны
   getZoneColorFor(row: DcmaRow): string {
     if (row.color) return row.color;
     const g = row.grade ?? this.getRowGrade(row);
@@ -321,11 +242,11 @@ passLabel(row: DcmaRow): string {
     return (p === null || p === undefined) ? '—' : `${(p as number).toFixed(2)}`;
   }
 
-  // --- загрузка данных
+  // загрузка
   async run() {
     this.loading.set(true);
     try {
-      const s = self.crypto ? this.cfg.settings() : this.cfg.settings(); // (просто чтобы не ругался линтер на self)
+      const s = this.cfg.settings();
       const id = this.projId();
 
       const p1  = s[1].enabled  ? this.svc1.analyzeCheck1(id, this.cfg.buildCheck1Options()) : Promise.resolve(null);
@@ -361,18 +282,9 @@ passLabel(row: DcmaRow): string {
     }
   }
 
-  openDetails(row: any) {
-    const strictLogic = row.check === 1;
-    this.dialog.open(DcmaDetailsDialogComponent, {
-      width: '900px',
-      maxWidth: '900px',
-      data: { title: `DCMA Check ${row.check} — ${row.metric}`, check: row.check, result: row.result, strictLogic },
-    });
-  }
-
   openInfo(row: any) {
     this.dialog.open(DcmaInfoDialogComponent, {
-      width: '640px',
+      width: '740px',
       maxWidth: '80vw',
       data: { check: row.check },
     });
@@ -396,101 +308,33 @@ passLabel(row: DcmaRow): string {
     queueMicrotask(() => {
       const el = this.rightPane?.nativeElement;
       if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
-       this.resetVirtualScrollSoon();   
+      this.resetVirtualScrollSoon();
     });
   }
 
-  // lifecycle
   ngAfterViewInit(): void {
-    // ViewChild-сеттер сам сработает, когда появится #c1Summary
-        // когда набор вьюпортов меняется (переключили вкладку/кейсы) — «пнуть» их
     this.viewports.changes.subscribe(() => this.resetVirtualScrollSoon());
-    // и сразу после первого рендера тоже
     this.resetVirtualScrollSoon();
   }
-  ngOnDestroy(): void {
-    this.summaryRO?.disconnect();
-  }
-  /** дернуть пересчёт, скролл в начало — с задержкой, чтобы контент вкладки уже был виден */
+  ngOnDestroy(): void {}
+
   private resetVirtualScrollSoon(): void {
     requestAnimationFrame(() => {
       this.viewports?.forEach(vp => {
         try {
-          vp.checkViewportSize();    // пересчитать размеры контейнера
-          vp.scrollToIndex(0, 'auto'); // в начало (можно 'smooth' если хотите анимацию)
+          vp.checkViewportSize();
+          vp.scrollToIndex(0, 'auto');
         } catch {}
       });
     });
   }
 
-  /** вызывать при смене вкладки mat-tab */
-  onTabChange(_e: MatTabChangeEvent) {
-    this.resetVirtualScrollSoon();
-  }
-
-  // --- измерения и путь рамки
-  /**
-   * Измеряем padding-box: getBoundingClientRect() даёт border-box,
-   * поэтому вычитаем толщины бордеров, чтобы SVG (inset:0) совпадал по размеру.
-   */
-  private measureSummary(el?: HTMLElement): void {
-    const node = el ?? this._c1El?.nativeElement;
-    if (!node) return;
-
-    const rect = node.getBoundingClientRect();         // border-box
-    const cs = getComputedStyle(node);
-    const bl = parseFloat(cs.borderLeftWidth)  || 0;
-    const br = parseFloat(cs.borderRightWidth) || 0;
-    const bt = parseFloat(cs.borderTopWidth)   || 0;
-    const bb = parseFloat(cs.borderBottomWidth)|| 0;
-
-    // padding-box размеры (то, что занимает абсолютный SVG с inset:0)
-    const w = Math.max(1, Math.round(rect.width  - bl - br));
-    const h = Math.max(1, Math.round(rect.height - bt - bb));
-
-    this.sumW.set(w);
-    this.sumH.set(h);
-  }
-
   private restartBorderAnimation(): void {
     this.animFlip.set(false);
     requestAnimationFrame(() => {
-      this.measureSummary();
       this.animFlip.set(true);
     });
   }
-
-  /** D-путь прямоугольника со скруглением, старт в 12:00, обход по часовой, строго внутри padding-box */
-  summaryBorderPath(): string {
-    const w = this.sumW(), h = this.sumH();
-    if (!w || !h) return '';
-
-    const s = this.strokePx / 2; // держим штрих полностью внутри
-    const r = Math.min(this.radiusPx, (w / 2) - s, (h / 2) - s);
-
-    const x1 = s,       y1 = s;
-    const x2 = w - s,   y2 = h - s;
-
-    const topL = x1 + r, topR = x2 - r;
-    const botL = x1 + r, botR = x2 - r;
-    const midX = (x1 + x2) / 2;
-
-    return [
-      `M ${midX} ${y1}`,
-      `H ${topR}`,
-      `A ${r} ${r} 0 0 1 ${x2} ${y1 + r}`,
-      `V ${y2 - r}`,
-      `A ${r} ${r} 0 0 1 ${botR} ${y2}`,
-      `H ${botL}`,
-      `A ${r} ${r} 0 0 1 ${x1} ${y2 - r}`,
-      `V ${y1 + r}`,
-      `A ${r} ${r} 0 0 1 ${topL} ${y1}`,
-      `H ${midX}`
-    ].join(' ');
-  }
-
-  // --- утилиты таблицы
-  trackRow = (_: number, r: DcmaRow) => r.check;
 
   private buildRows() {
     type RowT = {
