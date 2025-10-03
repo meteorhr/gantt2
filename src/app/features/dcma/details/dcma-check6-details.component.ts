@@ -11,6 +11,7 @@ import { DcmaRow } from './models/dcma-row.model';
   standalone: true,
   selector: 'dcma-check6-details',
   imports: [CommonModule, TranslocoModule, MatTabsModule, MatTableModule, ScrollingModule, AnimatedSummaryBorderDirective],
+  styleUrl: '../dcma-tab.component.scss',
   template: `
   <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange()">
     <mat-tab label="{{ 'dcma.summary' | transloco }}">
@@ -88,6 +89,7 @@ export class DcmaCheck6DetailsComponent {
   @Input({ required: true }) animate!: boolean;
   @Input({ required: true }) zoneColor!: string;
   @Input({ required: true }) greatText!: string;
+  @Input() ITEM_SIZE: number = 44;
 
   @ViewChildren(CdkVirtualScrollViewport) vps!: QueryList<CdkVirtualScrollViewport>;
 

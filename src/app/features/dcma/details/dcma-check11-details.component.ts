@@ -1,4 +1,4 @@
-import { Component, Input, ViewChildren, QueryList, ViewEncapsulation } from '@angular/core';
+import { Component, Input, ViewChildren, QueryList, ViewEncapsulation, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslocoModule } from '@jsverse/transloco';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -11,6 +11,7 @@ import { DcmaRow } from './models/dcma-row.model';
   standalone: true,
   selector: 'dcma-check11-details',
   imports: [CommonModule, TranslocoModule, MatTabsModule, MatTableModule, ScrollingModule, AnimatedSummaryBorderDirective],
+  styleUrl: '../dcma-tab.component.scss',
   template: `
   <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange()">
     <mat-tab label="{{ 'dcma.summary' | transloco }}">
@@ -98,6 +99,31 @@ export class DcmaCheck11DetailsComponent {
   @Input() ITEM_SIZE = 44;
 
   @ViewChildren(CdkVirtualScrollViewport) vps!: QueryList<CdkVirtualScrollViewport>;
+  minBufferPx = 440;
+  maxBufferPx = 880;
+
+  ngOnInit(): void {
+    this.recomputeBuffers();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.recomputeBuffers();
+  }
+
+  private recomputeBuffers(): void {
+    const vh = window?.innerHeight ?? 800;
+    // min = calc(100vh - 150px), max = calc(100vh)
+    const min = Math.max(0, vh - 150);
+    const max = Math.max(min + this.ITEM_SIZE, vh); // гарантируем max >= min + itemSize
+    this.minBufferPx = Math.round(min);
+    this.maxBufferPx = Math.round(max);
+
+    // если вьюпорты уже отрисованы — подсказать им про смену размеров
+    queueMicrotask(() => {
+      this.vps?.forEach(vp => { try { vp.checkViewportSize(); } catch {} });
+    });
+  }
 
   
 

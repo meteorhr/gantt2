@@ -1,68 +1,77 @@
-<div class="dash-viewport dcma-split">
+<div class="dash-viewport dcma-split" [class.is-loading]="loading()" [attr.aria-busy]="loading() ? 'true' : null">
+  <!-- LOADING OVERLAY (занимает всю область, блокирует клики) -->
+  @if (loading()) {
+    <div class="loading-overlay" role="progressbar" aria-label="Recalculating">
+      <div class="overlay-scrim" aria-hidden="true"></div>
+      <div class="overlay-bar">
+        <mat-progress-bar mode="indeterminate" color="primary"></mat-progress-bar>
+      </div>
+    </div>
+  }
+
   <!-- ЛЕВАЯ ПАНЕЛЬ: таблица (30%) -->
   <div class="left-pane">
     <div class="dcma-header">
       <h3>{{ 'dcma.title' | transloco }}</h3>
       <span class="fx"></span>
-            <button mat-button (click)="openSettings()" aria-label="{{ 'dcma.settingsAria' | transloco }}">
+      <button mat-button (click)="openSettings()" aria-label="{{ 'dcma.settingsAria' | transloco }}">
         <mat-icon>settings</mat-icon>
         <span>{{ 'common.settings' | transloco }}</span>
       </button>
     </div>
 
-    @if (loading()) { <p>{{ 'common.loading' | transloco }}</p> } @else {
-      <!-- Прокидываем палитру в CSS-переменные для градиента -->
-      <div class="table-scroll"
-        [style.--zone-poor]="zone.poor"
-        [style.--zone-avg]="zone.average"
-        [style.--zone-great]="zone.great">
-      
-        <table mat-table [dataSource]="filteredRows()" class="fullw" [trackBy]="trackRow">
-      
-          <!-- # -->
-          <ng-container matColumnDef="check">
-            <th mat-header-cell *matHeaderCellDef>#</th>
-            <td mat-cell *matCellDef="let r">{{ r.check }}</td>
-          </ng-container>
-      
-          <!-- Название -->
-          <ng-container matColumnDef="metric">
-            <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.metric' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">{{ r.metric }}</td>
-          </ng-container>
-      
-          <!-- % / Value (кружок + процент) -->
-          <ng-container matColumnDef="percent">
-            <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.percent' | transloco }}</th>
-            <td mat-cell *matCellDef="let r">
-              @if(!shouldShowPassLabel(r)){
-                <span class="value-cell">
-                  <span class="value-dot" [style.backgroundColor]="getZoneColorFor(r)"></span>
-                  <span class="value-text">
-                    @if (r.check === 14) {
-                      {{ r.percent | number:'1.0-2' }}
-                    } @else {
-                      {{ formatPercent(r.percent) }}%
-                    }
-                  </span>
+    <!-- Всегда рендерим таблицу, даже при loading() -->
+    <div
+      class="table-scroll"
+      [style.--zone-poor]="zone.poor"
+      [style.--zone-avg]="zone.average"
+      [style.--zone-great]="zone.great">
+
+      <table mat-table [dataSource]="filteredRows()" class="fullw" [trackBy]="trackRow">
+
+        <!-- # -->
+        <ng-container matColumnDef="check">
+          <th mat-header-cell *matHeaderCellDef>#</th>
+          <td mat-cell *matCellDef="let r">{{ r.check }}</td>
+        </ng-container>
+
+        <!-- Название -->
+        <ng-container matColumnDef="metric">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.metric' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">{{ r.metric }}</td>
+        </ng-container>
+
+        <!-- % / Value (кружок + процент) -->
+        <ng-container matColumnDef="percent">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dcma.table.percent' | transloco }}</th>
+          <td mat-cell *matCellDef="let r">
+            @if(!shouldShowPassLabel(r)){
+              <span class="value-cell">
+                <span class="value-dot" [style.backgroundColor]="getZoneColorFor(r)"></span>
+                <span class="value-text">
+                  @if (r.check === 14) {
+                    {{ r.percent | number:'1.0-2' }}
+                  } @else {
+                    {{ formatPercent(r.percent) }}%
+                  }
                 </span>
-              } @else {
-                <span class="status-chip" [class.ok]="r.passed" [class.bad]="!r.passed">
-                  {{ passLabel(r) }}
-                </span>
-              }
-            </td>
-          </ng-container>
-      
-          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns"
-              (click)="selectRow(row)"
-              [class.is-selected]="selectedRow()?.check === row.check">
-          </tr>
-      
-        </table>
-      </div>
-    }
+              </span>
+            } @else {
+              <span class="status-chip" [class.ok]="r.passed" [class.bad]="!r.passed">
+                {{ passLabel(r) }}
+              </span>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"
+            (click)="selectRow(row)"
+            [class.is-selected]="selectedRow()?.check === row.check">
+        </tr>
+
+      </table>
+    </div>
   </div>
 
   <!-- ПРАВАЯ ПАНЕЛЬ: детали (70%) -->
@@ -104,8 +113,8 @@
               }">
             </ng-container>
           }
-        </div>  
-      </div>  
+        </div>
+      </div>
     }
   </div>
 </div>

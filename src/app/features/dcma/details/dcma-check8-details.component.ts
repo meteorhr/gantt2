@@ -11,6 +11,7 @@ import { DcmaRow } from './models/dcma-row.model';
   standalone: true,
   selector: 'dcma-check8-details',
   imports: [CommonModule, TranslocoModule, MatTabsModule, MatTableModule, ScrollingModule, AnimatedSummaryBorderDirective],
+  styleUrl: '../dcma-tab.component.scss',
   template: `
   <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange()">
     <mat-tab label="{{ 'dcma.summary' | transloco }}">
@@ -37,7 +38,7 @@ import { DcmaRow } from './models/dcma-row.model';
     </mat-tab>
 
     @if (row.result?.details?.items?.length) {
-      <mat-tab label="{{ 'dcma.c8.highDuration' | transloco }}">
+      <mat-tab label="{{ 'dcma.c8.highDuration' | transloco }} ({{ detailsCount | number }})">
         <div class="vtable">
           <table class="vtable__head">
             <thead>
@@ -101,33 +102,42 @@ export class DcmaCheck8DetailsComponent {
 
   @ViewChildren(CdkVirtualScrollViewport) vps!: QueryList<CdkVirtualScrollViewport>;
 
+  minBufferPx = 440;
+  maxBufferPx = 880;
 
-    minBufferPx = 440;
-    maxBufferPx = 880;
-  
-    ngOnInit(): void {
-      this.recomputeBuffers();
+  ngOnInit(): void {
+    this.recomputeBuffers();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.recomputeBuffers();
+  }
+
+  private recomputeBuffers(): void {
+    const vh = window?.innerHeight ?? 800;
+    // min = calc(100vh - 150px), max = calc(100vh)
+    const min = Math.max(0, vh - 150);
+    const max = Math.max(min + this.ITEM_SIZE, vh); // гарантируем max >= min + itemSize
+    this.minBufferPx = Math.round(min);
+    this.maxBufferPx = Math.round(max);
+
+    // если вьюпорты уже отрисованы — подсказать им про смену размеров
+    queueMicrotask(() => {
+      this.vps?.forEach(vp => { try { vp.checkViewportSize(); } catch {} });
+    });
+  }
+
+  /** Общее количество элементов во всех массивах внутри details (включая items и др.). */
+  get detailsCount(): number {
+    const d = this.row?.result?.details as Record<string, unknown> | undefined;
+    if (!d) return 0;
+    let total = 0;
+    for (const v of Object.values(d)) {
+      if (Array.isArray(v)) total += v.length;
     }
-  
-    @HostListener('window:resize')
-    onWindowResize() {
-      this.recomputeBuffers();
-    }
-  
-    private recomputeBuffers(): void {
-      const vh = window?.innerHeight ?? 800;
-      // min = calc(100vh - 150px), max = calc(100vh)
-      const min = Math.max(0, vh - 150);
-      const max = Math.max(min + this.ITEM_SIZE, vh); // гарантируем max >= min + itemSize
-      this.minBufferPx = Math.round(min);
-      this.maxBufferPx = Math.round(max);
-  
-      // если вьюпорты уже отрисованы — подсказать им про смену размеров
-      queueMicrotask(() => {
-        this.vps?.forEach(vp => { try { vp.checkViewportSize(); } catch {} });
-      });
-    }
-  
+    return total;
+  }
 
   trackC8 = (_: number, i: any) =>
     i?.task_id ?? i?.task_code ?? i?.id ??

@@ -11,6 +11,7 @@ import { DcmaRow } from './models/dcma-row.model';
   standalone: true,
   selector: 'dcma-check3-details',
   imports: [CommonModule, TranslocoModule, MatTabsModule, MatTableModule, ScrollingModule, AnimatedSummaryBorderDirective],
+  styleUrl: '../dcma-tab.component.scss',
   template: `
   <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start" (selectedTabChange)="onTabChange()">
     <mat-tab label="{{ 'dcma.summary' | transloco }}">
@@ -35,7 +36,7 @@ import { DcmaRow } from './models/dcma-row.model';
     </mat-tab>
 
     @if (row.result?.details?.lags?.length) {
-      <mat-tab label="{{ 'dcma.details.title' | transloco }}">
+      <mat-tab label="{{ 'dcma.details.title' | transloco }} ({{ detailsCount | number }})">
         <div class="vtable">
           <table class="vtable__head">
             <thead>
@@ -92,7 +93,7 @@ export class DcmaCheck3DetailsComponent {
   @Input({ required: true }) animate!: boolean;
   @Input({ required: true }) zoneColor!: string;
   @Input({ required: true }) greatText!: string;
-  @Input() ITEM_SIZE = 44;
+  @Input() ITEM_SIZE: number = 44;
 
   @ViewChildren(CdkVirtualScrollViewport) vps!: QueryList<CdkVirtualScrollViewport>;
 
@@ -120,6 +121,17 @@ export class DcmaCheck3DetailsComponent {
     queueMicrotask(() => {
       this.vps?.forEach(vp => { try { vp.checkViewportSize(); } catch {} });
     });
+  }
+
+  /** Общее количество элементов во всех массивах внутри details (включая lags и другие списки). */
+  get detailsCount(): number {
+    const d = this.row?.result?.details as Record<string, unknown> | undefined;
+    if (!d) return 0;
+    let total = 0;
+    for (const v of Object.values(d)) {
+      if (Array.isArray(v)) total += v.length;
+    }
+    return total;
   }
 
   trackLink = (_: number, l: any) =>

@@ -439,23 +439,44 @@ export interface DcmaCheck11Result {
   };
 };
 
+export interface DcmaCheckItem {
+  task_id: number;
+  task_code?: string | null;
+  task_name?: string | null;
+  wbs_id?: number | null;
+  task_type?: string | null;
+  status_code?: string | null;
+  status_norm: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'UNKNOWN';
+  hasPredecessor: boolean;
+  hasSuccessor: boolean;
+  isMilestone: boolean;
+  reasonMissingPred: 'None' | 'StartMilestone' | 'ExternalLink' | 'ExceptionByRule';
+  reasonMissingSucc: 'None' | 'FinishMilestone' | 'ExternalLink' | 'ExceptionByRule';
+  excludedFromEligible: boolean;
+}
+
+
 export interface DcmaCheck12Result {
   proj_id: number;
-  simulatedDelayDays: number;           // имитация добавления длительности (дней)
-  criticalCount: number;                // размер множества «критических» (TF≈0)
-  floatThresholdHours: number;          // порог TF для отбора критических (часы)
-  startNodesOnCP: number;               // узлы КП без предшественников в КП
-  endNodesOnCP: number;                 // узлы КП без преемников в КП
-  isSingleChain: boolean;               // на КП ровно 1 стартовый и 1 конечный узел
-  reachedProjectFinish: boolean;        // конечный узел КП совпадает с проектным финишем (по forecast)
-  testPassLikely: boolean;              // эвристический вывод: true => тест вероятно пройдёт
+  simulatedDelayDays: number;
+  criticalCount: number;
+  floatThresholdHours: number;
+  startNodesOnCP: number;
+  endNodesOnCP: number;
+  isSingleChain: boolean;
+  reachedProjectFinish: boolean;
+  testPassLikely: boolean;
   details?: {
     criticalTaskIds: number[];
+    /** Новые детальные списки */
+    criticalTasks?: DcmaCheckItem[];
+    startNodesOnCp?: DcmaCheckItem[];
+    endNodesOnCp?: DcmaCheckItem[];
     dq?: {
-      duplicateLinks: number;           // удалённые дубликаты связей при построении подграфа
-      selfLoops: number;                // отброшенные самосвязи
-      externalLinks: number;            // отброшенные внешние связи
-      components: number;               // количество компонент связности в подграфе КП
+      duplicateLinks: number;
+      selfLoops: number;
+      externalLinks: number;
+      components: number;
     };
   };
 }

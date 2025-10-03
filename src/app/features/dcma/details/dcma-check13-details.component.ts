@@ -10,6 +10,7 @@ import { DcmaRow } from './models/dcma-row.model';
   standalone: true,
   selector: 'dcma-check13-details',
   imports: [CommonModule, TranslocoModule, MatTabsModule, MatTableModule, AnimatedSummaryBorderDirective],
+  styleUrl: '../dcma-tab.component.scss',
   template: `
   <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
     <mat-tab label="{{ 'dcma.summary' | transloco }}">

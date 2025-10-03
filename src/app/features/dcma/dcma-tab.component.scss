@@ -1,4 +1,4 @@
-:host { 
+:host {
   --dcma-gap: 16px;
   --dcma-radius: 10px;
   --dcma-border: 1px solid var(--mat-sys-outline-variant, rgba(0,0,0,.12));
@@ -15,16 +15,50 @@
   --col-pct-ch: 7;
 }
 
-.dash-viewport { 
-  height: calc(100vh - 150px); 
+.dash-viewport {
+  position: relative; /* для оверлея */
+  height: calc(100vh - 150px);
   margin: 10px;
-  padding: 10px; 
-  background-color: #fff; 
+  padding: 10px;
+  background-color: #fff;
   border-radius: 14px;
-  border: 1px solid #e0e0e0; 
-  overflow: hidden; 
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
   -webkit-overflow-scrolling: touch;
+
+  /* При загрузке визуально приглушаем контент */
+  &.is-loading .left-pane,
+  &.is-loading .right-pane {
+    filter: grayscale(0.7) opacity(0.5);
+    transition: filter .15s ease, opacity .15s ease;
+  }
 }
+
+/* Оверлей загрузки */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: all;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.loading-overlay .overlay-scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, black 35%, transparent);
+  pointer-events: all; /* блокируем клики по контенту */
+}
+
+.loading-overlay .overlay-bar {
+  position: relative;
+  z-index: 1;
+  padding: 6px 10px;
+}
+
+/* ===== остальной ваш стиль без изменений ===== */
+
 .dcma-split { display: grid; grid-template-columns: 30% 1fr; gap: var(--dcma-gap); height: 100%; min-height: 0; }
 @media (max-width: 960px)  { .dcma-split { grid-template-columns: 1fr; } }
 @media (min-width: 1600px) { .dcma-split { grid-template-columns: 25% 1fr; } }
@@ -39,23 +73,24 @@
 :host ::ng-deep .mat-mdc-table .mat-mdc-header-row {
   position: sticky; top: 0; z-index: 1; background: var(--dcma-surface);
   box-shadow: 0 1px 0 0 var(--mat-sys-outline-variant, rgba(0,0,0,.08));
-  height: 44px; /* высота шапки */
+  height: 44px;
 }
 :host ::ng-deep .mat-mdc-table .mat-mdc-row { height: 44px; }
 
 :host ::ng-deep .mat-mdc-table .mat-mdc-header-cell,
 :host ::ng-deep .mat-mdc-table .mat-mdc-cell {
   padding: 0 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; vertical-align: middle;
-  text-align: left; /* ← текст шапки и ячеек слева */
-  position: relative; /* для псевдоэлемента-акцента */
+  text-align: left;
+  position: relative;
 }
 :host ::ng-deep .mat-mdc-table .mat-mdc-header-cell { font-weight: 600; }
 
-/* hover / selected улучшены */
+/* hover / selected + курсор-«рука» */
 :host ::ng-deep .mat-mdc-table .mat-mdc-row td { transition: background-color .15s ease; }
 @media (hover:hover) and (pointer:fine) {
   :host ::ng-deep .mat-mdc-table .mat-mdc-row:hover td {
     background: color-mix(in oklab, var(--dcma-primary) 7%, transparent);
+    cursor: pointer;
   }
   :host ::ng-deep .mat-mdc-table .mat-mdc-row:hover td:first-child::before {
     content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
@@ -84,29 +119,24 @@
   .status-icon.ok { color: var(--dcma-ok); } .status-icon.bad { color: var(--dcma-bad); }
 }
 
-/* Грид правой области с одной колонкой на 100% */
+/* Грид правой области */
 .details-body {
-  min-width: 0; 
-  min-height: 0; 
-  display: grid; 
-  gap: 12px; 
-  align-content: start; 
-  grid-template-columns: minmax(0, 1fr); /* FIX: колонка не shrink-wrap'ится к содержимому */
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
   .desc { opacity: .85; word-break: break-word; }
 }
-/* FIX: любой прямой потомок (в т.ч. mat-tab-group) может растягиваться, не участвуя в min-content sizing */
 .details-body > * { min-width: 0; }
 
-/* Точечное: mat-tab — ширина 100% */
-.details-body .mat-mdc-tab-group,
-.details-body .mat-mdc-tab-body-wrapper { width: 100%; }
-
-/* FIX: принудительно делаем группу блочной и не даём ей сжиматься до контента */
+/* mat-tabs на 100% */
 :host ::ng-deep .mat-mdc-tab-group { display: block; width: 100%; min-width: 0; }
-:host ::ng-deep .mat-mdc-tab-header { width: 100%; } /* шапка табов на всю ширину */
+:host ::ng-deep .mat-mdc-tab-header { width: 100%; }
 :host ::ng-deep .mat-mdc-tab-body-wrapper { width: 100%; min-width: 0; }
 :host ::ng-deep .mat-mdc-tab-body,
-:host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content { width: 100%; min-width: 0; } /* контент табов на всю ширину */
+:host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content { width: 100%; min-width: 0; }
 
 :host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content { overflow: auto; max-height: calc(100vh - 250px); }
 .details-body table.mat-mdc-table { width: 100%; table-layout: fixed; }
@@ -118,14 +148,19 @@
 :host ::ng-deep td.mat-mdc-cell mat-icon.bad { filter: drop-shadow(0 0 0 rgba(198,40,40,.15)); }
 
 .placeholder { min-height: 240px; display: flex; align-items: center; justify-content: center; gap: 12px; opacity:.7; flex-direction: column; text-align: center;
-  mat-icon { font-size: 40px; width: 40px; height: 40px; } }
+  mat-icon { font-size: 40px; width: 40px; height: 40px; }
+}
 
 /* Скроллбары */
 .right-pane, .left-pane .table-scroll, :host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content {
   scrollbar-width: thin; scrollbar-color: color-mix(in oklab, currentColor 35%, transparent) transparent;
 }
-.right-pane::-webkit-scrollbar, .left-pane .table-scroll::-webkit-scrollbar, :host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content::-webkit-scrollbar { height: 10px; width: 10px; }
-.right-pane::-webkit-scrollbar-thumb, .left-pane .table-scroll::-webkit-scrollbar-thumb, :host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content::-webkit-scrollbar-thumb {
+.right-pane::-webkit-scrollbar,
+.left-pane .table-scroll::-webkit-scrollbar,
+:host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content::-webkit-scrollbar { height: 10px; width: 10px; }
+.right-pane::-webkit-scrollbar-thumb,
+.left-pane .table-scroll::-webkit-scrollbar-thumb,
+:host ::ng-deep .mat-mdc-tab-body .mat-mdc-tab-body-content::-webkit-scrollbar-thumb {
   background: color-mix(in oklab, currentColor 25%, transparent); border-radius: 10px;
 }
 
@@ -223,7 +258,7 @@
   padding: 8px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;
 }
 .vtable__head thead th {
-  height: 44px; /* высота шапки */
+  height: 44px;
   line-height: 44px;
   border-bottom: 1px solid color-mix(in oklab, currentColor 10%, transparent);
   background: var(--dcma-surface);

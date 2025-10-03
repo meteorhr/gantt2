@@ -14,7 +14,6 @@
              [attr.aria-controls]="'pane-' + id"
              role="tab">
             <span class="num">{{ id }}</span>
-            <!-- вариант через transloco вместо labels[id]: -->
             <span class="label">{{ ('dcma.checks.names.' + id) | transloco }}</span>
           </a>
         }
@@ -23,10 +22,12 @@
 
     @if (currentId(); as cid) {
       <section #rightPane class="right-pane" [attr.id]="'pane-' + cid" role="tabpanel" tabindex="0">
-        <!-- заголовок вкладки можно вернуть при необходимости -->
         <h4 class="section-title">{{ 'dcma.common.title.visibility' | transloco }}</h4>
+
         <div class="row-line">
-          <div class="row-text"><div class="row-title">{{ 'dcma.settings.enableAnalysis' | transloco }}</div></div>
+          <div class="row-text">
+            <div class="row-title">{{ 'dcma.settings.enableAnalysis' | transloco }}</div>
+          </div>
           <mat-slide-toggle
             [checked]="curEnabled()"
             (change)="onToggleEnabled($event.checked)"
@@ -35,7 +36,9 @@
         </div>
 
         <div class="row-line">
-          <div class="row-text"><div class="row-title">{{ 'dcma.settings.showInTable' | transloco }}</div></div>
+          <div class="row-text">
+            <div class="row-title">{{ 'dcma.settings.showInTable' | transloco }}</div>
+          </div>
           <mat-slide-toggle
             [checked]="curShown()"
             (change)="onToggleShown($event.checked)"
@@ -44,24 +47,22 @@
           </mat-slide-toggle>
         </div>
 
-        <!-- Индивидуальные панели -->
         @switch (cid) {
-          @case (1) { <app-dcma-check1-settings-pane /> }
-          @case (2) { <app-dcma-check2-settings-pane /> }
-          @case (3) { <app-dcma-check3-settings-pane /> }
-          @case (4) { <app-dcma-check4-settings-pane /> }  
-          @case (5) { <app-dcma-check5-settings-pane /> }
-          @case (6) { <app-dcma-check6-settings-pane /> }
-          @case (7) { <app-dcma-check7-settings-pane /> }
-          @case (8) { <app-dcma-check8-settings-pane /> }
-          @case (9) { <app-dcma-check9-settings-pane /> }
+          @case (1)  { <app-dcma-check1-settings-pane /> }
+          @case (2)  { <app-dcma-check2-settings-pane /> }
+          @case (3)  { <app-dcma-check3-settings-pane /> }
+          @case (4)  { <app-dcma-check4-settings-pane /> }
+          @case (5)  { <app-dcma-check5-settings-pane /> }
+          @case (6)  { <app-dcma-check6-settings-pane /> }
+          @case (7)  { <app-dcma-check7-settings-pane /> }
+          @case (8)  { <app-dcma-check8-settings-pane /> }
+          @case (9)  { <app-dcma-check9-settings-pane /> }
           @case (10) { <app-dcma-check10-settings-pane /> }
           @case (11) { <app-dcma-check11-settings-pane /> }
           @case (12) { <app-dcma-check12-settings-pane /> }
           @case (13) { <app-dcma-check13-settings-pane /> }
           @case (14) { <app-dcma-check14-settings-pane /> }
-
-          @default  { <app-dcma-empty-settings-pane [checkId]="cid" /> }
+          @default   { <app-dcma-empty-settings-pane [checkId]="cid" /> }
         }
       </section>
     }

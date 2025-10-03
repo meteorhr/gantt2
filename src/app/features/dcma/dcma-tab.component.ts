@@ -11,6 +11,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { MatTabsModule } from '@angular/material/tabs';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import { CdkTableModule } from '@angular/cdk/table';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 import { AppStateService } from '../../state/app-state.service';
 import {
@@ -33,10 +34,10 @@ import { DcmaSettingsDialogComponent } from './dialog/settings/dcma-settings-dia
 import { DcmaSettingsService, DcmaCheckId } from './services/adv/dcma-settings.service';
 import { getZoneByPercent, Grade, ZONE_COLORS } from './services/adv/dcma-checks.config';
 
-// НОВОЕ: общий интерфейс строки вынесен в отдельный файл
+// общий интерфейс строки
 import { DcmaRow } from './details/models/dcma-row.model';
 
-// НОВОЕ: импорт компонентов деталей
+// компоненты деталей
 import { DcmaCheck1DetailsComponent }  from './details/dcma-check1-details.component';
 import { DcmaCheck2DetailsComponent }  from './details/dcma-check2-details.component';
 import { DcmaCheck3DetailsComponent }  from './details/dcma-check3-details.component';
@@ -65,7 +66,8 @@ import { DcmaCheck14DetailsComponent } from './details/dcma-check14-details.comp
     TranslocoModule,
     MatTabsModule,
     ScrollingModule,
-    CdkTableModule
+    CdkTableModule,
+    MatProgressBarModule
   ],
   styleUrls: ['./dcma-tab.component.scss'],
   templateUrl: './dcma-tab.component.html',
@@ -242,11 +244,11 @@ export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
     return (p === null || p === undefined) ? '—' : `${(p as number).toFixed(2)}`;
   }
 
-  // загрузка
-  async run() {
+  // загрузка + пересчёт
+  async run(preserveCheck?: number | null) {
     this.loading.set(true);
     try {
-      const s = this.cfg.settings();
+      const s  = this.cfg.settings();
       const id = this.projId();
 
       const p1  = s[1].enabled  ? this.svc1.analyzeCheck1(id, this.cfg.buildCheck1Options()) : Promise.resolve(null);
@@ -277,9 +279,31 @@ export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
       this.r13.set(check13); this.r14.set(check14);
 
       this.buildRows();
+      this.reselectAfterRebuild(preserveCheck ?? this.selectedRow()?.check ?? null);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Восстановить/обновить активную строку после перестроения rows/filteredRows */
+  private reselectAfterRebuild(prevCheck: number | null | undefined): void {
+    const visible = this.filteredRows();
+    let next: DcmaRow | null = null;
+
+    if (prevCheck != null) {
+      next = visible.find(r => r.check === prevCheck) ?? null;
+    }
+    if (!next) {
+      next = visible.length ? visible[0] : null;
+    }
+
+    this.selectedRow.set(next);
+
+    if (next) this.restartBorderAnimation();
+    queueMicrotask(() => this.resetVirtualScrollSoon());
+
+    const el = this.rightPane?.nativeElement;
+    if (el) try { el.scrollTo({ top: 0, behavior: 'auto' }); } catch {}
   }
 
   openInfo(row: any) {
@@ -291,14 +315,23 @@ export class DcmaChecksComponent implements AfterViewInit, OnDestroy {
   }
 
   openSettings() {
+    const prevCheck = this.selectedRow()?.check ?? null;
+
     const ref = this.dialog.open(DcmaSettingsDialogComponent, {
       width: '940px',
       maxWidth: '90vw',
-      data: { startCheckId: 1 },
+      data: { startCheckId: prevCheck ?? 1 },
     });
+
     ref.afterClosed().subscribe(res => {
-      if (res?.saved) this.run();
-      else this.buildRows();
+      if (res?.saved) {
+        // полный пересчёт + сохраняем активный чек
+        this.run(prevCheck);
+      } else {
+        // без пересчёта: просто перестроим строки и восстановим выбор
+        this.buildRows();
+        this.reselectAfterRebuild(prevCheck);
+      }
     });
   }
 

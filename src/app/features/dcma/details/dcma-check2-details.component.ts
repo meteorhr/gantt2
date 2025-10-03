@@ -10,6 +10,7 @@ import { DcmaRow } from './models/dcma-row.model';
 @Component({
   standalone: true,
   selector: 'dcma-check2-details',
+  styleUrl: '../dcma-tab.component.scss',
   imports: [CommonModule, TranslocoModule, MatTabsModule, MatTableModule, ScrollingModule, AnimatedSummaryBorderDirective],
   template: `
   <mat-tab-group [mat-stretch-tabs]="false" mat-align-tabs="start" (selectedTabChange)="onTabChange()">
@@ -35,7 +36,7 @@ import { DcmaRow } from './models/dcma-row.model';
     </mat-tab>
 
     @if (row.result?.details?.leads?.length) {
-      <mat-tab label="{{ 'dcma.details.title' | transloco }}">
+      <mat-tab label="{{ 'dcma.details.title' | transloco }} ({{ detailsCount | number }})">
         <div class="vtable">
           <table class="vtable__head">
             <thead>
@@ -48,9 +49,9 @@ import { DcmaRow } from './models/dcma-row.model';
             </thead>
           </table>
 
-          <cdk-virtual-scroll-viewport class="v-viewport" [itemSize]="ITEM_SIZE" 
-          [minBufferPx]="minBufferPx"
-          [maxBufferPx]="maxBufferPx">
+          <cdk-virtual-scroll-viewport class="v-viewport" [itemSize]="ITEM_SIZE"
+                                       [minBufferPx]="minBufferPx"
+                                       [maxBufferPx]="maxBufferPx">
             <table class="vtable__body mat-elevation-z1">
               <tbody>
                 <tr *cdkVirtualFor="let l of row.result.details.leads; trackBy: trackLink">
@@ -91,37 +92,46 @@ export class DcmaCheck2DetailsComponent {
   @Input({ required: true }) animate!: boolean;
   @Input({ required: true }) zoneColor!: string;
   @Input({ required: true }) greatText!: string;
-  @Input() ITEM_SIZE = 44;
+  @Input() ITEM_SIZE: number = 44;
 
   @ViewChildren(CdkVirtualScrollViewport) vps!: QueryList<CdkVirtualScrollViewport>;
 
+  minBufferPx = 440;
+  maxBufferPx = 880;
 
-    minBufferPx = 440;
-    maxBufferPx = 880;
-  
-    ngOnInit(): void {
-      this.recomputeBuffers();
+  ngOnInit(): void {
+    this.recomputeBuffers();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.recomputeBuffers();
+  }
+
+  private recomputeBuffers(): void {
+    const vh = window?.innerHeight ?? 800;
+    // min = calc(100vh - 150px), max = calc(100vh)
+    const min = Math.max(0, vh - 150);
+    const max = Math.max(min + this.ITEM_SIZE, vh); // гарантируем max >= min + itemSize
+    this.minBufferPx = Math.round(min);
+    this.maxBufferPx = Math.round(max);
+
+    // если вьюпорты уже отрисованы — подсказать им про смену размеров
+    queueMicrotask(() => {
+      this.vps?.forEach(vp => { try { vp.checkViewportSize(); } catch {} });
+    });
+  }
+
+  /** Общее количество элементов во всех массивах внутри details (например, leads). */
+  get detailsCount(): number {
+    const d = this.row?.result?.details as Record<string, unknown> | undefined;
+    if (!d) return 0;
+    let total = 0;
+    for (const v of Object.values(d)) {
+      if (Array.isArray(v)) total += v.length;
     }
-  
-    @HostListener('window:resize')
-    onWindowResize() {
-      this.recomputeBuffers();
-    }
-  
-    private recomputeBuffers(): void {
-      const vh = window?.innerHeight ?? 800;
-      // min = calc(100vh - 150px), max = calc(100vh)
-      const min = Math.max(0, vh - 150);
-      const max = Math.max(min + this.ITEM_SIZE, vh); // гарантируем max >= min + itemSize
-      this.minBufferPx = Math.round(min);
-      this.maxBufferPx = Math.round(max);
-  
-      // если вьюпорты уже отрисованы — подсказать им про смену размеров
-      queueMicrotask(() => {
-        this.vps?.forEach(vp => { try { vp.checkViewportSize(); } catch {} });
-      });
-    }
-  
+    return total;
+  }
 
   trackLink = (_: number, l: any) =>
     l?.id ?? `${l?.predecessor_task_id || l?.predecessor_code}->${l?.successor_task_id || l?.successor_code}:${l?.link_type}:${l?.lag_days_8h}`;

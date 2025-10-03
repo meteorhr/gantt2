@@ -1,4 +1,4 @@
-import { Component, Input, ViewChildren, QueryList, ViewEncapsulation } from '@angular/core';
+import { Component, Input, ViewChildren, QueryList, ViewEncapsulation, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslocoModule } from '@jsverse/transloco';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -11,6 +11,7 @@ import { DcmaRow } from './models/dcma-row.model';
   standalone: true,
   selector: 'dcma-check10-details',
   imports: [CommonModule, TranslocoModule, MatTabsModule, MatTableModule, ScrollingModule, AnimatedSummaryBorderDirective],
+  styleUrl: '../dcma-tab.component.scss',
   template: `
   <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange()">
     <mat-tab label="{{ 'dcma.summary' | transloco }}">
@@ -37,7 +38,7 @@ import { DcmaRow } from './models/dcma-row.model';
     </mat-tab>
 
     @if (row.result?.details?.items?.length) {
-      <mat-tab label="{{ 'dcma.c10.withoutResources' | transloco }}">
+      <mat-tab label="{{ 'dcma.c10.withoutResources' | transloco }} ({{ detailsCount | number }})">
         <div class="vtable">
           <table class="vtable__head mat-elevation-z1">
             <colgroup>
@@ -54,7 +55,7 @@ import { DcmaRow } from './models/dcma-row.model';
 
           <cdk-virtual-scroll-viewport
             class="v-viewport"
-            [itemSize]="48"
+            [itemSize]="ITEM_SIZE"
             [minBufferPx]="minBufferPx"
             [maxBufferPx]="maxBufferPx">
             <table class="vtable__body mat-elevation-z1">
@@ -99,10 +100,46 @@ export class DcmaCheck10DetailsComponent {
   @Input({ required: true }) animate!: boolean;
   @Input({ required: true }) zoneColor!: string;
   @Input({ required: true }) greatText!: string;
+  @Input() ITEM_SIZE = 48;
 
   @ViewChildren(CdkVirtualScrollViewport) vps!: QueryList<CdkVirtualScrollViewport>;
 
-  
+  minBufferPx = 440;
+  maxBufferPx = 880;
+
+  ngOnInit(): void {
+    this.recomputeBuffers();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.recomputeBuffers();
+  }
+
+  private recomputeBuffers(): void {
+    const vh = window?.innerHeight ?? 800;
+    // min = calc(100vh - 150px), max = calc(100vh)
+    const min = Math.max(0, vh - 150);
+    const max = Math.max(min + this.ITEM_SIZE, vh); // гарантируем max >= min + itemSize
+    this.minBufferPx = Math.round(min);
+    this.maxBufferPx = Math.round(max);
+
+    // если вьюпорты уже отрисованы — подсказать им про смену размеров
+    queueMicrotask(() => {
+      this.vps?.forEach(vp => { try { vp.checkViewportSize(); } catch {} });
+    });
+  }
+
+  /** Общее количество элементов во всех массивах внутри details (включая items и др.). */
+  get detailsCount(): number {
+    const d = this.row?.result?.details as Record<string, unknown> | undefined;
+    if (!d) return 0;
+    let total = 0;
+    for (const v of Object.values(d)) {
+      if (Array.isArray(v)) total += v.length;
+    }
+    return total;
+  }
 
   trackTask = (_: number, i: any) => i?.task_id ?? i?.task_code ?? i?.id ?? i;
 
