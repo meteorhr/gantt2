@@ -63,8 +63,8 @@ import { DcmaRow } from './models/dcma-row.model';
           <cdk-virtual-scroll-viewport
             class="v-viewport"
             [itemSize]="ITEM_SIZE"
-            [minBufferPx]="440"
-            [maxBufferPx]="880">
+            [minBufferPx]="minBufferPx"
+            [maxBufferPx]="maxBufferPx">
             <table class="vtable__body mat-elevation-z1">
               <tbody>
                 <tr *cdkVirtualFor="let i of row.result.details.forecast; trackBy: trackC9Forecast">
